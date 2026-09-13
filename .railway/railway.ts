@@ -46,7 +46,7 @@ export default defineRailway(() => {
   });
   const syncCron = service("sync-cron", {
     source: AndersonFinanceApp,
-    build: "npm ci && npm run db:generate",
+    build: "npm run db:generate",
     start: "npm run cron:sync",
     replicas: { sfo: 1 },
     deploy: { cronSchedule: "17 */6 * * *", restartPolicyType: "NEVER" },
@@ -54,7 +54,7 @@ export default defineRailway(() => {
   });
   const worker = service("worker", {
     source: AndersonFinanceApp,
-    build: "npm ci && npm run db:generate",
+    build: "npm run db:generate",
     start: "npm run worker",
     preDeploy: "npm run db:deploy",
     replicas: { sfo: 1 },
