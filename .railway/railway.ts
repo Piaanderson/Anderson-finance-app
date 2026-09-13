@@ -58,7 +58,6 @@ export default defineRailway(() => {
     start: "npm run worker",
     preDeploy: "npm run db:deploy",
     replicas: { sfo: 1 },
-    deploy: { restartPolicyType: "ALWAYS" },
     env: {
       DATABASE_URL: preserve(),
       LOG_LEVEL: preserve(),
