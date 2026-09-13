@@ -6,22 +6,27 @@ call a hosted model provider over HTTPS.
 
 ## Project topology
 
-Create one Railway project with:
+The project is defined in `.railway/railway.ts` using Railway Infrastructure
+as Code:
 
 1. an official PostgreSQL service;
-2. a `web` service from this repository using `railway.web.toml`;
-3. a `worker` service from the same repository using `railway.worker.toml`;
-4. a `sync-cron` service using `railway.cron.toml` and schedule `17 */6 * * *`.
+2. a `web` service from the mirrored GitHub repository;
+3. a `worker` service from the same repository;
+4. a `sync-cron` service scheduled at `17 */6 * * *`.
+
+Railway deprecated per-service `railway.toml` Config as Code for new services
+and will stop reading it on December 1, 2026. Use `railway config plan` to
+preview infrastructure changes and `railway config apply` to apply them.
 
 Only `web` receives a public domain. Reference the PostgreSQL service's private
 `DATABASE_URL` from all three application services. Railway cron schedules use
 UTC, have a five-minute minimum interval, and skip a run if the prior execution
 has not exited.
 
-The current Git remote is GitLab. Use `.gitlab-ci.yml` for verification and
-either mirror the repository to GitHub for Railway's repository integration or
-deploy from GitLab CI with an authenticated Railway token. Do not put that token
-in the repository.
+The canonical Git remote is GitLab. `.gitlab-ci.yml` verifies changes, and
+GitLab push-mirrors `main` to the private GitHub repository used by Railway's
+repository integration. Do not add a GitHub remote or put a Railway token in
+the repository.
 
 ## Required web variables
 
@@ -34,16 +39,19 @@ Copy the names from `.env.example`. In production:
 - do not define `AUTH_DEV_BYPASS`;
 - set `NEXT_TELEMETRY_DISABLED=1`.
 
-The worker needs `DATABASE_URL`, Plaid variables, and encryption variables. The
-cron needs only `DATABASE_URL`. Use Railway reference variables rather than
-copying database credentials.
+The worker needs `DATABASE_URL`, Plaid credentials, `PLAID_ENV`, and encryption
+variables. The cron needs only `DATABASE_URL`. Use
+`${{Postgres.DATABASE_URL}}` on all three services rather than copying database
+credentials. Keep secret values in Railway; `.railway/railway.ts` preserves
+them without writing them to source.
 
 ## Deploy sequence
 
-The web and worker configs run `prisma migrate deploy` before starting. Deploy
-PostgreSQL first, web second, then worker and cron. Set the web health check to
-`/api/health`. Configure Plaid and Google callback URLs only after Railway has
-assigned the production domain.
+The web and worker services run `prisma migrate deploy` before starting. Deploy
+PostgreSQL first, web second, then worker and cron. The web health check is
+`/api/health`. Configure the Google redirect URI as
+`https://<domain>/api/auth/callback/google` and the Plaid webhook as
+`https://<domain>/api/plaid/webhook` after Railway assigns the domain.
 
 ## Backups and recovery
 
