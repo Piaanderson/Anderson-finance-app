@@ -1,0 +1,8 @@
+[build]
+builder = "RAILPACK"
+buildCommand = "npm ci && npm run db:generate"
+
+[deploy]
+preDeployCommand = "npm run db:deploy"
+startCommand = "npm run worker"
+restartPolicyType = "ALWAYS"

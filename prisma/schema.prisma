@@ -1,0 +1,281 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum HouseholdRole {
+  OWNER
+  MEMBER
+}
+
+enum PlaidItemStatus {
+  ACTIVE
+  LOGIN_REQUIRED
+  ERROR
+  REMOVED
+}
+
+enum SyncReason {
+  INITIAL
+  WEBHOOK
+  RECONCILIATION
+  MANUAL
+}
+
+enum SyncJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id            String            @id @default(cuid())
+  name          String?
+  email         String?           @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  memberships   HouseholdMember[]
+  linkedItems   PlaidItem[]       @relation("LinkedBy")
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Household {
+  id              String             @id @default(cuid())
+  name            String
+  members         HouseholdMember[]
+  plaidItems      PlaidItem[]
+  accounts        FinancialAccount[]
+  transactions    Transaction[]
+  categories      Category[]
+  merchantRules   MerchantRule[]
+  budgetMonths    BudgetMonth[]
+  transferMatches TransferMatch[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model HouseholdMember {
+  id          String        @id @default(cuid())
+  householdId String
+  userId      String
+  role        HouseholdRole @default(MEMBER)
+  household   Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+
+  @@unique([householdId, userId])
+  @@index([userId])
+}
+
+model PlaidItem {
+  id                   String          @id @default(cuid())
+  householdId          String
+  linkedByUserId       String
+  plaidItemId          String          @unique
+  institutionId        String?
+  institutionName      String?
+  accessTokenCiphertext String
+  accessTokenIv        String
+  accessTokenTag       String
+  encryptionKeyVersion Int             @default(1)
+  syncCursor           String?
+  status               PlaidItemStatus @default(ACTIVE)
+  errorCode            String?
+  consentExpiresAt     DateTime?
+  lastSyncedAt         DateTime?
+  household            Household       @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  linkedBy             User            @relation("LinkedBy", fields: [linkedByUserId], references: [id], onDelete: Restrict)
+  accounts             FinancialAccount[]
+  syncJobs             SyncJob[]
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  @@index([householdId])
+  @@index([status])
+}
+
+model FinancialAccount {
+  id                 String        @id @default(cuid())
+  householdId        String
+  plaidItemId        String
+  plaidAccountId     String        @unique
+  name               String
+  officialName       String?
+  mask               String?
+  type               String
+  subtype            String?
+  currentBalance     Decimal?      @db.Decimal(18, 2)
+  availableBalance   Decimal?      @db.Decimal(18, 2)
+  isoCurrencyCode    String?
+  isActive           Boolean       @default(true)
+  household          Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  plaidItem          PlaidItem     @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
+  transactions       Transaction[]
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([householdId, type])
+  @@index([plaidItemId])
+}
+
+model Transaction {
+  id                   String           @id @default(cuid())
+  householdId          String
+  accountId             String
+  plaidTransactionId   String           @unique
+  pendingTransactionId String?
+  name                 String
+  merchantName         String?
+  amount               Decimal          @db.Decimal(18, 2)
+  isoCurrencyCode      String?
+  date                 DateTime
+  authorizedDate       DateTime?
+  pending              Boolean          @default(false)
+  categoryPrimary      String?
+  categoryDetailed     String?
+  categoryId           String?
+  removedAt            DateTime?
+  household            Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  account              FinancialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category             Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  outgoingTransfer     TransferMatch?   @relation("OutgoingTransfer")
+  incomingTransfer     TransferMatch?   @relation("IncomingTransfer")
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([householdId, date])
+  @@index([accountId, date])
+  @@index([pendingTransactionId])
+  @@index([categoryId])
+}
+
+model Category {
+  id          String             @id @default(cuid())
+  householdId String
+  name        String
+  section     String
+  sortOrder   Int                @default(0)
+  archivedAt  DateTime?
+  household   Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  rules       MerchantRule[]
+  allocations BudgetAllocation[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([householdId, name])
+  @@index([householdId, section, sortOrder])
+}
+
+model MerchantRule {
+  id          String    @id @default(cuid())
+  householdId String
+  categoryId  String
+  merchantKey String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([householdId, merchantKey])
+  @@index([categoryId])
+}
+
+model BudgetMonth {
+  id          String             @id @default(cuid())
+  householdId String
+  month       DateTime
+  income      Decimal            @db.Decimal(18, 2)
+  household   Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  allocations BudgetAllocation[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([householdId, month])
+}
+
+model BudgetAllocation {
+  id            String      @id @default(cuid())
+  budgetMonthId String
+  categoryId    String
+  planned       Decimal     @db.Decimal(18, 2)
+  destinationAccountId String?
+  budgetMonth   BudgetMonth @relation(fields: [budgetMonthId], references: [id], onDelete: Cascade)
+  category      Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([budgetMonthId, categoryId])
+}
+
+model TransferMatch {
+  id                    String      @id @default(cuid())
+  householdId           String
+  outgoingTransactionId String      @unique
+  incomingTransactionId String      @unique
+  household             Household   @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  outgoingTransaction   Transaction @relation("OutgoingTransfer", fields: [outgoingTransactionId], references: [id], onDelete: Cascade)
+  incomingTransaction   Transaction @relation("IncomingTransfer", fields: [incomingTransactionId], references: [id], onDelete: Cascade)
+  createdAt             DateTime    @default(now())
+
+  @@index([householdId])
+}
+
+model SyncJob {
+  id          String        @id @default(cuid())
+  plaidItemId String
+  dedupeKey   String        @unique
+  reason      SyncReason
+  status      SyncJobStatus @default(PENDING)
+  attempts    Int           @default(0)
+  rerunRequested Boolean    @default(false)
+  runAfter    DateTime      @default(now())
+  lockedAt    DateTime?
+  lastError   String?
+  plaidItem   PlaidItem     @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([status, runAfter])
+}

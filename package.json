@@ -1,0 +1,60 @@
+{
+  "name": "currents",
+  "version": "0.1.0",
+  "private": true,
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "worker": "tsx src/worker.ts",
+    "cron:sync": "tsx src/cron/reconcile.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@auth/prisma-adapter": "^2.11.1",
+    "@prisma/adapter-pg": "^6.12.0",
+    "@prisma/client": "^6.12.0",
+    "jose": "^6.1.0",
+    "next": "^16.3.5",
+    "next-auth": "^5.0.0-beta.32",
+    "pg": "^8.16.3",
+    "plaid": "^47.0.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-plaid-link": "^5.0.0",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
+    "@playwright/test": "^1.55.0",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^24.3.0",
+    "@types/pg": "^8.15.5",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "eslint": "^9.35.0",
+    "eslint-config-next": "^16.3.5",
+    "prettier": "^3.6.2",
+    "prisma": "^6.12.0",
+    "tsx": "^4.20.5",
+    "typescript": "^6.0.2",
+    "vitest": "^3.2.4"
+  }
+}

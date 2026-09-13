@@ -4,3 +4,16 @@ Thumbs.db
 node_modules/
 .thumbnail
 scraps/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.dump
+*.sql.gz

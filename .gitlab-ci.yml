@@ -1,0 +1,35 @@
+image: node:24-bookworm
+
+services:
+  - name: postgres:17-alpine
+    alias: postgres
+
+variables:
+  POSTGRES_DB: currents_test
+  POSTGRES_USER: test
+  POSTGRES_PASSWORD: test
+  DATABASE_URL: postgresql://test:test@postgres:5432/currents_test
+  AUTH_SECRET: test-secret-that-is-not-used-in-production
+  AUTH_DEV_BYPASS: "false"
+
+cache:
+  key:
+    files:
+      - package-lock.json
+  paths:
+    - .npm/
+
+verify:
+  before_script:
+    - npm ci --cache .npm --prefer-offline
+  script:
+    - npm run db:generate
+    - npx prisma validate
+    - npm run typecheck
+    - npm run lint
+    - npm test
+    - npm run build
+    - npm run db:deploy
+    - npm run db:seed
+    - npx playwright install --with-deps chromium
+    - npm run test:e2e -- --project=chromium
