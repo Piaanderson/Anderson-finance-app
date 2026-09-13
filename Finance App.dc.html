@@ -1,0 +1,1956 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-29dc598a-853e-4a00-a520-2f69c2311f06/styles.css">
+<script src="_ds/nocturne-29dc598a-853e-4a00-a520-2f69c2311f06/_ds_bundle.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --row-raise: color-mix(in srgb, var(--color-surface) 55%, var(--color-bg));
+    --color-warn: #d98a4a;
+    --color-over: #e06a5e;
+  }
+  html, body { background:var(--color-bg); }
+  body { margin:0; min-height:100%; color:var(--color-text); font-family:var(--font-body); }
+  a { color:var(--color-accent); } a:hover { color:var(--color-accent-400); }
+  input { font-family:inherit; }
+  input:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; }
+  ::selection { background:rgba(145,132,217,0.3); }
+  @keyframes flashA { 0% { transform:translateY(-3px); opacity:0.4 } 100% { transform:none; opacity:1 } }
+  @keyframes flashB { 0% { transform:translateY(-3px); opacity:0.4 } 100% { transform:none; opacity:1 } }
+  @keyframes slideA { 0% { transform:translateX(14px); opacity:0 } 100% { transform:none; opacity:1 } }
+  @keyframes slideB { 0% { transform:translateX(-14px); opacity:0 } 100% { transform:none; opacity:1 } }
+  @keyframes fadeA { 0% { opacity:0; transform:translateY(5px) } 100% { opacity:1; transform:none } }
+  @keyframes fadeB { 0% { opacity:0; transform:translateY(5px) } 100% { opacity:1; transform:none } }
+  @keyframes travel { 0% { left:0; opacity:0 } 12% { opacity:1 } 88% { opacity:1 } 100% { left:100%; opacity:0 } }
+  @keyframes drawline { from { stroke-dashoffset:1400 } to { stroke-dashoffset:0 } }
+  @keyframes ghostin { from { opacity:0 } to { opacity:0.9 } }
+  @keyframes pulseline { 0%,100% { opacity:0.55 } 50% { opacity:1 } }
+</style>
+</helmet>
+
+<div style="min-height:100vh; display:grid; grid-template-columns:184px minmax(0,1fr); background:var(--color-bg)">
+
+  <!-- nav rail -->
+  <div style="border-right:1px solid var(--color-neutral-900); padding:20px 14px; display:flex; flex-direction:column; gap:20px; background:var(--row-raise)">
+    <div style="display:flex; align-items:center; gap:9px; padding:0 6px">
+      <span style="width:22px; height:22px; border-radius:6px; border:1px solid var(--color-accent); display:block"></span>
+      <span style="font-size:14px; font-weight:500">Currents</span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:3px">
+      <sc-for list="{{ nav }}" as="item" hint-placeholder-count="5">
+        <div onClick="{{ item.onClick }}" style="font-size:13px; padding:8px 10px; border-radius:8px; cursor:pointer; border:1px solid {{ item.border }}; background:{{ item.bg }}; color:{{ item.color }}; transition:background 180ms ease, color 180ms ease" style-hover="background:var(--color-accent-900); color:var(--color-accent-300)">{{ item.label }}</div>
+      </sc-for>
+    </div>
+    <div style="margin-top:auto; display:flex; flex-direction:column; gap:5px; padding:0 6px">
+      <span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Net worth</span>
+      <span style="font-size:20px; font-weight:500">$177,860</span>
+      <span style="font-size:12px; color:var(--color-accent-300)">+$3,412 this month</span>
+    </div>
+  </div>
+
+  <!-- main -->
+  <div style="display:flex; flex-direction:column; animation:{{ pageAnim }} 340ms cubic-bezier(.22,1,.36,1) both">
+
+    <!-- ══════ BUDGET ══════ -->
+    <sc-if value="{{ isBudget }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex; flex-direction:column">
+
+        <div style="padding:20px 26px 16px; border-bottom:1px solid var(--color-neutral-900); display:flex; flex-direction:column; gap:14px; background:linear-gradient(180deg,var(--color-surface),var(--color-bg))">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap">
+            <div style="display:flex; align-items:center; gap:14px; min-width:0">
+              <div style="display:flex; align-items:center; gap:5px">
+                <div onClick="{{ month.onPrev }}" style="font-size:12px; color:var(--color-neutral-400); border:1px solid var(--color-neutral-800); border-radius:8px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)"><svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" style="display:block"><path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z"/></svg></div>
+                <div onClick="{{ month.onNext }}" style="font-size:12px; color:var(--color-neutral-400); border:1px solid var(--color-neutral-800); border-radius:8px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)"><svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" style="display:block"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px; min-width:0">
+                <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">{{ month.kicker }}</span>
+                <span style="font-size:22px; font-weight:500; letter-spacing:-0.01em">Budget</span>
+              </div>
+              <div onClick="{{ month.onToday }}" style="font-size:12px; color:{{ month.todayColor }}; border:1px solid {{ month.todayBorder }}; border-radius:8px; padding:5px 11px; cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)">Today</div>
+            </div>
+            <div style="display:flex; align-items:baseline; gap:10px">
+              <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">Left to budget</span>
+              <span style="font-size:30px; font-weight:500; letter-spacing:-0.015em; color:{{ ltb.color }}; animation:{{ ltb.anim }} 380ms cubic-bezier(.22,1,.36,1)">{{ ltb.text }}</span>
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:14px; font-size:12px; flex-wrap:wrap">
+            <span style="color:var(--color-neutral-600)"><svg width="10" height="10" viewBox="0 0 256 256" fill="currentColor" style="display:inline-block;vertical-align:-1px"><path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z"/></svg> {{ month.prevLabel }} <span style="color:var(--color-neutral-500)">{{ month.prevNote }}</span></span>
+            <span style="width:1px; height:12px; background:var(--color-neutral-800)"></span>
+            <span style="color:var(--color-neutral-600)">{{ month.nextLabel }} <span style="color:var(--color-neutral-500)">{{ month.nextNote }}</span> <svg width="10" height="10" viewBox="0 0 256 256" fill="currentColor" style="display:inline-block;vertical-align:-1px"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></span>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:12px">
+            <div style="display:flex; height:38px; border-radius:8px; overflow:hidden; gap:2px">
+              <sc-for list="{{ bar }}" as="seg" hint-placeholder-count="4">
+                <div style="flex:{{ seg.flex }} 1 0; min-width:0; background:{{ seg.bg }}; border:{{ seg.border }}; transition:flex-grow 420ms cubic-bezier(.22,1,.36,1)"></div>
+              </sc-for>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px 18px">
+              <sc-for list="{{ bar }}" as="seg" hint-placeholder-count="4">
+                <div style="display:flex; align-items:center; gap:9px; min-width:0">
+                  <span style="width:11px; height:11px; border-radius:3px; flex:0 0 auto; background:{{ seg.bg }}; border:{{ seg.border }}; display:block"></span>
+                  <span style="font-size:12px; color:{{ seg.labelColor }}; white-space:nowrap">{{ seg.label }}</span>
+                  <span style="font-size:14px; white-space:nowrap">{{ seg.amount }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px 18px; font-size:12px; border-top:1px solid var(--color-neutral-900); padding-top:12px">
+              <sc-for list="{{ summary }}" as="s" hint-placeholder-count="4">
+                <div style="display:flex; flex-direction:column; gap:2px; animation:{{ s.anim }} 300ms ease both">
+                  <span style="color:var(--color-neutral-500)">{{ s.name }}</span>
+                  <span style="color:var(--color-neutral-200)">{{ s.primary }}</span>
+                  <span style="color:var(--color-accent-300)">{{ s.secondary }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <!-- sections -->
+        <sc-for list="{{ sections }}" as="sec" hint-placeholder-count="3">
+          <div style="border-bottom:1px solid var(--color-neutral-900)">
+            <div onClick="{{ sec.onToggle }}" style="padding:16px 26px 12px; display:flex; align-items:baseline; gap:12px; cursor:pointer; flex-wrap:wrap">
+              <span style="color:var(--color-accent-400); display:flex; transform:rotate({{ sec.caret }}deg); transition:transform 260ms cubic-bezier(.22,1,.36,1)"><svg width="13" height="13" viewBox="0 0 256 256" fill="currentColor" style="display:block"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg></span>
+              <span style="font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-accent-300)">{{ sec.title }}</span>
+              <span style="font-size:18px; font-weight:500">{{ sec.plannedText }}</span>
+              <span style="font-size:12px; color:var(--color-neutral-600)">{{ sec.meta }}</span>
+            </div>
+            <div style="display:grid; grid-template-rows:{{ sec.gridRows }}; transition:grid-template-rows 320ms cubic-bezier(.22,1,.36,1)">
+              <div style="overflow:hidden">
+                <div style="padding:0 26px 18px; display:flex; flex-direction:column; gap:6px">
+                  <div style="display:flex; align-items:center; gap:14px; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--color-neutral-600); padding-bottom:2px">
+                    <span style="flex:1">Budget this month</span>
+                    <span style="width:120px"></span>
+                    <span style="flex:1.25; display:flex; justify-content:space-between"><span>{{ sec.destHead }}</span><span>{{ sec.statHead }}</span></span>
+                  </div>
+                  <sc-for list="{{ sec.rows }}" as="row" hint-placeholder-count="5">
+                    <div style="display:flex; flex-direction:column">
+                      <div onClick="{{ row.onToggle }}" style="display:flex; align-items:center; gap:14px; border-radius:8px; padding:3px 6px; margin:0 -6px; cursor:{{ row.cursor }}; background:{{ row.rowBg }}; transition:background 180ms ease" style-hover="background:var(--row-raise)">
+                        <div style="flex:1; display:flex; align-items:center; gap:10px; min-width:0">
+                          <span style="font-size:13px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ row.label }}</span>
+                          <input type="text" value="{{ row.amountText }}" onChange="{{ row.onChange }}" onFocus="{{ row.onFocus }}" onBlur="{{ row.onBlur }}" onClick="{{ row.stop }}" style="width:96px; text-align:right; font-size:13px; color:{{ row.inputColor }}; border:1px solid {{ row.inputBorder }}; border-radius:8px; padding:7px 10px; background:{{ row.inputBg }}; transition:all 180ms ease" style-hover="border-color:var(--color-accent-700)"/>
+                        </div>
+                        <div style="width:120px; display:flex; align-items:center; position:relative">
+                          <span style="flex:1; height:1px; background:{{ row.wireBg }}; transition:background 220ms ease"></span>
+                          <span style="color:{{ row.arrowColor }}; margin-left:4px; display:flex; transition:color 220ms ease"><svg width="13" height="13" viewBox="0 0 256 256" fill="currentColor" style="display:block"><path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"/></svg></span>
+                          <sc-if value="{{ row.showDot }}" hint-placeholder-val="{{ false }}">
+                            <span style="position:absolute; top:50%; margin-top:-2.5px; width:5px; height:5px; border-radius:50%; background:var(--color-accent-300); animation:travel 900ms linear infinite"></span>
+                          </sc-if>
+                        </div>
+                        <div style="flex:1.25; display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:13px; min-width:0">
+                          <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ row.destName }}</span>
+                          <span style="display:flex; align-items:center; gap:6px; white-space:nowrap">
+                            <sc-for list="{{ row.chips }}" as="chip" hint-placeholder-count="0">
+                              <span style="font-size:11px; border:1px solid {{ chip.border }}; border-radius:999px; padding:2px 8px; color:{{ chip.color }}">{{ chip.text }}</span>
+                            </sc-for>
+                            <span style="color:var(--color-neutral-300)">{{ row.destStat }}</span>
+                            <span style="color:{{ row.destSubColor }}">{{ row.destSub }}</span>
+                          </span>
+                        </div>
+                      </div>
+                      <div style="display:grid; grid-template-rows:{{ row.legRows }}; transition:grid-template-rows 300ms cubic-bezier(.22,1,.36,1)">
+                        <div style="overflow:hidden">
+                          <div style="border-left:1px solid var(--color-accent-800); margin:6px 0 8px 2px; padding:11px 0 11px 16px; display:flex; flex-direction:column; gap:6px; background:var(--row-raise); border-radius:0 8px 8px 0">
+                            <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--color-neutral-600)">{{ row.legTitle }}</div>
+                            <sc-for list="{{ row.legs }}" as="leg" hint-placeholder-count="2">
+                              <div style="display:flex; justify-content:space-between; font-size:12.5px; padding-right:16px">
+                                <span style="color:var(--color-neutral-500)">{{ leg.left }}</span>
+                                <span style="color:var(--color-neutral-300)">{{ leg.right }}</span>
+                              </div>
+                            </sc-for>
+                            <div style="font-size:11px; color:var(--color-accent-300)">{{ row.legNote }}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+
+        <!-- flex -->
+        <div>
+          <div onClick="{{ flex.onToggle }}" style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 26px; background:linear-gradient(180deg,var(--color-surface),var(--color-surface)); border-top:1px solid var(--color-accent-800); cursor:pointer; flex-wrap:wrap">
+            <div style="display:flex; align-items:baseline; gap:11px">
+              <span style="color:var(--color-accent-400); display:flex; transform:rotate({{ flex.caret }}deg); transition:transform 260ms cubic-bezier(.22,1,.36,1)"><svg width="13" height="13" viewBox="0 0 256 256" fill="currentColor" style="display:block"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg></span>
+              <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-accent-300)">Remaining for flex</span>
+              <span style="font-size:24px; font-weight:500">{{ flex.plannedText }}</span>
+              <span style="font-size:12px; color:var(--color-neutral-500)">{{ flex.meta }}</span>
+            </div>
+            <span style="font-size:12px; color:var(--color-neutral-500)">{{ flex.count }}</span>
+          </div>
+          <div style="display:grid; grid-template-rows:{{ flex.gridRows }}; transition:grid-template-rows 320ms cubic-bezier(.22,1,.36,1)">
+            <div style="overflow:hidden">
+              <div style="display:flex; align-items:center; gap:14px; padding:10px 26px; background:var(--row-raise); border-bottom:1px solid var(--color-neutral-900); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--color-neutral-600)">
+                <span style="flex:1.1">Category</span><span style="width:96px; text-align:right">Budget</span><span style="flex:1.35">Progress</span><span style="width:104px; text-align:right">Spent</span><span style="width:96px; text-align:right">Left · over</span>
+              </div>
+              <sc-for list="{{ flex.rows }}" as="row" hint-placeholder-count="7">
+                <div style="display:flex; align-items:center; gap:14px; padding:9px 26px; border-bottom:1px solid var(--color-neutral-900); font-size:13px; transition:background 180ms ease" style-hover="background:var(--row-raise)">
+                  <span style="flex:1.1; color:{{ row.labelColor }}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ row.label }}</span>
+                  <input type="text" value="{{ row.amountText }}" onChange="{{ row.onChange }}" style="width:96px; text-align:right; font-size:13px; color:{{ row.inputColor }}; border:1px solid {{ row.inputBorder }}; border-radius:8px; padding:6px 9px; background:{{ row.inputBg }}; transition:all 180ms ease" style-hover="border-color:var(--color-accent-700)"/>
+                  <span style="flex:1.35; height:5px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden; display:block">
+                    <span style="display:block; width:{{ row.pct }}%; height:100%; background:{{ row.barColor }}; transition:width 420ms cubic-bezier(.22,1,.36,1), background 220ms ease"></span>
+                  </span>
+                  <span style="width:104px; text-align:right; color:{{ row.spentColor }}">{{ row.spentText }}</span>
+                  <span style="width:96px; text-align:right; color:{{ row.leftColor }}">{{ row.leftText }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ══════ HOME ══════ -->
+    <sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; flex-direction:column">
+
+        <div style="padding:20px 26px 16px; border-bottom:1px solid var(--color-neutral-900); display:flex; flex-direction:column; gap:16px; background:linear-gradient(180deg,var(--color-surface),var(--color-bg))">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap">
+            <div style="display:flex; align-items:center; gap:14px; min-width:0">
+              <div style="display:flex; align-items:center; gap:5px">
+                <div onClick="{{ month.onPrev }}" style="font-size:12px; color:var(--color-neutral-400); border:1px solid var(--color-neutral-800); border-radius:8px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)"><svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" style="display:block"><path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z"/></svg></div>
+                <div onClick="{{ month.onNext }}" style="font-size:12px; color:var(--color-neutral-400); border:1px solid var(--color-neutral-800); border-radius:8px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)"><svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" style="display:block"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px; min-width:0">
+                <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">{{ month.kicker }}</span>
+                <span style="font-size:22px; font-weight:500; letter-spacing:-0.01em">{{ home.headline }}</span>
+              </div>
+              <div onClick="{{ month.onToday }}" style="font-size:12px; color:{{ month.todayColor }}; border:1px solid {{ month.todayBorder }}; border-radius:8px; padding:5px 11px; cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)">Today</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px">
+              <span style="font-size:12px; color:var(--color-neutral-600)">compare to</span>
+              <div style="display:flex; border:1px solid var(--color-neutral-800); border-radius:8px; overflow:hidden">
+                <sc-for list="{{ home.bases }}" as="b" hint-placeholder-count="4">
+                  <span onClick="{{ b.onClick }}" style="font-size:12px; padding:7px 12px; cursor:pointer; background:{{ b.bg }}; color:{{ b.color }}; transition:all 180ms ease" style-hover="background:var(--color-accent-900); color:var(--color-accent-300)">{{ b.label }}</span>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:7px">
+            <div style="position:relative; height:12px; border-radius:6px; background:var(--color-neutral-900); overflow:hidden">
+              <div style="position:absolute; top:0; bottom:0; left:0; width:{{ home.spentPct }}%; background:linear-gradient(90deg,var(--color-accent-700),var(--color-accent-500)); transition:width 520ms cubic-bezier(.22,1,.36,1)"></div>
+              <div style="position:absolute; top:0; bottom:0; left:{{ home.markerPct }}%; width:2px; background:var(--color-accent-100); transition:left 420ms cubic-bezier(.22,1,.36,1)"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--color-neutral-600)">
+              <span>Sep 1</span>
+              <span style="color:var(--color-neutral-400)">{{ home.paceNote }}</span>
+              <span>Sep 30</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:minmax(0,1.45fr) minmax(0,1fr)">
+          <div style="padding:20px 20px 26px 26px; display:flex; flex-direction:column; gap:20px; border-right:1px solid var(--color-neutral-900)">
+
+            <div style="border:1px solid var(--color-neutral-800); border-radius:10px; background:var(--color-surface); padding:16px 18px; display:flex; flex-direction:column; gap:13px">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:18px; flex-wrap:wrap">
+                <div style="display:flex; flex-direction:column; gap:3px">
+                  <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">Net worth</span>
+                  <span style="font-size:32px; font-weight:500; letter-spacing:-0.015em">$177,860</span>
+                  <span style="font-size:12.5px; color:var(--color-accent-300); animation:{{ home.anim }} 300ms ease both">{{ home.nwDelta }} <span style="color:var(--color-neutral-600)">· +$9,845 this year</span></span>
+                </div>
+                <div style="display:flex; gap:16px; text-align:right">
+                  <div><div style="font-size:11px; color:var(--color-neutral-600)">Assets</div><div style="font-size:15px">$488,375</div></div>
+                  <div><div style="font-size:11px; color:var(--color-neutral-600)">Debt</div><div style="font-size:15px">−$310,515</div></div>
+                </div>
+              </div>
+              <svg viewBox="0 0 640 132" style="width:100%; height:132px; display:block">
+                <defs>
+                  <linearGradient id="nwf" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="var(--color-accent)" stop-opacity="0.26"></stop>
+                    <stop offset="100%" stop-color="var(--color-accent)" stop-opacity="0"></stop>
+                  </linearGradient>
+                </defs>
+                <line x1="0" y1="112" x2="640" y2="112" stroke="var(--color-neutral-900)"></line>
+                <line x1="0" y1="72" x2="640" y2="72" stroke="var(--color-neutral-900)"></line>
+                <line x1="0" y1="32" x2="640" y2="32" stroke="var(--color-neutral-900)"></line>
+                <polyline points="0,104 80,99 160,101 240,88 320,82 400,70 480,58 560,42 640,26" fill="none" stroke="var(--color-section-ghost)" stroke-width="1.5" stroke-dasharray="4 4" style="animation:ghostin 900ms 500ms ease both"></polyline>
+                <path d="M0,110 L80,104 L160,106 L240,92 L320,86 L400,72 L480,58 L560,38 L640,20 L640,132 L0,132 Z" fill="url(#nwf)" style="animation:fadeA 900ms 350ms ease both"></path>
+                <polyline points="0,110 80,104 160,106 240,92 320,86 400,72 480,58 560,38 640,20" fill="none" stroke="var(--color-accent)" stroke-width="2.5" stroke-linejoin="round" stroke-dasharray="1400" style="animation:drawline 1100ms cubic-bezier(.22,1,.36,1) both"></polyline>
+                <circle cx="640" cy="20" r="4" fill="var(--color-accent-300)" style="animation:fadeA 400ms 1000ms ease both"></circle>
+              </svg>
+              <div style="display:flex; gap:16px; font-size:11.5px; color:var(--color-neutral-500)">
+                <span style="display:flex; align-items:center; gap:6px"><span style="width:14px; height:2px; background:var(--color-accent); display:block"></span>This year</span>
+                <span style="display:flex; align-items:center; gap:6px"><span style="width:14px; height:0; border-top:1.5px dashed var(--color-section-ghost); display:block"></span>Same months last year</span>
+              </div>
+            </div>
+
+            <div style="border:1px solid var(--color-neutral-800); border-radius:10px; background:var(--color-surface); padding:16px 18px; display:flex; flex-direction:column; gap:14px">
+              <div style="display:flex; justify-content:space-between; align-items:baseline">
+                <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">Cash flow · September so far</span>
+                <span style="font-size:12px; color:var(--color-neutral-500)">vs {{ home.basisLabel }}</span>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px">
+                <sc-for list="{{ home.flowStats }}" as="st" hint-placeholder-count="3">
+                  <div style="display:flex; flex-direction:column; gap:4px; animation:{{ st.anim }} 300ms ease both">
+                    <span style="font-size:12px; color:var(--color-neutral-500)">{{ st.name }}</span>
+                    <span style="font-size:20px; font-weight:500">{{ st.value }}</span>
+                    <span style="font-size:12px; color:{{ st.deltaColor }}">{{ st.delta }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:9px">
+                <sc-for list="{{ home.flowBars }}" as="b" hint-placeholder-count="3">
+                  <div style="display:flex; align-items:center; gap:10px">
+                    <span style="width:78px; font-size:11.5px; color:var(--color-neutral-500)">{{ b.label }}</span>
+                    <span style="flex:1; height:14px; border-radius:7px; background:var(--color-neutral-900); overflow:hidden; display:block">
+                      <span style="display:block; width:{{ b.pct }}%; height:100%; background:{{ b.color }}; transition:width 520ms cubic-bezier(.22,1,.36,1)"></span>
+                    </span>
+                    <span style="width:60px; text-align:right; font-size:12px; color:{{ b.textColor }}">{{ b.value }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="border:1px solid var(--color-neutral-800); border-radius:10px; background:var(--color-surface); padding:16px 18px; display:flex; flex-direction:column; gap:13px">
+              <div style="display:flex; justify-content:space-between; align-items:baseline">
+                <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">Spending by category</span>
+                <span style="font-size:12px; color:var(--color-neutral-500)">change vs {{ home.basisLabel }}</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:10px">
+                <sc-for list="{{ home.cats }}" as="c" hint-placeholder-count="5">
+                  <div style="display:flex; align-items:center; gap:12px; font-size:13px">
+                    <span style="flex:1; display:flex; align-items:center; gap:10px; min-width:0">
+                      <span style="white-space:nowrap">{{ c.name }}</span>
+                      <span style="flex:1; height:5px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden; display:block">
+                        <span style="display:block; width:{{ c.pct }}%; height:100%; background:{{ c.color }}; transition:width 480ms cubic-bezier(.22,1,.36,1)"></span>
+                      </span>
+                    </span>
+                    <span style="width:70px; text-align:right">{{ c.amount }}</span>
+                    <span style="width:88px; text-align:right; color:{{ c.deltaColor }}; animation:{{ c.anim }} 300ms ease both">{{ c.delta }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="border:1px solid var(--color-neutral-800); border-radius:10px; background:var(--color-surface); padding:16px 18px; display:flex; flex-direction:column; gap:12px">
+              <div style="display:flex; justify-content:space-between; align-items:baseline">
+                <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">Recent activity</span>
+                <span style="font-size:12px; color:var(--color-accent-300)">2 need a category</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:10px; font-size:13px">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px; margin:-6px; border-radius:8px; transition:background 180ms ease" style-hover="background:var(--row-raise)">
+                  <span style="display:flex; flex-direction:column; gap:2px"><span>Harris Teeter</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Sep 11 · Groceries · Capital One Checking</span></span>
+                  <span>−$118.42</span>
+                </div>
+                <div onClick="{{ home.onToggleMovement }}" style="padding:10px 12px; border:1px solid var(--color-accent-800); border-radius:8px; background:var(--color-accent-900); cursor:pointer; display:flex; flex-direction:column; gap:8px">
+                  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px">
+                    <span style="display:flex; flex-direction:column; gap:2px"><span>Transfer to HOA + birthdays</span><span style="font-size:11.5px; color:var(--color-accent-400)">Sep 12 · one movement, both legs · counted once</span></span>
+                    <span style="display:flex; align-items:center; gap:9px; font-size:12px; color:var(--color-neutral-300); white-space:nowrap">
+                      Capital One Checking
+                      <span style="width:26px; height:1px; background:linear-gradient(to right,var(--color-accent-700),var(--color-accent)); display:block; animation:pulseline 2.2s ease-in-out infinite"></span>
+                      HOA + birthdays
+                      <span style="font-size:13px; color:var(--color-text)">$175.00</span>
+                    </span>
+                  </div>
+                  <div style="display:grid; grid-template-rows:{{ home.movementRows }}; transition:grid-template-rows 300ms cubic-bezier(.22,1,.36,1)">
+                    <div style="overflow:hidden">
+                      <div style="border-top:1px dashed var(--color-accent-800); margin-top:2px; padding-top:9px; display:flex; flex-direction:column; gap:6px">
+                        <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:var(--color-neutral-500)">Sep 12 · Capital One Checking</span><span style="color:var(--color-neutral-300)">−$175.00 out</span></div>
+                        <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:var(--color-neutral-500)">Sep 12 · HOA + birthdays savings</span><span style="color:var(--color-neutral-300)">+$175.00 in</span></div>
+                        <div style="font-size:11px; color:var(--color-accent-300)">Savings balance $715 → $890 · not spending, not income</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px; margin:-6px; border-radius:8px; transition:background 180ms ease" style-hover="background:var(--row-raise)">
+                  <span style="display:flex; flex-direction:column; gap:2px"><span>Shell</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Sep 10 · Fuel · Chase card</span></span>
+                  <span>−$46.10</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px; margin:-6px; border-radius:8px; transition:background 180ms ease" style-hover="background:var(--row-raise)">
+                  <span style="display:flex; flex-direction:column; gap:2px"><span>Employer payroll</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Sep 15 · Income · Ally Checking</span></span>
+                  <span style="color:var(--color-accent-300)">+$4,120.00</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding:20px 26px 26px 20px; display:flex; flex-direction:column; gap:18px">
+            <div onClick="{{ home.onOpenBudget }}" style="border:1px solid var(--color-accent-800); border-radius:10px; background:linear-gradient(160deg,var(--color-accent-900),var(--color-surface)); padding:15px 16px; display:flex; flex-direction:column; gap:12px; cursor:pointer; transition:border-color 180ms ease" style-hover="border-color:var(--color-accent)">
+              <div style="display:flex; justify-content:space-between; align-items:baseline">
+                <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">This month's plan</span>
+                <span style="font-size:12px; color:{{ ltb.color }}">Left to budget {{ ltb.text }}</span>
+              </div>
+              <div style="display:flex; height:28px; border-radius:8px; overflow:hidden; gap:2px">
+                <sc-for list="{{ bar }}" as="seg" hint-placeholder-count="4">
+                  <div style="flex:{{ seg.flex }} 1 0; min-width:0; background:{{ seg.bg }}; border:{{ seg.border }}; transition:flex-grow 420ms cubic-bezier(.22,1,.36,1)"></div>
+                </sc-for>
+              </div>
+              <div style="display:flex; flex-wrap:wrap; gap:6px 14px">
+                <sc-for list="{{ bar }}" as="seg" hint-placeholder-count="4">
+                  <span style="display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--color-neutral-400)">
+                    <span style="width:9px; height:9px; border-radius:2px; background:{{ seg.bg }}; border:{{ seg.border }}; display:block"></span>{{ seg.shortLabel }}
+                  </span>
+                </sc-for>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr auto; gap:6px 12px; font-size:12px">
+                <sc-for list="{{ summary }}" as="s" hint-placeholder-count="4">
+                  <span style="color:var(--color-neutral-500)">{{ s.name }}</span>
+                  <span style="text-align:right">{{ s.primary }} · <span style="color:var(--color-accent-300)">{{ s.secondary }}</span></span>
+                </sc-for>
+              </div>
+              <span style="font-size:12px; text-align:center; padding:8px 0; border:1px solid var(--color-accent); border-radius:8px; color:var(--color-accent-300)">Open budget</span>
+            </div>
+
+            <div style="border:1px solid var(--color-neutral-800); border-radius:10px; background:var(--color-surface); padding:15px 16px; display:flex; flex-direction:column; gap:11px">
+              <div style="display:flex; justify-content:space-between; align-items:baseline">
+                <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">Next 14 days</span>
+                <span style="font-size:12px; color:var(--color-neutral-500)">{{ home.upcomingTotal }} leaving</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:9px; font-size:13px">
+                <sc-for list="{{ home.upcoming }}" as="u" hint-placeholder-count="5">
+                  <div style="display:flex; justify-content:space-between"><span style="color:var(--color-neutral-300)">{{ u.label }}</span><span>{{ u.amount }}</span></div>
+                </sc-for>
+              </div>
+              <div style="border-top:1px solid var(--color-neutral-900); padding-top:9px; font-size:11.5px; color:var(--color-neutral-500)">Checking covers all of it with $1,847 to spare.</div>
+            </div>
+
+            <div style="border:1px solid var(--color-neutral-800); border-radius:10px; background:var(--color-surface); padding:15px 16px; display:flex; flex-direction:column; gap:11px">
+              <div style="display:flex; justify-content:space-between; align-items:baseline">
+                <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">Debt</span>
+                <span style="font-size:12px; color:var(--color-accent-300); animation:{{ home.anim }} 300ms ease both">{{ home.debtDelta }}</span>
+              </div>
+              <div style="display:flex; align-items:baseline; gap:9px"><span style="font-size:22px; font-weight:500">−$23,115</span><span style="font-size:12px; color:var(--color-neutral-600)">excluding mortgage</span></div>
+              <div style="height:6px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden"><div style="width:{{ home.debtPct }}%; height:100%; background:linear-gradient(90deg,var(--color-accent-700),var(--color-accent-400)); transition:width 480ms cubic-bezier(.22,1,.36,1)"></div></div>
+              <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:var(--color-neutral-500)">{{ home.debtNote }}</span><span style="color:var(--color-neutral-400)">debt free Mar 2029</span></div>
+            </div>
+
+            <div style="border:1px solid var(--color-neutral-800); border-radius:10px; background:var(--color-surface); padding:15px 16px; display:flex; flex-direction:column; gap:12px">
+              <div style="display:flex; justify-content:space-between; align-items:baseline">
+                <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">Goal accounts</span>
+                <span style="font-size:12px; color:var(--color-neutral-500)">$3,090 held</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:10px">
+                <sc-for list="{{ home.goals }}" as="g" hint-placeholder-count="4">
+                  <div style="display:flex; flex-direction:column; gap:5px">
+                    <div style="display:flex; justify-content:space-between; font-size:12.5px"><span>{{ g.name }}</span><span style="color:var(--color-neutral-400)">{{ g.note }}</span></div>
+                    <div style="height:5px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden"><div style="width:{{ g.pct }}%; height:100%; background:var(--color-accent-600); transition:width 480ms cubic-bezier(.22,1,.36,1)"></div></div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="border:1px solid var(--color-neutral-800); border-radius:10px; background:var(--color-surface); padding:15px 16px; display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">Accounts</span>
+              <div style="display:flex; flex-direction:column; gap:7px; font-size:12.5px">
+                <div style="display:flex; justify-content:space-between"><span style="color:var(--color-neutral-500)">Cash</span><span>$21,558</span></div>
+                <div style="display:flex; justify-content:space-between"><span style="color:var(--color-neutral-500)">Invested</span><span>$53,325</span></div>
+                <div style="display:flex; justify-content:space-between"><span style="color:var(--color-neutral-500)">Property</span><span>$412,000</span></div>
+                <div style="display:flex; justify-content:space-between"><span style="color:var(--color-neutral-500)">Debt</span><span>−$310,515</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+
+    <!-- ══════ TRANSACTIONS ══════ -->
+    <sc-if value="{{ isTransactions }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Transactions" style="display:flex; flex-direction:column">
+        <div style="display:flex; flex-direction:column">
+            <div style="padding:20px 26px 16px; border-bottom:1px solid var(--color-neutral-900); background:linear-gradient(180deg,var(--color-surface),var(--color-bg)); display:flex; flex-direction:column; gap:14px">
+              <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap">
+                <div style="display:flex; align-items:center; gap:14px; min-width:0">
+              <div style="display:flex; align-items:center; gap:5px">
+                <div onClick="{{ month.onPrev }}" style="font-size:12px; color:var(--color-neutral-400); border:1px solid var(--color-neutral-800); border-radius:8px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)"><svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" style="display:block"><path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z"/></svg></div>
+                <div onClick="{{ month.onNext }}" style="font-size:12px; color:var(--color-neutral-400); border:1px solid var(--color-neutral-800); border-radius:8px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)"><svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" style="display:block"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px; min-width:0">
+                <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">{{ month.kicker }}</span>
+                <span style="font-size:22px; font-weight:500; letter-spacing:-0.01em">{{ d.countLabel }}</span>
+              </div>
+              <div onClick="{{ month.onToday }}" style="font-size:12px; color:{{ month.todayColor }}; border:1px solid {{ month.todayBorder }}; border-radius:8px; padding:5px 11px; cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)">Today</div>
+            </div>
+                <div style="display:flex; align-items:center; gap:9px">
+                  <input type="text" value="{{ d.query }}" onChange="{{ d.onQuery }}" placeholder="Search merchant, amount, memo" style="width:250px; font-size:13px; padding:8px 11px; border-radius:8px; border:1px solid var(--color-neutral-800); background:var(--color-surface); color:var(--color-text)"/>
+                  <div onClick="{{ d.onToggleReview }}" style="font-size:12.5px; padding:8px 13px; border-radius:8px; cursor:pointer; white-space:nowrap; border:1px solid {{ d.reviewBorder }}; background:{{ d.reviewBg }}; color:{{ d.reviewColor }}; transition:all 180ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)">{{ d.reviewLabel }}</div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap">
+                <div style="display:flex; gap:5px; flex-wrap:wrap">
+                  <sc-for list="{{ d.accountChips }}" as="c" hint-placeholder-count="5">
+                    <span onClick="{{ c.onClick }}" style="font-size:12px; padding:5px 11px; border-radius:999px; cursor:pointer; border:1px solid {{ c.border }}; background:{{ c.bg }}; color:{{ c.color }}; transition:all 160ms ease" style-hover="border-color:var(--color-accent-700); color:var(--color-accent-300)">{{ c.label }}</span>
+                  </sc-for>
+                </div>
+                <span style="width:1px; height:14px; background:var(--color-neutral-800)"></span>
+                <span style="font-size:12px; color:var(--color-neutral-600)">{{ d.resultNote }}</span>
+              </div>
+            </div>
+
+            <!-- ── review stack: transfers first, categories beneath ── -->
+            <sc-if value="{{ d.showTransfers }}" hint-placeholder-val="{{ true }}">
+              <div style="padding:18px 26px 20px; border-bottom:1px solid var(--color-neutral-900); background:linear-gradient(180deg,var(--color-surface),var(--color-bg)); display:flex; flex-direction:column; gap:14px">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap">
+                  <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-accent-300)">{{ d.tProgress }}</span>
+                  <div style="display:flex; align-items:center; gap:5px">
+                    <sc-for list="{{ d.tDots }}" as="dot" hint-placeholder-count="2">
+                      <span style="width:{{ dot.w }}px; height:5px; border-radius:3px; background:{{ dot.bg }}; display:block; transition:all 220ms ease"></span>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <div style="border:1px solid var(--color-accent-800); border-radius:12px; background:linear-gradient(160deg,var(--color-accent-900),var(--color-bg)); padding:20px 22px; display:flex; flex-direction:column; gap:16px; animation:rise 260ms cubic-bezier(.22,1,.36,1) both">
+                  <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:24px; flex-wrap:wrap">
+                    <div style="display:flex; flex-direction:column; gap:6px; min-width:0">
+                      <span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">{{ d.tCard.kicker }}</span>
+                      <span style="font-size:26px; font-weight:500; letter-spacing:-0.015em">{{ d.tCard.title }}</span>
+                      <span style="font-size:13px; color:var(--color-neutral-400)">{{ d.tCard.meta }}</span>
+                    </div>
+                    <span style="font-size:28px; font-weight:500; letter-spacing:-0.015em; white-space:nowrap; color:var(--color-neutral-200)">{{ d.tCard.amount }}</span>
+                  </div>
+
+                  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+                    <sc-for list="{{ d.tCard.legs }}" as="leg" hint-placeholder-count="2">
+                      <div style="flex:1; min-width:260px; border:1px {{ leg.style }} {{ leg.border }}; border-radius:9px; padding:11px 13px; background:var(--color-bg); display:flex; justify-content:space-between; gap:12px; font-size:13px">
+                        <span style="display:flex; flex-direction:column; gap:2px"><span>{{ leg.name }}</span><span style="font-size:11.5px; color:var(--color-neutral-600)">{{ leg.meta }}</span></span>
+                        <span style="white-space:nowrap">{{ leg.amount }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+
+                  <div style="font-size:12.5px; color:{{ d.tCard.noteColor }}; text-wrap:pretty">{{ d.tCard.note }}</div>
+
+                  <div style="display:flex; gap:8px; flex-wrap:wrap">
+                    <sc-for list="{{ d.tCard.actions }}" as="act" hint-placeholder-count="3">
+                      <span onClick="{{ act.onClick }}" style="display:flex; align-items:center; gap:9px; font-size:13px; padding:10px 15px; border-radius:8px; border:1px solid {{ act.border }}; color:{{ act.color }}; cursor:pointer; transition:all 160ms ease" style-hover="background:var(--color-accent-900); color:var(--color-accent-200)">
+                        <span style="font-family:ui-monospace,Menlo,monospace; font-size:11px; width:18px; height:18px; border-radius:4px; border:1px solid var(--color-neutral-800); display:flex; align-items:center; justify-content:center; color:var(--color-neutral-400)">{{ act.key }}</span>
+                        {{ act.label }}
+                      </span>
+                    </sc-for>
+                    <span style="margin-left:auto; align-self:center; font-size:11.5px; color:var(--color-neutral-600)">{{ d.tCard.footnote }}</span>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ d.showCats }}" hint-placeholder-val="{{ true }}">
+              <div style="padding:18px 26px 20px; border-bottom:1px solid var(--color-neutral-900); background:linear-gradient(180deg,var(--color-surface),var(--color-bg)); display:flex; flex-direction:column; gap:14px">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap">
+                  <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-accent-300)">{{ d.cProgress }}</span>
+                  <div style="display:flex; align-items:center; gap:5px">
+                    <sc-for list="{{ d.cDots }}" as="dot" hint-placeholder-count="8">
+                      <span style="width:{{ dot.w }}px; height:5px; border-radius:3px; background:{{ dot.bg }}; display:block; transition:all 220ms ease"></span>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <div style="border:1px solid var(--color-accent-800); border-radius:12px; background:linear-gradient(160deg,var(--color-accent-900),var(--color-bg)); padding:20px 22px; display:flex; flex-direction:column; gap:16px; animation:rise 260ms cubic-bezier(.22,1,.36,1) both">
+                  <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:24px; flex-wrap:wrap">
+                    <div style="display:flex; flex-direction:column; gap:6px; min-width:0">
+                      <span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">{{ d.cCard.kicker }}</span>
+                      <span style="font-size:26px; font-weight:500; letter-spacing:-0.015em">{{ d.cCard.title }}</span>
+                      <span style="font-size:13px; color:var(--color-neutral-400)">{{ d.cCard.meta }}</span>
+                    </div>
+                    <span style="font-size:28px; font-weight:500; letter-spacing:-0.015em; white-space:nowrap">{{ d.cCard.amount }}</span>
+                  </div>
+
+                  <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px">
+                    <sc-for list="{{ d.cCard.options }}" as="o" hint-placeholder-count="6">
+                      <span onClick="{{ o.onClick }}" style="display:flex; align-items:center; gap:10px; font-size:13.5px; padding:11px 13px; border-radius:9px; cursor:pointer; border:1px solid {{ o.border }}; background:{{ o.bg }}; color:{{ o.color }}; transition:all 160ms ease" style-hover="border-color:var(--color-accent); background:var(--color-accent-900); color:var(--color-accent-200)">
+                        <span style="font-family:ui-monospace,Menlo,monospace; font-size:11px; width:18px; height:18px; border-radius:4px; border:1px solid var(--color-neutral-800); display:flex; align-items:center; justify-content:center; color:var(--color-neutral-400)">{{ o.key }}</span>
+                        {{ o.label }}
+                      </span>
+                    </sc-for>
+                  </div>
+
+                  <div style="display:flex; flex-direction:column; gap:8px">
+                    <span onClick="{{ d.cCard.onMore }}" style="align-self:flex-start; font-size:12.5px; color:var(--color-accent-300); cursor:pointer; border-bottom:1px solid transparent; transition:border-color 160ms ease" style-hover="border-bottom-color:var(--color-accent)">{{ d.cCard.moreLabel }}</span>
+                    <div style="display:grid; grid-template-rows:{{ d.cCard.moreRows }}; transition:grid-template-rows 260ms cubic-bezier(.22,1,.36,1)">
+                      <div style="overflow:hidden">
+                        <div style="border:1px solid var(--color-neutral-800); border-radius:9px; background:var(--color-bg); display:flex; flex-direction:column; overflow:hidden">
+                          <input type="text" value="{{ d.cCard.search }}" onChange="{{ d.cCard.onSearch }}" placeholder="Type to filter every category" style="width:100%; box-sizing:border-box; font-size:13px; padding:9px 12px; border:none; border-bottom:1px solid var(--color-neutral-900); background:transparent; color:var(--color-text)"/>
+                          <div style="max-height:204px; overflow:auto; display:flex; flex-direction:column; padding:4px 0">
+                            <sc-for list="{{ d.cCard.picker.groups }}" as="g" hint-placeholder-count="4">
+                              <div style="display:flex; flex-direction:column">
+                                <span style="font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-500); padding:8px 12px 4px">{{ g.title }}</span>
+                                <sc-for list="{{ g.items }}" as="o" hint-placeholder-count="5">
+                                  <div onClick="{{ o.onClick }}" style="display:flex; align-items:center; gap:10px; font-size:13px; padding:7px 12px; cursor:pointer; border-left:2px solid {{ o.border }}; background:{{ o.bg }}; color:{{ o.color }}; transition:background 140ms ease" style-hover="background:var(--color-accent-900); color:var(--color-accent-200)">
+                                    <span>{{ o.label }}</span>
+                                    <span style="margin-left:auto; font-size:11px; color:var(--color-accent-300)">{{ o.mark }}</span>
+                                  </div>
+                                </sc-for>
+                              </div>
+                            </sc-for>
+                            <span style="font-size:12.5px; color:var(--color-neutral-500); padding:8px 12px">{{ d.cCard.picker.empty }}</span>
+                          </div>
+                          <sc-if value="{{ d.cCard.picker.showNew }}" hint-placeholder-val="{{ false }}">
+                            <div onClick="{{ d.cCard.picker.onNew }}" style="border-top:1px solid var(--color-neutral-900); padding:9px 12px; font-size:12.5px; color:var(--color-accent-300); cursor:pointer" style-hover="background:var(--color-accent-900)">{{ d.cCard.picker.newLabel }}</div>
+                          </sc-if>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div onClick="{{ d.cCard.onRule }}" style="display:flex; align-items:center; gap:10px; padding:11px 13px; border-radius:9px; border:1px solid {{ d.cCard.ruleBorder }}; background:{{ d.cCard.ruleBg }}; cursor:pointer; transition:all 160ms ease">
+                    <span style="width:17px; height:17px; border-radius:5px; border:1px solid {{ d.cCard.ruleMarkBorder }}; background:{{ d.cCard.ruleMarkBg }}; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--color-accent-200)">{{ d.cCard.ruleMark }}</span>
+                    <span style="font-size:13px; color:var(--color-neutral-200)">{{ d.cCard.ruleLabel }}</span>
+                    <span style="margin-left:auto; font-size:11.5px; color:var(--color-accent-300)">{{ d.cCard.ruleNote }}</span>
+                  </div>
+
+                  <div style="display:flex; align-items:center; gap:14px; border-top:1px solid var(--color-neutral-900); padding-top:13px; flex-wrap:wrap">
+                    <span onClick="{{ d.onCatBack }}" style="font-size:12.5px; color:var(--color-neutral-500); cursor:pointer" style-hover="color:var(--color-accent-300)">← Back</span>
+                    <span onClick="{{ d.onCatSkip }}" style="font-size:12.5px; color:var(--color-neutral-500); cursor:pointer" style-hover="color:var(--color-accent-300)">Skip for now</span>
+                    <span style="margin-left:auto; font-size:11.5px; color:var(--color-neutral-600)">1–6 to pick · R to make it a rule · ↓ to skip</span>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ d.showClear }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:16px 22px; border-bottom:1px solid var(--color-neutral-900); background:var(--color-bg); display:flex; align-items:center; gap:14px; flex-wrap:wrap">
+                <span style="font-size:13px; color:var(--color-accent-300)">Nothing to review. Every transfer is tied and every transaction has a category.</span>
+                <span onClick="{{ d.onReset }}" style="margin-left:auto; font-size:12.5px; padding:7px 14px; border-radius:8px; border:1px solid var(--color-accent); color:var(--color-accent-300); cursor:pointer" style-hover="background:var(--color-accent-900); color:var(--color-accent-200)">Reset the demo</span>
+              </div>
+            </sc-if>
+
+            <!-- ── ledger (1a) ── -->
+            <div style="display:flex; align-items:center; gap:14px; padding:9px 26px; background:var(--color-surface); border-bottom:1px solid var(--color-neutral-900); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--color-neutral-600)">
+              <span style="width:18px"></span>
+              <span style="width:56px">Date</span>
+              <span style="flex:1.5">Description</span>
+              <span style="flex:1.15">Category</span>
+              <span style="flex:1">Account</span>
+              <span style="width:104px; text-align:right">Amount</span>
+              <span style="width:16px"></span>
+            </div>
+
+            <sc-for list="{{ d.rows }}" as="row" hint-placeholder-count="12">
+              <div style="display:flex; flex-direction:column; border-bottom:1px solid var(--color-neutral-900); border-left:2px solid {{ row.mark }}; background:{{ row.rowBg }}; transition:background 180ms ease" style-hover="background:var(--color-accent-900)">
+                <div onClick="{{ row.onToggle }}" style="display:flex; align-items:center; gap:14px; padding:9px 26px 9px 20px; font-size:13px; cursor:{{ row.cursor }}; min-width:0">
+                  <span onClick="{{ row.onSelect }}" style="width:18px; height:18px; flex:0 0 18px; border-radius:5px; border:1px solid {{ row.checkBorder }}; background:{{ row.checkBg }}; color:var(--color-accent-200); font-size:11px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent)">{{ row.checkMark }}</span>
+                  <span style="width:56px; color:var(--color-neutral-500); white-space:nowrap">{{ row.date }}</span>
+                  <span style="flex:1.5; display:flex; flex-direction:column; gap:2px; min-width:0">
+                    <span onClick="{{ row.onOpen }}" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; align-self:flex-start; border-bottom:1px solid transparent; transition:border-color 160ms ease" style-hover="border-bottom-color:var(--color-accent)">{{ row.desc }}</span>
+                    <sc-if value="{{ row.isMovement }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:11.5px; color:{{ row.subColor }}; display:flex; align-items:center; gap:7px">
+                        {{ row.fromName }}
+                        <span style="width:22px; height:1px; background:linear-gradient(to right,var(--color-accent-700),var(--color-accent)); display:block; animation:pulseline 2.2s ease-in-out infinite"></span>
+                        {{ row.toName }}
+                        <span style="color:var(--color-neutral-600)">{{ row.subNote }}</span>
+                      </span>
+                    </sc-if>
+                  </span>
+                  <span style="flex:1.15; min-width:0">
+                    <span onClick="{{ row.onCat }}" style="display:inline-flex; align-items:center; gap:7px; font-size:12.5px; padding:4px 10px; border-radius:999px; cursor:pointer; border:1px {{ row.catStyle }} {{ row.catBorder }}; background:{{ row.catBg }}; color:{{ row.catColor }}; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)">{{ row.catText }}</span>
+                  </span>
+                  <span style="flex:1; color:var(--color-neutral-400); white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{ row.account }}</span>
+                  <span style="width:104px; text-align:right; white-space:nowrap; color:{{ row.amountColor }}">{{ row.amount }}</span>
+                  <span style="width:16px; text-align:right; font-size:11px; color:var(--color-accent-400); display:inline-block; transform:rotate({{ row.caret }}deg); transition:transform 240ms cubic-bezier(.22,1,.36,1)">{{ row.caretGlyph }}</span>
+                </div>
+
+                <div style="display:grid; grid-template-rows:{{ row.pickRows }}; transition:grid-template-rows 260ms cubic-bezier(.22,1,.36,1)">
+                  <div style="overflow:hidden">
+                    <div style="margin:0 22px 12px 20px; border:1px solid var(--color-accent-800); border-radius:10px; background:var(--color-bg); padding:12px 14px; display:flex; flex-direction:column; gap:10px">
+                      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap">
+                        <span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Category for {{ row.desc }}</span>
+                        <span style="font-size:11.5px; color:var(--color-accent-300)">{{ row.pickHint }}</span>
+                      </div>
+                      <div style="border:1px solid var(--color-neutral-800); border-radius:9px; background:var(--color-bg); display:flex; flex-direction:column; overflow:hidden">
+                        <input type="text" value="{{ row.rowSearch }}" onChange="{{ row.onRowSearch }}" placeholder="Type to filter categories" style="width:100%; box-sizing:border-box; font-size:13px; padding:9px 12px; border:none; border-bottom:1px solid var(--color-neutral-900); background:transparent; color:var(--color-text)"/>
+                        <div style="max-height:196px; overflow:auto; display:flex; flex-direction:column; padding:4px 0">
+                          <sc-for list="{{ row.picker.groups }}" as="g" hint-placeholder-count="4">
+                            <div style="display:flex; flex-direction:column">
+                              <span style="font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-500); padding:8px 12px 4px">{{ g.title }}</span>
+                              <sc-for list="{{ g.items }}" as="o" hint-placeholder-count="5">
+                                <div onClick="{{ o.onClick }}" style="display:flex; align-items:center; gap:10px; font-size:13px; padding:7px 12px; cursor:pointer; border-left:2px solid {{ o.border }}; background:{{ o.bg }}; color:{{ o.color }}; transition:background 140ms ease" style-hover="background:var(--color-accent-900); color:var(--color-accent-200)">
+                                  <span>{{ o.label }}</span>
+                                  <span style="margin-left:auto; font-size:11px; color:var(--color-accent-300)">{{ o.mark }}</span>
+                                </div>
+                              </sc-for>
+                            </div>
+                          </sc-for>
+                          <span style="font-size:12.5px; color:var(--color-neutral-500); padding:8px 12px">{{ row.picker.empty }}</span>
+                        </div>
+                        <sc-if value="{{ row.picker.showNew }}" hint-placeholder-val="{{ false }}">
+                          <div onClick="{{ row.picker.onNew }}" style="border-top:1px solid var(--color-neutral-900); padding:9px 12px; font-size:12.5px; color:var(--color-accent-300); cursor:pointer" style-hover="background:var(--color-accent-900)">{{ row.picker.newLabel }}</div>
+                        </sc-if>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display:grid; grid-template-rows:{{ row.legRows }}; transition:grid-template-rows 300ms cubic-bezier(.22,1,.36,1)">
+                  <div style="overflow:hidden">
+                    <div style="margin:0 22px 12px 20px; border-left:1px solid var(--color-accent-800); border-radius:0 8px 8px 0; background:var(--color-surface); padding:11px 16px; display:flex; flex-direction:column; gap:7px">
+                      <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--color-neutral-600)">{{ row.legTitle }}</div>
+                      <sc-for list="{{ row.legs }}" as="leg" hint-placeholder-count="2">
+                        <div style="display:flex; justify-content:space-between; gap:16px; font-size:12.5px">
+                          <span style="color:var(--color-neutral-500)">{{ leg.left }}</span>
+                          <span style="color:var(--color-neutral-300)">{{ leg.right }}</span>
+                        </div>
+                      </sc-for>
+                      <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; border-top:1px dashed var(--color-accent-800); padding-top:8px">
+                        <span style="font-size:11.5px; color:{{ row.legNoteColor }}">{{ row.legNote }}</span>
+                        <span onClick="{{ row.onUntie }}" style="font-size:11.5px; padding:4px 11px; border-radius:999px; border:1px solid {{ row.untieBorder }}; color:{{ row.untieColor }}; cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)">{{ row.untieLabel }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+
+            <div style="display:grid; grid-template-rows:{{ d.bulkRows }}; transition:grid-template-rows 280ms cubic-bezier(.22,1,.36,1)">
+              <div style="overflow:hidden">
+                <div style="padding:13px 22px; background:linear-gradient(180deg,var(--color-accent-900),var(--color-bg)); border-top:1px solid var(--color-accent-800); display:flex; align-items:center; gap:14px; flex-wrap:wrap">
+                  <span style="font-size:13px; color:var(--color-accent-300)">{{ d.bulkLabel }}</span>
+                  <span style="width:1px; height:16px; background:var(--color-neutral-800)"></span>
+                  <sc-for list="{{ d.bulkActions }}" as="b" hint-placeholder-count="4">
+                    <span onClick="{{ b.onClick }}" style="font-size:12.5px; padding:7px 13px; border-radius:8px; border:1px solid {{ b.border }}; color:{{ b.color }}; cursor:pointer; transition:all 160ms ease" style-hover="background:var(--color-accent-900); color:var(--color-accent-200)">{{ b.label }}</span>
+                  </sc-for>
+                  <span onClick="{{ d.onClearSel }}" style="margin-left:auto; font-size:12.5px; color:var(--color-neutral-500); cursor:pointer" style-hover="color:var(--color-accent-300)">Clear</span>
+                </div>
+              </div>
+            </div>
+        </div>
+
+        <!-- ── detail drawer ── -->
+        <div onClick="{{ d.onCloseDetail }}" style="position:fixed; inset:0; z-index:40; background:rgba(8,9,18,0.55); opacity:{{ d.scrimOpacity }}; pointer-events:{{ d.scrimEvents }}; transition:opacity 240ms ease"></div>
+        <div style="position:fixed; top:0; right:0; bottom:0; z-index:41; width:520px; max-width:80%; background:var(--color-bg); border-left:1px solid var(--color-accent-800); box-shadow:-24px 0 60px rgba(0,0,0,0.6); transform:translateX({{ d.drawerX }}); transition:transform 320ms cubic-bezier(.22,1,.36,1); display:flex; flex-direction:column; overflow:auto">
+          <sc-if value="{{ d.detailOpen }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex; flex-direction:column">
+
+              <div style="padding:18px 22px 16px; border-bottom:1px solid var(--color-neutral-900); background:linear-gradient(180deg,var(--color-surface),var(--color-bg)); display:flex; flex-direction:column; gap:10px">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:14px">
+                  <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-500)">Transaction detail</span>
+                  <span onClick="{{ d.onCloseDetail }}" style="font-size:13px; color:var(--color-neutral-500); cursor:pointer; padding:2px 6px" style-hover="color:var(--color-accent-300)">Close ✕</span>
+                </div>
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:18px">
+                  <div style="display:flex; flex-direction:column; gap:4px; min-width:0">
+                    <span style="font-size:24px; font-weight:500; letter-spacing:-0.015em; text-wrap:pretty">{{ d.detail.title }}</span>
+                    <span style="font-size:12.5px; color:var(--color-neutral-500)">{{ d.detail.accountLine }}</span>
+                    <span style="font-size:11.5px; color:var(--color-accent-300)">{{ d.detail.nicknamed }}</span>
+                  </div>
+                  <span style="font-size:24px; font-weight:500; letter-spacing:-0.015em; white-space:nowrap; color:{{ d.detail.amountColor }}">{{ d.detail.amount }}</span>
+                </div>
+              </div>
+
+              <!-- verbatim statement -->
+              <div style="border-bottom:1px solid var(--color-neutral-900)">
+                <div onClick="{{ d.detail.onToggleRaw }}" style="padding:13px 22px; display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer">
+                  <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-accent-300)">Exactly what the bank sent</span>
+                  <span style="font-size:11px; color:var(--color-accent-400); display:inline-block; transform:rotate({{ d.detail.rawCaret }}deg); transition:transform 240ms cubic-bezier(.22,1,.36,1)">▾</span>
+                </div>
+                <div style="display:grid; grid-template-rows:{{ d.detail.rawOpenRows }}; transition:grid-template-rows 280ms cubic-bezier(.22,1,.36,1)">
+                  <div style="overflow:hidden">
+                    <div style="padding:0 22px 16px; display:flex; flex-direction:column; gap:10px">
+                      <div style="border:1px solid var(--color-neutral-800); border-radius:9px; background:var(--color-surface); padding:12px 14px; display:flex; flex-direction:column; gap:7px">
+                        <span style="font-family:ui-monospace,Menlo,monospace; font-size:12.5px; line-height:1.5; color:var(--color-text); word-break:break-word">{{ d.detail.rawDesc }}</span>
+                        <span style="font-family:ui-monospace,Menlo,monospace; font-size:11.5px; line-height:1.5; color:var(--color-neutral-500); word-break:break-word">{{ d.detail.rawMemo }}</span>
+                      </div>
+                      <div style="display:flex; flex-direction:column; gap:1px">
+                        <sc-for list="{{ d.detail.rawLines }}" as="l" hint-placeholder-count="8">
+                          <div style="display:flex; justify-content:space-between; gap:16px; font-size:12.5px; padding:5px 0; border-bottom:1px solid var(--color-neutral-900)">
+                            <span style="color:var(--color-neutral-500); white-space:nowrap">{{ l.k }}</span>
+                            <span style="color:var(--color-neutral-300); text-align:right; font-family:ui-monospace,Menlo,monospace; font-size:11.5px">{{ l.v }}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <span style="font-size:11.5px; color:var(--color-neutral-500); text-wrap:pretty">Read-only. Nothing you change below rewrites this.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- editable fields -->
+              <div style="padding:16px 22px 18px; display:flex; flex-direction:column; gap:14px; border-bottom:1px solid var(--color-neutral-900)">
+                <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-500)">Your version</span>
+                <sc-for list="{{ d.detail.fields }}" as="f" hint-placeholder-count="3">
+                  <div style="display:flex; flex-direction:column; gap:5px">
+                    <span style="font-size:12.5px; color:var(--color-neutral-300)">{{ f.label }}</span>
+                    <input type="text" value="{{ f.value }}" onChange="{{ f.onChange }}" placeholder="{{ f.placeholder }}" style="width:100%; box-sizing:border-box; font-size:13.5px; padding:9px 12px; border-radius:8px; border:1px solid var(--color-neutral-800); background:var(--color-surface); color:var(--color-text)"/>
+                    <span style="font-size:11.5px; color:var(--color-neutral-500); text-wrap:pretty">{{ f.hint }}</span>
+                  </div>
+                </sc-for>
+
+                <div style="display:flex; flex-direction:column; gap:6px">
+                  <span style="font-size:12.5px; color:var(--color-neutral-300)">Category</span>
+                  <div onClick="{{ d.detail.onCatToggle }}" style="display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:8px; border:1px solid var(--color-neutral-800); background:var(--color-surface); cursor:pointer; transition:border-color 160ms ease" style-hover="border-color:var(--color-accent)">
+                    <span style="font-size:13.5px; color:{{ d.detail.catColor }}">{{ d.detail.catValue }}</span>
+                    <span style="font-size:11.5px; color:var(--color-neutral-500)">{{ d.detail.catSection }}</span>
+                    <span style="margin-left:auto; font-size:11px; color:var(--color-accent-400); display:inline-block; transform:rotate({{ d.detail.catCaret }}deg); transition:transform 220ms cubic-bezier(.22,1,.36,1)">▾</span>
+                  </div>
+
+                  <div style="display:grid; grid-template-rows:{{ d.detail.catRows }}; transition:grid-template-rows 260ms cubic-bezier(.22,1,.36,1)">
+                    <div style="overflow:hidden">
+                      <div style="border:1px solid var(--color-accent-800); border-radius:9px; background:var(--color-bg); display:flex; flex-direction:column; margin-top:2px">
+                        <input type="text" value="{{ d.detail.catSearch }}" onChange="{{ d.detail.onCatSearch }}" placeholder="Type to filter categories" style="width:100%; box-sizing:border-box; font-size:13px; padding:10px 12px; border:none; border-bottom:1px solid var(--color-neutral-900); background:transparent; color:var(--color-text)"/>
+                        <div style="max-height:232px; overflow:auto; display:flex; flex-direction:column; padding:4px 0">
+                          <sc-for list="{{ d.detail.picker.groups }}" as="g" hint-placeholder-count="4">
+                            <div style="display:flex; flex-direction:column">
+                              <span style="font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-500); padding:8px 12px 4px">{{ g.title }}</span>
+                              <sc-for list="{{ g.items }}" as="o" hint-placeholder-count="5">
+                                <div onClick="{{ o.onClick }}" style="display:flex; align-items:center; gap:10px; font-size:13px; padding:7px 12px; cursor:pointer; border-left:2px solid {{ o.border }}; background:{{ o.bg }}; color:{{ o.color }}; transition:background 140ms ease" style-hover="background:var(--color-accent-900); color:var(--color-accent-200)">
+                                  <span>{{ o.label }}</span>
+                                  <span style="margin-left:auto; font-size:11px; color:var(--color-accent-300)">{{ o.mark }}</span>
+                                </div>
+                              </sc-for>
+                            </div>
+                          </sc-for>
+                          <span style="font-size:12.5px; color:var(--color-neutral-500); padding:8px 12px">{{ d.detail.picker.empty }}</span>
+                        </div>
+                        <sc-if value="{{ d.detail.picker.showNew }}" hint-placeholder-val="{{ false }}">
+                          <div onClick="{{ d.detail.picker.onNew }}" style="border-top:1px solid var(--color-neutral-900); padding:9px 12px; font-size:12.5px; color:var(--color-accent-300); cursor:pointer" style-hover="background:var(--color-accent-900)">{{ d.detail.picker.newLabel }}</div>
+                        </sc-if>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div onClick="{{ d.detail.onRule }}" style="display:flex; align-items:center; gap:9px; font-size:12.5px; color:var(--color-neutral-300); cursor:pointer; padding-top:2px">
+                    <span style="width:16px; height:16px; border-radius:4px; border:1px solid {{ d.detail.ruleBorder }}; background:{{ d.detail.ruleBg }}; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--color-accent-200)">{{ d.detail.ruleMark }}</span>
+                    {{ d.detail.ruleLine }}
+                  </div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:5px">
+                  <span style="font-size:12.5px; color:var(--color-neutral-300)">Note</span>
+                  <input type="text" value="{{ d.detail.noteValue }}" onChange="{{ d.detail.onNote }}" placeholder="Anything you'll want to remember in six months" style="width:100%; box-sizing:border-box; font-size:13.5px; padding:9px 12px; border-radius:8px; border:1px solid var(--color-neutral-800); background:var(--color-surface); color:var(--color-text)"/>
+                </div>
+              </div>
+
+              <sc-if value="{{ d.detail.isMovement }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:16px 26px 20px; display:flex; flex-direction:column; gap:9px">
+                  <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-500)">Both legs · counted once</span>
+                  <sc-for list="{{ d.detail.legs }}" as="leg" hint-placeholder-count="2">
+                    <div style="display:flex; justify-content:space-between; gap:16px; font-size:12.5px; padding:6px 0; border-bottom:1px solid var(--color-neutral-900)">
+                      <span style="color:var(--color-neutral-500)">{{ leg.left }}</span>
+                      <span style="color:var(--color-neutral-300)">{{ leg.right }}</span>
+                    </div>
+                  </sc-for>
+                  <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; padding-top:4px">
+                    <span style="font-size:11.5px; color:{{ d.detail.legNoteColor }}; text-wrap:pretty">{{ d.detail.legNote }}</span>
+                    <span onClick="{{ d.detail.onUntie }}" style="font-size:11.5px; padding:5px 12px; border-radius:8px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400); cursor:pointer; white-space:nowrap" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)">{{ d.detail.untieLabel }}</span>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+        </div>
+
+      </div>
+    </sc-if>
+    <!-- ══════ ACCOUNTS ══════ -->
+    <sc-if value="{{ isAccounts }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Accounts" style="display:flex; flex-direction:column">
+
+        <div style="padding:20px 26px 16px; border-bottom:1px solid var(--color-neutral-900); background:linear-gradient(180deg,var(--color-surface),var(--color-bg)); display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap">
+            <div style="display:flex; align-items:center; gap:14px; min-width:0">
+              <div style="display:flex; align-items:center; gap:5px">
+                <div onClick="{{ month.onPrev }}" style="font-size:12px; color:var(--color-neutral-400); border:1px solid var(--color-neutral-800); border-radius:8px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)"><svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" style="display:block"><path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z"/></svg></div>
+                <div onClick="{{ month.onNext }}" style="font-size:12px; color:var(--color-neutral-400); border:1px solid var(--color-neutral-800); border-radius:8px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)"><svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" style="display:block"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px; min-width:0">
+                <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">{{ month.kicker }}</span>
+                <span style="font-size:22px; font-weight:500; letter-spacing:-0.01em">15 accounts</span>
+              </div>
+              <div onClick="{{ month.onToday }}" style="font-size:12px; color:{{ month.todayColor }}; border:1px solid {{ month.todayBorder }}; border-radius:8px; padding:5px 11px; cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)">Today</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px">
+              <div style="font-size:12.5px; padding:8px 13px; border-radius:8px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400); cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)">Refresh all</div>
+              <div style="font-size:12.5px; padding:8px 14px; border-radius:8px; border:1px solid var(--color-accent); color:var(--color-accent-300); cursor:pointer; transition:all 160ms ease" style-hover="background:var(--color-accent-900); color:var(--color-accent-300)">Add account</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--color-neutral-600)">
+            <span style="display:flex; align-items:center; gap:7px"><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block"></span>13 connected · refreshed 6:40 am</span>
+            <span style="width:1px; height:13px; background:var(--color-neutral-800)"></span>
+            <span style="display:flex; align-items:center; gap:7px"><span style="width:6px; height:6px; border-radius:50%; border:1px solid var(--color-neutral-700); display:block"></span>2 manual</span>
+            <span style="width:1px; height:13px; background:var(--color-neutral-800)"></span>
+            <span>Ally Checking is projected to go <span style="color:var(--color-warn); font-weight:600">−$41</span> before the next paycheck</span>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:minmax(180px,1.7fr) minmax(72px,0.5fr) minmax(78px,0.55fr) minmax(108px,0.95fr) minmax(96px,0.8fr); gap:0 12px; align-items:center; padding:9px 26px; background:var(--color-surface); border-bottom:1px solid var(--color-neutral-900); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--color-neutral-600)">
+          <span>Account</span>
+          <span>Connection</span>
+          <span style="text-align:right">Balance today</span>
+          <span style="text-align:right">Before month end</span>
+          <span style="text-align:right; display:flex; align-items:center; justify-content:flex-end; gap:6px">Projected<span style="position:relative; display:inline-flex; align-items:center; color:var(--color-neutral-600); cursor:help" style-hover="--tip-op:1; --tip-vis:visible; color:var(--color-accent)"><svg width="13" height="13" viewBox="0 0 256 256" fill="currentColor" style="display:block"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"/></svg><span style="position:absolute; bottom:calc(100% + 7px); right:-6px; white-space:nowrap; background:var(--color-surface); border:1px solid var(--color-accent-800); border-radius:6px; padding:6px 9px; font-size:11.5px; letter-spacing:0; text-transform:none; color:var(--color-accent-100); box-shadow:0 8px 22px rgba(0,0,0,0.6); opacity:var(--tip-op,0); visibility:var(--tip-vis,hidden); transition:opacity 120ms ease; pointer-events:none">Projected balance by next paycheck</span></span></span>
+        </div>
+
+        <sc-for list="{{ acctGroups }}" as="g" hint-placeholder-count="3">
+          <div style="display:flex; flex-direction:column">
+            <div style="display:flex; align-items:baseline; gap:12px; padding:16px 26px 8px">
+              <span style="font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-accent-300)">{{ g.label }}</span>
+              <span style="font-size:18px; font-weight:500">{{ g.total }}</span>
+              <span style="font-size:12px; color:var(--color-neutral-600)">{{ g.note }}</span>
+            </div>
+            <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="4">
+              <div style="border-left:2px solid {{ r.edge }}; background:{{ r.rowBg }}">
+                <div onClick="{{ r.onToggle }}" style="display:grid; grid-template-columns:minmax(180px,1.7fr) minmax(72px,0.5fr) minmax(78px,0.55fr) minmax(108px,0.95fr) minmax(96px,0.8fr); gap:0 12px; align-items:center; padding:10px 26px 10px 24px; border-top:1px solid var(--color-neutral-900); font-size:13px; cursor:pointer; transition:background 160ms ease" style-hover="background:var(--row-raise)">
+                  <span style="display:flex; flex-direction:column; gap:2px; min-width:0"><span>{{ r.name }}</span><span style="font-size:11.5px; color:var(--color-neutral-600)">{{ r.sub }}</span></span>
+                  <span style="display:flex; align-items:center; gap:7px; font-size:12px; color:{{ r.connColor }}"><span style="width:6px; height:6px; border-radius:50%; background:{{ r.dotBg }}; border:1px solid {{ r.dotBorder }}; display:block"></span>{{ r.conn }}</span>
+                  <span style="text-align:right">{{ r.today }}</span>
+                  <span style="text-align:right; color:{{ r.expectedColor }}">{{ r.expected }}</span>
+                  <span style="text-align:right; color:{{ r.projColor }}; font-weight:{{ r.projWeight }}">{{ r.projected }}</span>
+                </div>
+                <sc-if value="{{ r.open }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin:0 26px 14px 24px; border:1px solid var(--color-accent-800); border-radius:10px; background:var(--color-bg); padding:15px 17px; display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:22px; animation:fadeA 240ms cubic-bezier(.22,1,.36,1) both">
+                    <div style="display:flex; flex-direction:column; gap:9px">
+                      <span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Scheduled before Sep 30</span>
+                      <sc-for list="{{ r.schedule }}" as="s" hint-placeholder-count="4">
+                        <div style="display:flex; justify-content:space-between; font-size:12.5px"><span style="color:var(--color-neutral-400)">{{ s.label }}</span><span style="color:{{ s.color }}">{{ s.amount }}</span></div>
+                      </sc-for>
+                      <div style="display:flex; justify-content:space-between; font-size:12.5px; border-top:1px solid var(--color-neutral-900); padding-top:8px"><span style="color:var(--color-neutral-500)">Balance on Sep 30</span><span>{{ r.endFrom }} <span style="color:var(--color-accent-300)">→ {{ r.endTo }}</span></span></div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:10px">
+                      <span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Its role in the budget</span>
+                      <span style="font-size:12.5px; color:var(--color-neutral-400); text-wrap:pretty">{{ r.role }}</span>
+                      <div style="border:1px solid var(--color-neutral-800); border-radius:9px; padding:11px 13px; display:flex; flex-direction:column; gap:7px; background:var(--color-surface)">
+                        <div style="display:flex; justify-content:space-between; font-size:12.5px"><span style="color:var(--color-neutral-500)">Projected by next paycheck</span><span style="color:{{ r.projColor }}; font-weight:{{ r.projWeight }}">{{ r.projected }}</span></div>
+                        <div style="height:5px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden"><div style="width:{{ r.floorPct }}; height:100%; background:{{ r.floorColor }}; transition:width 420ms cubic-bezier(.22,1,.36,1)"></div></div>
+                        <span style="font-size:11.5px; color:var(--color-neutral-600)">{{ r.floorNote }}</span>
+                      </div>
+                      <div style="display:flex; gap:7px; flex-wrap:wrap">
+                        <div style="font-size:12px; padding:6px 12px; border-radius:8px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400); cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)">Reconcile</div>
+                        <div style="font-size:12px; padding:6px 12px; border-radius:8px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400); cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)">Rename</div>
+                        <div onClick="{{ r.onOpenTransactions }}" style="font-size:12px; padding:6px 12px; border-radius:8px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400); cursor:pointer; transition:all 160ms ease" style-hover="border-color:var(--color-accent); color:var(--color-accent-300)">See in Transactions</div>
+                      </div>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <div style="padding:9px 26px 4px; border-top:1px solid var(--color-neutral-900)"><span style="font-size:12.5px; color:var(--color-accent-300); cursor:pointer">{{ g.addLabel }}</span></div>
+          </div>
+        </sc-for>
+
+        <div style="display:flex; align-items:baseline; gap:12px; padding:18px 26px 8px; border-top:1px solid var(--color-neutral-900); margin-top:12px">
+          <span style="font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-accent-300)">Property</span>
+          <span style="font-size:18px; font-weight:500">$124,600</span>
+          <span style="font-size:12px; color:var(--color-neutral-600)">equity · house and mortgage read as one line</span>
+        </div>
+        <div style="padding:12px 26px 16px; border-top:1px solid var(--color-neutral-900); display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px; align-items:center">
+          <div style="display:flex; flex-direction:column; gap:9px">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap">
+              <span style="font-size:13px">Home · 1428 Rockhurst Dr</span>
+              <span style="font-size:11.5px; color:var(--color-neutral-600)">Estimated value $412,000</span>
+            </div>
+            <div style="display:flex; height:28px; border-radius:6px; overflow:hidden; gap:2px">
+              <div style="flex:2874; background:var(--color-neutral-800); display:flex; align-items:center; padding:0 10px"><span style="font-size:11.5px; color:var(--color-neutral-300)">owed −$287,400</span></div>
+              <div style="flex:1246; background:linear-gradient(180deg,var(--color-accent-700),var(--color-accent-800)); display:flex; align-items:center; padding:0 10px"><span style="font-size:11.5px; color:var(--color-accent-100)">equity $124,600</span></div>
+            </div>
+            <span style="font-size:11.5px; color:var(--color-neutral-600)">Rocket Mortgage · $2,180 due Oct 1</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px; text-align:right">
+            <span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Equity today</span>
+            <span style="font-size:22px; font-weight:500">$124,600</span>
+            <span style="font-size:11.5px; color:var(--color-neutral-600)">+$1,180 this month as the balance came down</span>
+          </div>
+        </div>
+
+        <div style="margin-top:14px; padding:16px 26px 24px; border-top:1px solid var(--color-neutral-800); background:linear-gradient(180deg,transparent,var(--color-surface)); display:flex; align-items:baseline; justify-content:space-between; gap:24px; flex-wrap:wrap">
+          <span style="font-size:13px; color:var(--color-neutral-500)">Cash $57,455 &nbsp;+&nbsp; Invested $18,920 &nbsp;+&nbsp; Home equity $124,600 &nbsp;−&nbsp; Debt $23,115</span>
+          <span style="display:flex; align-items:baseline; gap:10px"><span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">Net worth</span><span style="font-size:26px; font-weight:500">$177,860</span><span style="font-size:12.5px; color:var(--color-accent-300)">+$3,412 this month</span></span>
+        </div>
+
+      </div>
+    </sc-if>
+
+    <!-- ══════ PLACEHOLDER PAGES ══════ -->
+    <sc-if value="{{ isStub }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:70px 26px; display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center">
+        <span style="font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--color-neutral-600)">Not built yet</span>
+        <span style="font-size:26px; font-weight:500">{{ stubTitle }}</span>
+        <span style="font-size:14px; color:var(--color-neutral-500); max-width:440px; text-wrap:pretty">{{ stubNote }}</span>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startPage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;budget&quot;,&quot;home&quot;,&quot;accounts&quot;,&quot;transactions&quot;],&quot;default&quot;:&quot;budget&quot;,&quot;tsType&quot;:&quot;'budget' | 'home' | 'accounts' | 'transactions'&quot;},&quot;animate&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const fmtc = (n) => (n < 0 ? "−$" : "$") + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (n) => (n < 0 ? "−$" : "$") + Math.abs(Math.round(n)).toLocaleString("en-US");
+
+function sepMonth() {
+  return {
+    key: "2026-09", title: "Budget · September 2026", sub: "income $8,240 · day 12",
+    kicker: "September 2026 · day 12 of 30 · income $8,240",
+    income: 8240,
+    prevLabel: "Aug 2026", prevNote: "closed · $612 left over",
+    nextLabel: "Oct 2026", nextNote: "draft · copies this plan",
+    sections: [
+      { id: "debt", title: "Debt budget", destHead: "Debt owed", statHead: "Balance · after", meta: "total owed −$23,115",
+        rows: [
+          { id: "chase", label: "Chase card", amount: 400, dest: "Chase · 4412", stat: "−$3,260", sub: "→ −$2,860", moved: 400,
+            legTitle: "Chase card · the movement behind $400",
+            legs: [{ left: "Sep 8 · Wells Fargo Checking", right: "−$400.00 out" }, { left: "Sep 8 · Chase card payment received", right: "+$400.00 in" }],
+            legNote: "Tied · counted once · balance −$3,260 → −$2,860" },
+          { id: "capone", label: "Capital One card", amount: 250, dest: "Capital One · 8830", stat: "−$1,490", sub: "→ −$1,240", moved: 250,
+            legTitle: "Capital One card · the movement behind $250",
+            legs: [{ left: "Sep 6 · Ally Checking", right: "−$250.00 out" }, { left: "Sep 6 · Capital One payment received", right: "+$250.00 in" }],
+            legNote: "Tied · counted once · balance −$1,490 → −$1,240" },
+          { id: "citi1", label: "Citi · everyday", amount: 120, dest: "Citi everyday", stat: "−$640", sub: "· due Sep 25", moved: 0 },
+          { id: "citi2", label: "Citi · travel", amount: 180, dest: "Citi travel", stat: "−$1,905", sub: "· due Sep 25", moved: 0 },
+          { id: "camper", label: "BofA camper loan", amount: 465, dest: "Camper trailer", stat: "−$14,320", sub: "· due Sep 22", moved: 0 },
+          { id: "ploc", label: "WF line of credit", amount: 300, dest: "Wells Fargo PLOC", stat: "−$2,450", sub: "→ −$2,150", moved: 300,
+            legTitle: "Line of credit · the movement behind $300",
+            legs: [{ left: "Sep 3 · Wells Fargo Checking", right: "−$300.00 out" }, { left: "Sep 3 · PLOC payment received", right: "+$300.00 in" }],
+            legNote: "Tied · counted once · balance −$2,450 → −$2,150" }
+        ] },
+      { id: "savings", title: "To savings", destHead: "Savings account", statHead: "Total today · goal", meta: "$3,090 held today",
+        rows: [
+          { id: "vac", label: "Vacation", amount: 300, dest: "CapOne · Vacation", stat: "$1,250", sub: "of $3,000", moved: 300,
+            legTitle: "Vacation · the movement behind $300",
+            legs: [{ left: "Sep 2 · Capital One Checking", right: "−$300.00 out" }, { left: "Sep 2 · Vacation savings", right: "+$300.00 in" }],
+            legNote: "Tied · counted once · balance $950 → $1,250" },
+          { id: "xmas", label: "Christmas", amount: 150, dest: "CapOne · Christmas", stat: "$640", sub: "· due Sep 20", moved: 0 },
+          { id: "hoa", label: "HOA + birthdays", amount: 175, dest: "CapOne · HOA + birthdays", stat: "$890", sub: "· in flight", moved: 0, inFlight: true,
+            legTitle: "HOA + birthdays · in flight",
+            legs: [{ left: "Sep 12 · Capital One Checking", right: "−$175.00 out" }, { left: "Sep 12 · HOA + birthdays savings", right: "+$175.00 in" }],
+            legNote: "Matched automatically · clears Sep 13" },
+          { id: "trips", label: "Weekend trips", amount: 100, dest: "CapOne · Weekend trips", stat: "$310", sub: "· due Sep 20", moved: 0 }
+        ] },
+      { id: "needs", title: "Needs", destHead: "Paid to", statHead: "Status", meta: "",
+        rows: [
+          { id: "mortgage", label: "Mortgage", amount: 2180, dest: "Rocket Mortgage", stat: "", sub: "", moved: 2180,
+            chips: [{ text: "owed −$287,400", accent: false }, { text: "value $412,000", accent: true }],
+            legTitle: "Mortgage · the movement behind $2,180",
+            legs: [{ left: "Sep 1 · Wells Fargo Checking", right: "−$2,180.00 out" }, { left: "Sep 1 · Rocket Mortgage", right: "+$2,180.00 in" }],
+            legNote: "Tied · $624 of it reduced the loan balance" },
+          { id: "electric", label: "Electric", amount: 145, dest: "Duke Energy", stat: "$138 paid Sep 6", sub: "", moved: 138 },
+          { id: "gas", label: "Gas", amount: 62, dest: "Piedmont", stat: "$54 paid Sep 6", sub: "", moved: 54 },
+          { id: "water", label: "Water", amount: 103, dest: "City utilities", stat: "", sub: "due Sep 20", moved: 0 },
+          { id: "internet", label: "Internet", amount: 85, dest: "Spectrum", stat: "$85 paid Sep 3", sub: "", moved: 85 },
+          { id: "insurance", label: "Insurance", amount: 265, dest: "State Farm · auto + home", stat: "$265 paid Sep 2", sub: "", moved: 265 },
+          { id: "phones", label: "Phones", amount: 120, dest: "Verizon", stat: "", sub: "due Sep 22", moved: 0 }
+        ] }
+    ],
+    flex: [
+      { id: "groceries", label: "Groceries", amount: 720, spent: 512 },
+      { id: "dining", label: "Dining", amount: 260, spent: 318 },
+      { id: "fuel", label: "Fuel", amount: 180, spent: 86 },
+      { id: "household", label: "Household", amount: 120, spent: 40 },
+      { id: "fun", label: "Fun", amount: 140, spent: 31 },
+      { id: "kids", label: "Kids", amount: 95, spent: 61 },
+      { id: "gifts", label: "Gifts", amount: 60, spent: 0 },
+      { id: "unassigned", label: "Unassigned", amount: 1265, spent: 0, unassigned: true }
+    ]
+  };
+}
+
+function derive(base, mode) {
+  const m = JSON.parse(JSON.stringify(base));
+  if (mode === "aug") {
+    m.key = "2026-08"; m.title = "Budget · August 2026"; m.sub = "income $8,240 · closed";
+    m.kicker = "August 2026 · closed · income $8,240";
+    m.prevLabel = "Jul 2026"; m.prevNote = "closed · $188 left over";
+    m.nextLabel = "Sep 2026"; m.nextNote = "current month";
+    m.sections.forEach((s) => s.rows.forEach((r) => {
+      r.moved = r.amount; r.sub = ""; r.inFlight = false;
+      if (s.id === "needs" && r.id !== "mortgage") r.stat = fmt(r.amount) + " paid";
+      if (s.id === "debt") r.sub = "· paid in full";
+      if (s.id === "savings") r.sub = "· moved";
+    }));
+    m.flex.forEach((f) => { f.spent = f.unassigned ? 0 : Math.round(f.amount * 0.96); });
+    const un = m.flex.find((f) => f.unassigned); if (un) { un.amount = 653; un.spent = 41; }
+  } else if (mode === "oct") {
+    m.key = "2026-10"; m.title = "Budget · October 2026"; m.sub = "income $8,240 · draft";
+    m.kicker = "October 2026 · draft · income $8,240";
+    m.prevLabel = "Sep 2026"; m.prevNote = "current month";
+    m.nextLabel = "Nov 2026"; m.nextNote = "not started";
+    m.sections.forEach((s) => s.rows.forEach((r) => {
+      r.moved = 0; r.inFlight = false;
+      r.sub = s.id === "needs" ? "scheduled" : "· scheduled";
+      if (s.id === "needs") r.stat = "";
+    }));
+    m.flex.forEach((f) => { f.spent = 0; });
+  }
+  return m;
+}
+
+const BASES = {
+  month: { label: "Last month", short: "Aug 1–12", markerPct: 38, nwDelta: "+$3,412 vs Aug 12", debtDelta: "−$1,412 vs Aug 12",
+    flow: [{ name: "Income", value: "$4,120", delta: "same as Aug", accent: false }, { name: "Spending", value: "$3,144", delta: "$188 less", accent: true }, { name: "Saved + paid down", value: "$1,250", delta: "$87 more", accent: true }],
+    bars: [{ label: "Sep", value: "$3,144", pct: 76, accent: true }, { label: "Aug 1–12", value: "$3,332", pct: 81, accent: false }, { label: "Sep 2025", value: "$2,802", pct: 68, accent: false }],
+    cats: [{ name: "Groceries", amount: "$512", pct: 71, delta: "+$96", over: true }, { name: "Dining", amount: "$318", pct: 100, delta: "+$74", over: true }, { name: "Utilities", amount: "$192", pct: 62, delta: "−$31", over: false }, { name: "Fuel", amount: "$86", pct: 48, delta: "−$52", over: false }, { name: "Fun · kids · gifts", amount: "$92", pct: 31, delta: "−$140", over: false }] },
+  week: { label: "Last week", short: "Sep 1–5", markerPct: 22, nwDelta: "+$684 vs Sep 5", debtDelta: "−$550 vs Sep 5",
+    flow: [{ name: "Income", value: "$4,120", delta: "no new pay", accent: false }, { name: "Spending", value: "$1,412", delta: "$318 more", accent: false }, { name: "Saved + paid down", value: "$600", delta: "$300 more", accent: true }],
+    bars: [{ label: "Sep 6–12", value: "$1,412", pct: 62, accent: true }, { label: "Sep 1–5", value: "$1,094", pct: 48, accent: false }, { label: "Weekly avg", value: "$1,286", pct: 56, accent: false }],
+    cats: [{ name: "Groceries", amount: "$248", pct: 62, delta: "+$44", over: true }, { name: "Dining", amount: "$186", pct: 92, delta: "+$92", over: true }, { name: "Utilities", amount: "$0", pct: 4, delta: "−$192", over: false }, { name: "Fuel", amount: "$46", pct: 34, delta: "+$6", over: true }, { name: "Fun · kids · gifts", amount: "$31", pct: 18, delta: "−$28", over: false }] },
+  avg: { label: "3-month average", short: "3-mo avg", markerPct: 44, nwDelta: "+$2,980 vs 3-mo pace", debtDelta: "−$1,180 vs 3-mo pace",
+    flow: [{ name: "Income", value: "$4,120", delta: "$60 more", accent: true }, { name: "Spending", value: "$3,144", delta: "$402 less", accent: true }, { name: "Saved + paid down", value: "$1,250", delta: "$164 more", accent: true }],
+    bars: [{ label: "Sep", value: "$3,144", pct: 76, accent: true }, { label: "3-mo avg", value: "$3,546", pct: 86, accent: false }, { label: "Best month", value: "$2,712", pct: 66, accent: false }],
+    cats: [{ name: "Groceries", amount: "$512", pct: 71, delta: "+$38", over: true }, { name: "Dining", amount: "$318", pct: 100, delta: "+$106", over: true }, { name: "Utilities", amount: "$192", pct: 62, delta: "−$18", over: false }, { name: "Fuel", amount: "$86", pct: 48, delta: "−$74", over: false }, { name: "Fun · kids · gifts", amount: "$92", pct: 31, delta: "−$188", over: false }] },
+  year: { label: "Last year", short: "Sep 2025", markerPct: 52, nwDelta: "+$21,406 vs Sep 2025", debtDelta: "−$8,940 vs Sep 2025",
+    flow: [{ name: "Income", value: "$4,120", delta: "$340 more", accent: true }, { name: "Spending", value: "$3,144", delta: "$342 more", accent: false }, { name: "Saved + paid down", value: "$1,250", delta: "$505 more", accent: true }],
+    bars: [{ label: "Sep 2026", value: "$3,144", pct: 76, accent: true }, { label: "Sep 2025", value: "$2,802", pct: 68, accent: false }, { label: "2025 avg", value: "$2,944", pct: 71, accent: false }],
+    cats: [{ name: "Groceries", amount: "$512", pct: 71, delta: "+$132", over: true }, { name: "Dining", amount: "$318", pct: 100, delta: "+$88", over: true }, { name: "Utilities", amount: "$192", pct: 62, delta: "+$14", over: true }, { name: "Fuel", amount: "$86", pct: 48, delta: "−$38", over: false }, { name: "Fun · kids · gifts", amount: "$92", pct: 31, delta: "−$96", over: false }] }
+};
+
+const FLEX = ["Groceries", "Dining", "Fuel", "Household", "Fun", "Kids", "Gifts"];
+const NEEDS = ["Mortgage", "Electric", "Gas", "Water", "Internet", "Insurance", "Phones"];
+const SAVINGS = ["Vacation", "Christmas", "HOA + birthdays", "Weekend trips"];
+const DEBT = ["Chase card", "Capital One card", "Citi · everyday", "Citi · travel", "BofA camper loan", "WF line of credit"];
+
+// type: spend | income | move | leg
+const TX = [
+  { id: "t1", d: "Sep 12", desc: "Harris Teeter", cat: "Groceries", acct: "Capital One Checking", amt: -118.42, type: "spend" },
+  { id: "t2", d: "Sep 12", desc: "Transfer to HOA + birthdays", cat: "HOA + birthdays", acct: "Capital One Checking", amt: 175, type: "move", from: "Capital One Checking", to: "CapOne · HOA + birthdays", tied: "auto",
+    legs: [{ left: "Sep 12 · Capital One Checking", right: "−$175.00 out" }, { left: "Sep 12 · HOA + birthdays savings", right: "+$175.00 in" }],
+    legNote: "Matched automatically · savings $715 → $890 · clears Sep 13" },
+  { id: "t3", d: "Sep 11", desc: "Sheetz", cat: null, suggest: "Fuel", acct: "Chase card", amt: -41.8, type: "spend", seen: "4 times before" },
+  { id: "t4", d: "Sep 11", desc: "Amazon", cat: null, suggest: "Household", acct: "Capital One card", amt: -64.19, type: "spend", seen: "11 times before" },
+  { id: "t5", d: "Sep 10", desc: "Shell", cat: "Fuel", acct: "Chase card", amt: -46.1, type: "spend" },
+  { id: "t6", d: "Sep 10", desc: "Dollar General", cat: null, suggest: "Household", acct: "Wells Fargo Checking", amt: -27.55, type: "spend", seen: "2 times before" },
+  { id: "t7", d: "Sep 10", desc: "Harris Teeter", cat: "Groceries", acct: "Capital One Checking", amt: -86.3, type: "spend" },
+  { id: "t8", d: "Sep 9", desc: "Cook Out", cat: "Dining", acct: "Citi · everyday", amt: -22.15, type: "spend" },
+  { id: "t9", d: "Sep 9", desc: "Target", cat: null, suggest: "Household", acct: "Citi · everyday", amt: -57.44, type: "spend", seen: "9 times before" },
+  { id: "t10", d: "Sep 8", desc: "Chase card payment", cat: "Chase card", acct: "Wells Fargo Checking", amt: 400, type: "move", from: "Wells Fargo Checking", to: "Chase card", tied: "auto",
+    legs: [{ left: "Sep 8 · Wells Fargo Checking", right: "−$400.00 out" }, { left: "Sep 8 · Chase card payment received", right: "+$400.00 in" }],
+    legNote: "Tied · counted once · balance −$3,260 → −$2,860" },
+  { id: "t11", d: "Sep 8", desc: "Harris Teeter", cat: "Groceries", acct: "Capital One Checking", amt: -71.06, type: "spend" },
+  { id: "t12", d: "Sep 7", desc: "Publix", cat: null, suggest: "Groceries", acct: "Capital One Checking", amt: -54.9, type: "spend", seen: "3 times before" },
+  { id: "t13", d: "Sep 7", desc: "Wells Fargo Savings → Citi · everyday", cat: "Citi · everyday", acct: "Wells Fargo Savings", amt: 120, type: "move", from: "Wells Fargo Savings", to: "Citi · everyday", tied: "bad",
+    legs: [{ left: "Sep 7 · Wells Fargo Savings", right: "−$120.00 out" }, { left: "Sep 7 · Citi · everyday credit", right: "+$120.00 in" }],
+    legNote: "Matched automatically — the Citi credit was a returned purchase, not this payment" },
+  { id: "t14", d: "Sep 6", desc: "Capital One card payment", cat: "Capital One card", acct: "Ally Checking", amt: 250, type: "move", from: "Ally Checking", to: "Capital One card", tied: "auto",
+    legs: [{ left: "Sep 6 · Ally Checking", right: "−$250.00 out" }, { left: "Sep 6 · Capital One payment received", right: "+$250.00 in" }],
+    legNote: "Tied · counted once · balance −$1,490 → −$1,240" },
+  { id: "t15", d: "Sep 6", desc: "Duke Energy", cat: "Electric", acct: "Wells Fargo Checking", amt: -138, type: "spend" },
+  { id: "t16", d: "Sep 6", desc: "Piedmont Natural Gas", cat: "Gas", acct: "Wells Fargo Checking", amt: -54, type: "spend" },
+  { id: "t17", d: "Sep 5", desc: "Starbucks", cat: "Dining", acct: "Chase card", amt: -11.85, type: "spend" },
+  { id: "t18", d: "Sep 5", desc: "Schwab Roth contribution", cat: "Roth IRA", acct: "Ally Checking", amt: 500, type: "move", from: "Ally Checking", to: "Schwab Roth", tied: "auto",
+    legs: [{ left: "Sep 5 · Ally Checking", right: "−$500.00 out" }, { left: "Sep 5 · Schwab Roth", right: "+$500.00 in" }],
+    legNote: "Tied · counted once · balance $18,420 → $18,920" },
+  { id: "t19", d: "Sep 4", desc: "PetSmart", cat: null, suggest: "Household", acct: "Capital One card", amt: -48.99, type: "spend", seen: "6 times before" },
+  { id: "t20", d: "Sep 4", desc: "Panera", cat: null, suggest: "Dining", acct: "Chase card", amt: -16.4, type: "spend", seen: "5 times before" },
+  { id: "t21", d: "Sep 3", desc: "Spectrum", cat: "Internet", acct: "Wells Fargo Checking", amt: -85, type: "spend" },
+  { id: "t22", d: "Sep 3", desc: "WF line of credit payment", cat: "WF line of credit", acct: "Wells Fargo Checking", amt: 300, type: "move", from: "Wells Fargo Checking", to: "Wells Fargo PLOC", tied: "auto",
+    legs: [{ left: "Sep 3 · Wells Fargo Checking", right: "−$300.00 out" }, { left: "Sep 3 · PLOC payment received", right: "+$300.00 in" }],
+    legNote: "Tied · counted once · balance −$2,450 → −$2,150" },
+  { id: "t23", d: "Sep 2", desc: "State Farm", cat: "Insurance", acct: "Wells Fargo Checking", amt: -265, type: "spend" },
+  { id: "t24", d: "Sep 2", desc: "Transfer to Vacation", cat: "Vacation", acct: "Capital One Checking", amt: 300, type: "move", from: "Capital One Checking", to: "CapOne · Vacation", tied: "auto",
+    legs: [{ left: "Sep 2 · Capital One Checking", right: "−$300.00 out" }, { left: "Sep 2 · Vacation savings", right: "+$300.00 in" }],
+    legNote: "Tied · counted once · balance $950 → $1,250" },
+  { id: "t25", d: "Sep 2", desc: "Lowe's", cat: null, suggest: "Household", acct: "Capital One card", amt: -112.37, type: "spend", seen: "7 times before" },
+  { id: "t26", d: "Sep 1", desc: "Rocket Mortgage", cat: "Mortgage", acct: "Wells Fargo Checking", amt: 2180, type: "move", from: "Wells Fargo Checking", to: "Rocket Mortgage", tied: "auto",
+    legs: [{ left: "Sep 1 · Wells Fargo Checking", right: "−$2,180.00 out" }, { left: "Sep 1 · Rocket Mortgage", right: "+$2,180.00 in" }],
+    legNote: "Tied · $624 of it reduced the loan · −$288,024 → −$287,400" },
+  { id: "t27", d: "Sep 1", desc: "Employer payroll", cat: "Income", acct: "Ally Checking", amt: 4120, type: "income" },
+  { id: "t28", d: "Sep 1", desc: "BOFA PAYMT", cat: null, acct: "Wells Fargo Checking", amt: -465, type: "leg", side: "out" },
+  { id: "t29", d: "Sep 2", desc: "Payment received", cat: null, acct: "BofA camper loan", amt: 465, type: "leg", side: "in" }
+];
+
+// What the bank actually sends, verbatim — shown unedited in the detail view.
+const RAW = {
+  t1: { desc: "HARRIS TEETER #0387 CHARLOTTE NC", memo: "POS PURCHASE TERMINAL 004192 CARD 4417", posted: "Sep 12, 2026 04:11 AM ET", auth: "Sep 11, 2026 06:42 PM ET", ref: "REF 20260911004192HT0387", mcc: "5411 · Grocery Stores, Supermarkets", channel: "Card present · chip", where: "Charlotte, NC 28277 · US" },
+  t3: { desc: "SHEETZ 0512 SHEETZ 0512 PINEVILLE NC", memo: "PURCHASE AUTHORIZED ON 09/11 CARD 8802", posted: "Sep 11, 2026 05:02 AM ET", auth: "Sep 10, 2026 07:58 PM ET", ref: "REF 74537266254900512", mcc: "5541 · Service Stations", channel: "Card present · contactless", where: "Pineville, NC 28134 · US" },
+  t4: { desc: "AMZN Mktp US*RT4X92QS3 AMZN.COM/BILL WA", memo: "RECURRING? NO · ORDER 114-2298457-9930611", posted: "Sep 11, 2026 03:20 AM ET", auth: "Sep 10, 2026 09:14 PM ET", ref: "REF 24692166254001192", mcc: "5942 · Book Stores / Amazon Marketplace", channel: "Card not present · e-commerce", where: "Seattle, WA · US" },
+  t6: { desc: "DOLLAR GENERAL #14872 MATTHEWS NC", memo: "PURCHASE AUTHORIZED ON 09/10", posted: "Sep 10, 2026 04:44 AM ET", auth: "Sep 9, 2026 05:31 PM ET", ref: "REF 88201667214814872", mcc: "5331 · Variety Stores", channel: "Card present · swipe", where: "Matthews, NC 28105 · US" },
+  t9: { desc: "TARGET 00021749 CHARLOTTE NC", memo: "POS DEBIT CARD 4417 · TGT*RedCard not used", posted: "Sep 9, 2026 04:07 AM ET", auth: "Sep 8, 2026 01:22 PM ET", ref: "REF 20260908021749TG", mcc: "5310 · Discount Stores", channel: "Card present · chip", where: "Charlotte, NC 28226 · US" },
+  t12: { desc: "PUBLIX SUPER MAR #1544 CHARLOTTE NC", memo: "PURCHASE AUTHORIZED ON 09/07 CARD 4417", posted: "Sep 7, 2026 04:15 AM ET", auth: "Sep 6, 2026 04:50 PM ET", ref: "REF 74512266250001544", mcc: "5411 · Grocery Stores, Supermarkets", channel: "Card present · chip", where: "Charlotte, NC 28277 · US" },
+  t19: { desc: "PETSMART # 1163 PINEVILLE NC", memo: "PURCHASE AUTHORIZED ON 09/04", posted: "Sep 4, 2026 03:58 AM ET", auth: "Sep 3, 2026 06:03 PM ET", ref: "REF 24011346247100163", mcc: "5995 · Pet Shops and Supplies", channel: "Card present · contactless", where: "Pineville, NC 28134 · US" },
+  t20: { desc: "PANERA BREAD #204416 O BALLANTYNE NC", memo: "PURCHASE AUTHORIZED ON 09/04 CARD 8802", posted: "Sep 4, 2026 05:11 AM ET", auth: "Sep 4, 2026 12:09 PM ET", ref: "REF 74537266247204416", mcc: "5812 · Eating Places, Restaurants", channel: "Card present · contactless", where: "Charlotte, NC 28277 · US" },
+  t25: { desc: "LOWES #01867* BALLANTYNE NC", memo: "PURCHASE AUTHORIZED ON 09/02 CARD 8802", posted: "Sep 2, 2026 04:30 AM ET", auth: "Sep 1, 2026 03:47 PM ET", ref: "REF 24164076245100867", mcc: "5200 · Home Supply Warehouse", channel: "Card present · chip", where: "Charlotte, NC 28277 · US" },
+  t10: { desc: "CHASE CREDIT CRD EPAY 260908 9384610223 PIA W", memo: "ONLINE PAYMENT THANK YOU · CONFIRMATION 8841027", posted: "Sep 8, 2026 09:02 AM ET", auth: "Sep 8, 2026 07:41 AM ET", ref: "ACH TRACE 091000019384610", mcc: "— · Transfer, not a purchase", channel: "ACH debit · scheduled by you", where: "Wilmington, DE · US" },
+  t2: { desc: "CAPITAL ONE ONLINE XFER TO SAVINGS 8841", memo: "INTERNAL TRANSFER · GOAL: HOA + BIRTHDAYS", posted: "Sep 12, 2026 02:14 AM ET", auth: "Sep 12, 2026 02:14 AM ET", ref: "REF CO-XF-20260912-8841", mcc: "— · Internal transfer", channel: "Internal · same institution", where: "McLean, VA · US" },
+  t13: { desc: "WF ONLINE TRANSFER REF #IB0PQR4T2X TO CITI", memo: "ONLINE TRANSFER FROM SAVINGS XXXXXX4471", posted: "Sep 7, 2026 06:20 AM ET", auth: "Sep 7, 2026 06:20 AM ET", ref: "REF IB0PQR4T2X", mcc: "— · Transfer", channel: "Online banking transfer", where: "San Francisco, CA · US" },
+  t26: { desc: "ROCKET MTG ACH PMT 260901 4419062288 PIA WEST", memo: "MORTGAGE PAYMENT · LOAN 4419062288 · ESCROW INCL", posted: "Sep 1, 2026 08:31 AM ET", auth: "Sep 1, 2026 12:01 AM ET", ref: "ACH TRACE 042000014419062", mcc: "— · Mortgage payment", channel: "ACH debit · autopay", where: "Detroit, MI · US" },
+  t27: { desc: "DIRECT DEP EMPLOYER PAYROLL PPD ID 1943820117", memo: "NET PAY PERIOD ENDING 08/29/2026", posted: "Sep 1, 2026 12:04 AM ET", auth: "Aug 31, 2026 11:12 PM ET", ref: "ACH TRACE 124003116628401", mcc: "— · Payroll credit", channel: "ACH credit · direct deposit", where: "— " }
+};
+const rawFor = (t) => RAW[t.id] || {
+  desc: (t.desc || "").toUpperCase() + "  " + (t.acct || "").toUpperCase(),
+  memo: "No additional memo sent by the bank",
+  posted: "" + t.d + ", 2026",
+  auth: "Authorization detail not provided",
+  ref: "REF not provided",
+  mcc: "— · not provided",
+  channel: "Not provided",
+  where: "Not provided"
+};
+
+const ALL_SECTIONS = [
+  { title: "Flex", items: FLEX },
+  { title: "Needs", items: NEEDS },
+  { title: "Savings goals", items: SAVINGS },
+  { title: "Debt", items: DEBT },
+  { title: "Income", items: ["Income", "Refund", "Reimbursement", "Interest"] },
+  { title: "Not spending", items: ["Transfer", "Investment", "Hidden"] }
+];
+const SECTION_OF = {};
+ALL_SECTIONS.forEach((s) => s.items.forEach((i) => { SECTION_OF[i] = s.title; }));
+
+const ACCT_GROUPS = {
+  "All accounts": null,
+  Cash: ["Capital One Checking", "Wells Fargo Checking", "Wells Fargo Savings", "Ally Checking", "CapOne · Vacation", "CapOne · HOA + birthdays"],
+  Cards: ["Chase card", "Capital One card", "Citi · everyday", "Citi · travel"],
+  Debt: ["Wells Fargo PLOC", "BofA camper loan", "Rocket Mortgage"],
+  Invested: ["Schwab Roth", "Schwab Brokerage"]
+};
+
+
+const PAGES = [
+  { id: "home", label: "Home" },
+  { id: "budget", label: "Budget" },
+  { id: "accounts", label: "Accounts" },
+  { id: "transactions", label: "Transactions" },
+  { id: "categories", label: "Categories" }
+];
+
+const STUBS = {
+  categories: { title: "Categories", note: "Create, rename, regroup and move categories between sections. Next up." }
+};
+
+const ACCT_PAGE_GROUPS = [
+  {
+    id: "cash", label: "Cash", total: "$57,455", note: "6 accounts · +$1,204 this month", addLabel: "+ Add a cash account",
+    rows: [
+      {
+        id: "wf-check", name: "Wells Fargo Checking", sub: "Checking · ••4187 · pays every Needs and Debt category",
+        live: true, conn: "6:40 am", today: "$4,182", expected: "+$4,120 in · $988 due", projected: "$4,182",
+        schedule: [
+          { label: "Sep 15 · Paycheck 2 of 2", amount: "+$4,120", up: true },
+          { label: "Sep 20 · Water → City utilities", amount: "−$103" },
+          { label: "Sep 22 · Phones → Verizon", amount: "−$120" },
+          { label: "Sep 25 · Citi everyday + travel", amount: "−$300" },
+          { label: "Sep 28 · Camper loan → BofA", amount: "−$465" }
+        ],
+        endFrom: "$4,182", endTo: "$7,314",
+        role: "Every Needs and Debt category pays from this account. $3,171 paid, $855 due.",
+        floorPct: "100%", floorNote: "Nothing is scheduled before the Sep 15 paycheck, so the balance holds."
+      },
+      {
+        id: "co-check", name: "Capital One Checking", sub: "Checking · ••8830 · every Flex category spends from here",
+        live: true, conn: "6:40 am", today: "$1,340", expected: "$1,254 due", projected: "$86", level: "warn",
+        schedule: [
+          { label: "Sep 12 · Groceries, remaining plan", amount: "−$412" },
+          { label: "Sep 13 · Childcare → Bright Beginnings", amount: "−$540" },
+          { label: "Sep 14 · Fuel and eating out, expected", amount: "−$302" }
+        ],
+        endFrom: "$1,340", endTo: "$86",
+        role: "The four Flex categories all spend from here. $1,254 of the plan is still to come before payday.",
+        floorPct: "6%", floorNote: "Lands $86 above zero and below your $500 comfort line."
+      },
+      {
+        id: "ally", name: "Ally Checking", sub: "Checking · ••2091 · storage unit and gym auto-pay from here",
+        live: true, conn: "6:38 am", today: "$793", expected: "$834 due", projected: "−$41", level: "over",
+        schedule: [
+          { label: "Sep 13 · Storage unit → Extra Space", amount: "−$189" },
+          { label: "Sep 14 · Gym → Fitness Connection", amount: "−$65" },
+          { label: "Sep 14 · Car insurance → Progressive", amount: "−$580" }
+        ],
+        endFrom: "$793", endTo: "−$41",
+        role: "Three auto-payments sit in Needs and all land before the paycheck.",
+        floorPct: "0%", floorNote: "Overdrawn by $41 on Sep 14. Move $200 here, or move the insurance date."
+      },
+      { id: "wf-save", name: "Wells Fargo Savings", sub: "Savings · ••7742 · emergency fund", live: true, conn: "6:40 am", today: "$49,000", expected: "nothing scheduled", muted: true, projected: "$49,000" },
+      { id: "co-vac", name: "CapOne · Vacation", sub: "Savings envelope · Savings budget $300 · goal $3,000", live: true, conn: "6:40 am", today: "$1,250", expected: "$300 due with the Sep 15 paycheck", projected: "$1,250" },
+      { id: "hoa", name: "HOA + birthdays savings", sub: "Savings envelope · Savings budget $175 · goal $1,500", live: false, conn: "manual", today: "$890", expected: "$175 moved Sep 8", projected: "$890" }
+    ]
+  },
+  {
+    id: "invested", label: "Invested", total: "$18,920", note: "1 account · +$500 this month", addLabel: "+ Add an investment account",
+    rows: [
+      { id: "roth", name: "Schwab Roth", sub: "Retirement · $500 contributed Sep 5 · Savings budget", live: true, conn: "6:41 am", today: "$18,920", expected: "next Oct 5", muted: true, projected: "$18,920" }
+    ]
+  },
+  {
+    id: "debt", label: "Debt", total: "−$23,115", note: "6 accounts · $1,097 moved · $618 due · mortgage shown with the house", addLabel: "+ Add a card or loan",
+    rows: [
+      { id: "chase", name: "Chase card", sub: "Credit card · ••4412 · Debt budget $400 · limit $6,500", live: true, conn: "6:40 am", today: "−$2,860", expected: "$400 moved Sep 8", accent: true, projected: "−$3,020" },
+      { id: "co-card", name: "Capital One card", sub: "Credit card · ••8830 · Debt budget $250", live: true, conn: "6:40 am", today: "−$1,240", expected: "$250 due Sep 25", projected: "−$1,412" },
+      { id: "citi-e", name: "Citi · everyday", sub: "Credit card · ••3301 · Debt budget $120", live: true, conn: "6:39 am", today: "−$640", expected: "$120 due Sep 25", projected: "−$688" },
+      { id: "citi-t", name: "Citi · travel", sub: "Credit card · ••3319 · Debt budget $180", live: false, conn: "manual", today: "−$1,905", expected: "$180 due Sep 25", projected: "−$1,905" },
+      { id: "camper", name: "BofA camper loan", sub: "Instalment loan · Debt budget $465 · 27 payments left", live: true, conn: "6:37 am", today: "−$14,320", expected: "$465 due Sep 28", projected: "−$14,320" },
+      { id: "ploc", name: "Wells Fargo PLOC", sub: "Line of credit · Debt budget $300", live: true, conn: "6:40 am", today: "−$2,150", expected: "$300 moved Sep 8", accent: true, projected: "−$2,168" }
+    ]
+  }
+];
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const base = sepMonth();
+    this.months = { "2026-08": derive(base, "aug"), "2026-09": base, "2026-10": derive(base, "oct") };
+    this.order = ["2026-08", "2026-09", "2026-10"];
+    this.state = {
+      page: props.startPage || "budget",
+      monthKey: "2026-09",
+      basis: "month",
+      open: { debt: true, savings: true, needs: true, flex: true },
+      expanded: { chase: true },
+      focused: null,
+      movementOpen: false,
+      ltbDisplay: 0,
+      tick: 0, pageTick: 0, animTick: 0,
+      dCats: {}, dExpanded: { t10: true }, dPicker: null, dSelected: {}, dReview: false,
+      dAcct: "All accounts", dQuery: "", dRules: {}, dTieIdx: 0, dTied: false,
+      dBadFixed: false, dCatIdx: 0,
+      dDetail: null, dEdits: {}, dField: null, dRawOpen: false,
+      dCatOpen: false, dCatSearch: "", dRowSearch: "", dQueueSearch: "", dQueueMore: false
+    };
+  }
+
+  componentDidMount() { this.syncLtb(); }
+  componentDidUpdate() { this.syncLtb(); }
+  componentWillUnmount() { cancelAnimationFrame(this._raf); }
+
+  month() { return this.months[this.state.monthKey]; }
+
+  totals() {
+    const m = this.month();
+    const t = { planned: {}, moved: {}, due: {} };
+    m.sections.forEach((s) => {
+      t.planned[s.id] = s.rows.reduce((a, r) => a + r.amount, 0);
+      t.moved[s.id] = s.rows.reduce((a, r) => a + (r.moved || 0), 0);
+      t.due[s.id] = s.rows.filter((r) => !r.moved).reduce((a, r) => a + r.amount, 0);
+    });
+    t.planned.flex = m.flex.reduce((a, f) => a + f.amount, 0);
+    t.moved.flex = m.flex.reduce((a, f) => a + f.spent, 0);
+    t.due.flex = Math.max(0, t.planned.flex - t.moved.flex);
+    t.totalPlanned = t.planned.debt + t.planned.savings + t.planned.needs + t.planned.flex;
+    t.left = m.income - t.totalPlanned;
+    return t;
+  }
+
+  syncLtb() {
+    const target = this.totals().left;
+    if (this._ltbTarget === target) return;
+    const from = this._ltbTarget === undefined ? target : this.state.ltbDisplay;
+    this._ltbTarget = target;
+    cancelAnimationFrame(this._raf);
+    const t0 = performance.now();
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / 420);
+      const e = 1 - Math.pow(1 - k, 3);
+      this.setState({ ltbDisplay: Math.round(from + (target - from) * e) });
+      if (k < 1) this._raf = requestAnimationFrame(step);
+    };
+    if (from === target) { this.setState({ ltbDisplay: target }); return; }
+    this._raf = requestAnimationFrame(step);
+  }
+
+  setAmount(sectionId, rowId, raw) {
+    const digits = String(raw).replace(/[^0-9]/g, "");
+    const val = digits === "" ? 0 : parseInt(digits, 10);
+    const m = this.month();
+    if (sectionId === "flex") {
+      const f = m.flex.find((x) => x.id === rowId); if (f) f.amount = val;
+    } else {
+      const s = m.sections.find((x) => x.id === sectionId);
+      const r = s && s.rows.find((x) => x.id === rowId); if (r) r.amount = val;
+    }
+    this.setState((st) => ({ tick: st.tick + 1, animTick: st.animTick + 1 }));
+  }
+
+  stepMonth(dir) {
+    const i = this.order.indexOf(this.state.monthKey);
+    const n = Math.min(this.order.length - 1, Math.max(0, i + dir));
+    if (n === i) return;
+    this.setState((st) => ({ monthKey: this.order[n], pageTick: st.pageTick + 1 }));
+  }
+
+  catOf(t, ns) { return this.state[ns + "Cats"][t.id] || t.cat; }
+
+  uncategorized(ns) { return TX.filter((t) => t.type === "spend" && !this.catOf(t, ns)); }
+
+  countLabel(ns) {
+    const n = this.uncategorized(ns).length;
+    return n === 0
+      ? "Everything categorised · 7 movements counted once"
+      : n + " need a category · 2 unmatched legs · 1 wrong auto-match";
+  }
+
+  setCat(id, cat, ns) {
+    this.setState((s) => ({ [ns + "Cats"]: Object.assign({}, s[ns + "Cats"], { [id]: cat }), aPicker: null }));
+  }
+
+  setGroupCat(name, cat) {
+    this.setState((s) => {
+      const cats = Object.assign({}, s.cCats);
+      TX.filter((t) => t.desc === name).forEach((t) => { cats[t.id] = cat; });
+      return { cCats: cats, cOpen: Object.assign({}, s.cOpen, { [name]: false }) };
+    });
+  }
+
+  // Grouped, searchable category list — the picker used everywhere in 2a.
+  buildPicker(q, cur, suggest, onPick, onCreate) {
+    const query = (q || "").trim();
+    const lq = query.toLowerCase();
+    const sections = [];
+    if (!lq) {
+      if (suggest && !cur) sections.push({ title: "Suggested from this merchant", items: [suggest] });
+      sections.push({ title: "Recent", items: ["Groceries", "Household", "Dining"].filter((r) => r !== suggest || !!cur) });
+    }
+    ALL_SECTIONS.forEach((sec) => {
+      const items = sec.items.filter((l) => !lq || l.toLowerCase().indexOf(lq) >= 0);
+      if (items.length) sections.push({ title: sec.title, items: items });
+    });
+    const groups = sections.map((sec) => ({
+      title: sec.title,
+      items: sec.items.map((label) => {
+        const on = cur === label;
+        return {
+          label, onClick: (e) => { if (e) e.stopPropagation(); onPick(label); },
+          border: on ? "var(--color-accent)" : "transparent",
+          bg: on ? "var(--color-accent-900)" : "transparent",
+          color: on ? "var(--color-accent-200)" : "var(--color-neutral-400)",
+          mark: on ? "✓" : ""
+        };
+      })
+    }));
+    const exact = ALL_SECTIONS.some((s) => s.items.some((i) => i.toLowerCase() === lq));
+    return {
+      groups: groups,
+      empty: query && groups.length === 0 ? "No category matches “" + query + "”" : "",
+      showNew: !!query && !exact,
+      newLabel: query ? "Create “" + query + "”" : "",
+      onNew: (e) => { if (e) e.stopPropagation(); onCreate(query); }
+    };
+  }
+
+
+  // Grouped, searchable category list — the picker used everywhere in 2a.
+  buildPicker(q, cur, suggest, onPick, onCreate) {
+    const query = (q || "").trim();
+    const lq = query.toLowerCase();
+    const sections = [];
+    if (!lq) {
+      if (suggest && !cur) sections.push({ title: "Suggested from this merchant", items: [suggest] });
+      sections.push({ title: "Recent", items: ["Groceries", "Household", "Dining"].filter((r) => r !== suggest || !!cur) });
+    }
+    ALL_SECTIONS.forEach((sec) => {
+      const items = sec.items.filter((l) => !lq || l.toLowerCase().indexOf(lq) >= 0);
+      if (items.length) sections.push({ title: sec.title, items: items });
+    });
+    const groups = sections.map((sec) => ({
+      title: sec.title,
+      items: sec.items.map((label) => {
+        const on = cur === label;
+        return {
+          label, onClick: (e) => { if (e) e.stopPropagation(); onPick(label); },
+          border: on ? "var(--color-accent)" : "transparent",
+          bg: on ? "var(--color-accent-900)" : "transparent",
+          color: on ? "var(--color-accent-200)" : "var(--color-neutral-400)",
+          mark: on ? "✓" : ""
+        };
+      })
+    }));
+    const exact = ALL_SECTIONS.some((s) => s.items.some((i) => i.toLowerCase() === lq));
+    return {
+      groups: groups,
+      empty: query && groups.length === 0 ? "No category matches “" + query + "”" : "",
+      showNew: !!query && !exact,
+      newLabel: query ? "Create “" + query + "”" : "",
+      onNew: (e) => { if (e) e.stopPropagation(); onCreate(query); }
+    };
+  }
+
+
+  optionsFor(t, onPick) {
+    const sug = t.suggest;
+    const pool = [sug].concat(FLEX.filter((f) => f !== sug)).slice(0, 6);
+    return pool.map((label, i) => ({
+      label: label === sug ? label + "  ✓ suggested" : label,
+      key: String(i + 1),
+      hint: label === sug ? "" : "",
+      onClick: (e) => { if (e) e.stopPropagation(); onPick(label); },
+      border: label === sug ? "var(--color-accent)" : "var(--color-neutral-800)",
+      bg: label === sug ? "var(--color-accent-900)" : "transparent",
+      color: label === sug ? "var(--color-accent-200)" : "var(--color-neutral-400)"
+    }));
+  }
+
+
+  legRow(t, expandedMap, toggle, untiedMap, untie) {
+    const untied = !!untiedMap[t.id];
+    const exp = !!expandedMap[t.id];
+    const bad = t.tied === "bad";
+    return {
+      legRows: exp ? "1fr" : "0fr",
+      caret: exp ? 0 : -90,
+      caretGlyph: t.type === "move" ? "▾" : "",
+      cursor: t.type === "move" ? "pointer" : "default",
+      onToggle: t.type === "move" ? () => toggle(t.id) : () => {},
+      legTitle: untied ? t.desc + " · untied, now two separate legs" : t.desc + " · the movement behind " + fmt(t.amt),
+      legs: t.legs || [],
+      legNote: untied ? "Untied · both legs are back in the unmatched tray, waiting to be paired" : (t.legNote || ""),
+      untieLabel: untied ? "Tie again" : bad ? "Wrong match · untie" : "Untie",
+      untieBorder: untied ? "var(--color-accent)" : bad ? "var(--color-accent)" : "var(--color-neutral-800)",
+      untieColor: untied ? "var(--color-accent-300)" : bad ? "var(--color-warn)" : "var(--color-neutral-500)",
+      onUntie: (e) => { if (e) e.stopPropagation(); untie(t.id); }
+    };
+  }
+
+  renderVals() {
+    const st = this.state;
+    const m = this.month();
+    const t = this.totals();
+    const basis = BASES[st.basis];
+    const animate = this.props.animate !== false;
+    const alt = (n) => (animate ? (n % 2 ? "flashB" : "flashA") : "none");
+    const slide = (n) => (animate ? (n % 2 ? "slideB" : "slideA") : "none");
+
+    const nav = PAGES.map((p) => ({
+      label: p.label,
+      onClick: () => this.setState((s) => ({ page: p.id, pageTick: s.pageTick + 1 })),
+      bg: st.page === p.id ? "var(--color-accent-900)" : "transparent",
+      color: st.page === p.id ? "var(--color-accent-300)" : "var(--color-neutral-500)",
+      border: st.page === p.id ? "var(--color-accent-800)" : "transparent"
+    }));
+
+    const segDefs = [
+      { id: "debt", label: "Debt", bg: "linear-gradient(180deg,var(--color-accent-700),var(--color-accent-800))", labelColor: "var(--color-accent-300)", border: "none" },
+      { id: "savings", label: "Savings", bg: "linear-gradient(180deg,var(--color-accent-600),var(--color-accent-700))", labelColor: "var(--color-accent-200)", border: "none" },
+      { id: "needs", label: "Needs", bg: "linear-gradient(180deg,var(--color-neutral-800),var(--color-neutral-900))", labelColor: "var(--color-neutral-300)", border: "none" },
+      { id: "flex", label: "Flex", bg: "var(--row-raise)", labelColor: "var(--color-accent-400)", border: "1px dashed var(--color-accent-700)" }
+    ];
+    const seg = (label, amount, bg, border, labelColor) => ({
+      flex: amount, bg, border, labelColor, label, shortLabel: label, amount: fmt(amount)
+    });
+    const segs = segDefs.map((s) => seg(s.label, t.planned[s.id], s.bg, s.border, s.labelColor));
+    if (t.left > 0) segs.push(seg("Unbudgeted", t.left, "var(--color-bg)", "1px dashed var(--color-accent-800)", "var(--color-neutral-500)"));
+
+    const summary = [
+      { name: "Debt", primary: fmt(t.moved.debt) + " moved", secondary: fmt(t.due.debt) + " due" },
+      { name: "Savings", primary: fmt(t.moved.savings) + " moved", secondary: fmt(t.due.savings) + " due" },
+      { name: "Needs", primary: fmt(t.moved.needs) + " paid", secondary: fmt(t.due.needs) + " due" },
+      { name: "Flex", primary: fmt(t.moved.flex) + " spent", secondary: fmt(t.planned.flex - t.moved.flex) + " left" }
+    ].map((s) => Object.assign(s, { anim: alt(st.animTick) }));
+
+    const idx = this.order.indexOf(st.monthKey);
+    const month = {
+      title: m.title, sub: m.sub, kicker: m.kicker,
+      prevLabel: m.prevLabel, prevNote: m.prevNote, nextLabel: m.nextLabel, nextNote: m.nextNote,
+      onPrev: () => this.stepMonth(-1),
+      onNext: () => this.stepMonth(1),
+      onToday: () => this.setState((s) => ({ monthKey: "2026-09", pageTick: s.pageTick + 1 })),
+      todayColor: st.monthKey === "2026-09" ? "var(--color-accent-300)" : "var(--color-neutral-500)",
+      todayBorder: st.monthKey === "2026-09" ? "var(--color-accent)" : "var(--color-neutral-800)"
+    };
+
+    const sections = m.sections.map((s) => {
+      const open = st.open[s.id];
+      const metaBits = [fmt(t.moved[s.id]) + (s.id === "needs" ? " paid" : " moved"), fmt(t.due[s.id]) + " due"];
+      if (s.meta) metaBits.push(s.meta);
+      return {
+        id: s.id, title: s.title, plannedText: fmt(t.planned[s.id]), meta: metaBits.join(" · "),
+        destHead: s.destHead, statHead: s.statHead,
+        caret: open ? 0 : -90, gridRows: open ? "1fr" : "0fr",
+        onToggle: () => this.setState((x) => ({ open: Object.assign({}, x.open, { [s.id]: !x.open[s.id] }) })),
+        rows: s.rows.map((r) => {
+          const hasLegs = !!(r.legs && r.legs.length);
+          const exp = hasLegs && !!st.expanded[r.id];
+          const active = st.focused === r.id;
+          const live = !!r.moved || !!r.inFlight;
+          return {
+            label: r.label, amountText: fmt(r.amount),
+            onChange: (e) => this.setAmount(s.id, r.id, e.target.value),
+            onFocus: () => this.setState({ focused: r.id }),
+            onBlur: () => this.setState((x) => ({ focused: x.focused === r.id ? null : x.focused })),
+            stop: (e) => e.stopPropagation(),
+            inputBg: active ? "var(--color-accent-900)" : "var(--color-surface)",
+            inputBorder: active ? "var(--color-accent)" : r.inFlight ? "var(--color-accent)" : "var(--color-neutral-800)",
+            inputColor: active || r.inFlight ? "var(--color-accent-100)" : "var(--color-text)",
+            wireBg: active || live ? "linear-gradient(to right,var(--color-accent-700),var(--color-accent))" : "repeating-linear-gradient(to right,var(--color-neutral-700) 0 4px,transparent 4px 8px)",
+            arrowColor: active || live ? "var(--color-accent-400)" : "var(--color-neutral-600)",
+            showDot: animate && (active || !!r.inFlight),
+            destName: r.dest, destStat: r.stat || "", destSub: r.sub || "",
+            destSubColor: r.inFlight ? "var(--color-accent-400)" : (r.sub || "").indexOf("→") === 0 ? "var(--color-accent-400)" : "var(--color-neutral-600)",
+            chips: (r.chips || []).map((c) => ({ text: c.text, border: c.accent ? "var(--color-accent-800)" : "var(--color-neutral-800)", color: c.accent ? "var(--color-accent-400)" : "var(--color-neutral-500)" })),
+            legs: r.legs || [], legTitle: r.legTitle || "", legNote: r.legNote || "",
+            legRows: exp ? "1fr" : "0fr",
+            cursor: hasLegs ? "pointer" : "default",
+            rowBg: exp ? "var(--row-raise)" : "transparent",
+            onToggle: hasLegs ? () => this.setState((x) => ({ expanded: Object.assign({}, x.expanded, { [r.id]: !x.expanded[r.id] }) })) : () => {}
+          };
+        })
+      };
+    });
+
+    const flexRows = m.flex.map((f) => {
+      const over = f.spent > f.amount;
+      const pct = f.amount === 0 ? (f.spent > 0 ? 100 : 0) : Math.min(100, Math.round((f.spent / f.amount) * 100));
+      return {
+        label: f.label, labelColor: f.unassigned ? "var(--color-accent-400)" : "var(--color-text)",
+        amountText: fmt(f.amount),
+        onChange: (e) => this.setAmount("flex", f.id, e.target.value),
+        inputBg: f.unassigned ? "var(--color-accent-900)" : "var(--color-surface)",
+        inputBorder: f.unassigned ? "var(--color-accent-700)" : "var(--color-neutral-800)",
+        inputColor: f.unassigned ? "var(--color-accent-300)" : "var(--color-text)",
+        pct, barColor: over ? "var(--color-accent-400)" : "var(--color-accent-600)",
+        spentText: fmt(f.spent), spentColor: f.spent === 0 ? "var(--color-neutral-600)" : "var(--color-neutral-300)",
+        leftText: over ? fmt(f.spent - f.amount) + " over" : fmt(f.amount - f.spent) + " left",
+        leftColor: over ? "var(--color-warn)" : "var(--color-accent-400)"
+      };
+    });
+
+    const home = {
+      headline: "40% through the month, " + Math.round((t.moved.flex + t.moved.needs) / m.income * 100) + "% of the plan spent",
+      bases: [["week", "Last week"], ["month", "Last month"], ["avg", "3-mo avg"], ["year", "Last year"]].map(([id, label]) => ({
+        label,
+        onClick: () => this.setState((s) => ({ basis: id, animTick: s.animTick + 1 })),
+        bg: st.basis === id ? "var(--color-accent-900)" : "transparent",
+        color: st.basis === id ? "var(--color-accent-300)" : "var(--color-neutral-500)"
+      })),
+      basisLabel: basis.short, anim: alt(st.animTick),
+      spentPct: 38, markerPct: basis.markerPct,
+      paceNote: "$3,144 of " + fmt(m.income) + " spent · marker is where " + basis.label.toLowerCase() + " sat on day 12",
+      nwDelta: basis.nwDelta, debtDelta: basis.debtDelta,
+      debtPct: Math.round((t.moved.debt / Math.max(1, t.planned.debt)) * 100),
+      debtNote: fmt(t.moved.debt) + " paid of " + fmt(t.planned.debt) + " planned",
+      flowStats: basis.flow.map((f) => ({ name: f.name, value: f.value, delta: f.delta, deltaColor: f.accent ? "var(--color-accent-400)" : "var(--color-neutral-500)", anim: alt(st.animTick) })),
+      flowBars: basis.bars.map((b) => ({ label: b.label, value: b.value, pct: b.pct, color: b.accent ? "linear-gradient(90deg,var(--color-accent-700),var(--color-accent))" : "var(--color-neutral-800)", textColor: b.accent ? "var(--color-text)" : "var(--color-neutral-400)" })),
+      cats: basis.cats.map((c) => ({ name: c.name, amount: c.amount, pct: c.pct, color: c.pct >= 100 ? "var(--color-accent-400)" : "var(--color-accent-600)", delta: c.delta, deltaColor: c.over ? "var(--color-warn)" : "var(--color-accent-400)", anim: alt(st.animTick) })),
+      upcoming: [
+        { label: "Sep 20 · Water", amount: "$103" },
+        { label: "Sep 20 · Christmas + trips", amount: "$250" },
+        { label: "Sep 22 · Camper loan", amount: "$465" },
+        { label: "Sep 22 · Phones", amount: "$120" },
+        { label: "Sep 25 · Citi ×2", amount: "$300" }
+      ],
+      upcomingTotal: "$1,238",
+      goals: [
+        { name: "Vacation", note: "$1,250 of $3,000", pct: 42 },
+        { name: "Christmas", note: "$640 of $1,200", pct: 53 },
+        { name: "HOA + birthdays", note: "$890 of $1,500", pct: 59 },
+        { name: "Weekend trips", note: "$310 of $1,000", pct: 31 }
+      ],
+      movementRows: st.movementOpen ? "1fr" : "0fr",
+      onToggleMovement: () => this.setState((s) => ({ movementOpen: !s.movementOpen })),
+      onOpenBudget: () => this.setState((s) => ({ page: "budget", pageTick: s.pageTick + 1 }))
+    };
+
+    // ── 2a ─────────────────────────────────────────────
+    const dToggle = (id) => this.setState((s) => ({ dExpanded: Object.assign({}, s.dExpanded, { [id]: !s.dExpanded[id] }) }));
+    const dUncat = this.uncategorized("d");
+
+    const tQueue = [];
+    if (!st.dTied) tQueue.push("pair");
+    if (!st.dBadFixed) tQueue.push("bad");
+    const tCur = tQueue[Math.min(st.dTieIdx, tQueue.length - 1)] || null;
+    const tAdvance = () => this.setState((s) => ({ dTieIdx: 0 }));
+
+    const dAllowed = ACCT_GROUPS[st.dAcct];
+    const dq = st.dQuery.trim().toLowerCase();
+    let dList = TX.filter((t) => t.type !== "leg" && !(t.id === "t13" && st.dBadFixed));
+    if (st.dBadFixed) {
+      // the wrong match, once untied, becomes two honest single-account rows
+      dList = dList.concat([
+        { id: "t13a", d: "Sep 7", desc: "Transfer out", cat: "Uncategorised", acct: "Wells Fargo Savings", amt: -120, type: "spend", suggest: "Fuel", loose: true },
+        { id: "t13b", d: "Sep 7", desc: "Returned purchase credit", cat: "Refund", acct: "Citi · everyday", amt: 120, type: "income", loose: true }
+      ]);
+    }
+    if (dAllowed) dList = dList.filter((t) => dAllowed.indexOf(t.acct) >= 0 || (t.to && dAllowed.indexOf(t.to) >= 0));
+    if (st.dReview) dList = dList.filter((t) => (t.type === "spend" && !this.catOf(t, "d")) || (t.tied === "bad" && !st.dBadFixed));
+    if (dq) dList = dList.filter((t) => (t.desc + " " + t.acct + " " + t.amt).toLowerCase().indexOf(dq) >= 0);
+
+    const editOf = (id, key, fallback) => {
+      const e = st.dEdits[id] || {};
+      return e[key] !== undefined ? e[key] : fallback;
+    };
+    const setEdit = (id, key, val) => this.setState((s) => ({
+      dEdits: Object.assign({}, s.dEdits, { [id]: Object.assign({}, s.dEdits[id], { [key]: val }) })
+    }));
+
+    const dSelCount = Object.keys(st.dSelected).filter((k) => st.dSelected[k]).length;
+    const dCatCur = dUncat[Math.min(st.dCatIdx, Math.max(0, dUncat.length - 1))] || null;
+
+    const d = {
+      countLabel: this.countLabel("d"),
+      notes: [
+        "Motion: an answered review card flies left, the next slides in, and the panel collapses upward when its queue empties",
+        "Motion: untying a wrong match splits the row into its two legs, each sliding to its own date position",
+        "Motion: tying two legs slides them together into one row, the balance figure counting up",
+        "Motion: the detail drawer slides in from the right over a dimmed list; the row it came from stays lit behind it"
+      ],
+      query: st.dQuery,
+      onQuery: (e) => this.setState({ dQuery: e.target.value }),
+      reviewLabel: st.dReview ? "Showing " + dUncat.length + " for review · show all" : dUncat.length + " need a category",
+      reviewBg: st.dReview ? "var(--color-accent-900)" : "transparent",
+      reviewBorder: st.dReview ? "var(--color-accent)" : "var(--color-accent-800)",
+      reviewColor: st.dReview ? "var(--color-accent-200)" : "var(--color-accent-400)",
+      onToggleReview: () => this.setState((s) => ({ dReview: !s.dReview })),
+      accountChips: Object.keys(ACCT_GROUPS).map((k) => ({
+        label: k,
+        onClick: () => this.setState({ dAcct: k }),
+        bg: st.dAcct === k ? "var(--color-accent-900)" : "transparent",
+        border: st.dAcct === k ? "var(--color-accent-800)" : "var(--color-neutral-800)",
+        color: st.dAcct === k ? "var(--color-accent-300)" : "var(--color-neutral-500)"
+      })),
+      resultNote: dList.length + " shown · movements shown once, never twice",
+
+      showTransfers: !!tCur,
+      showCats: !!dCatCur,
+      showClear: !tCur && !dCatCur,
+      onReset: () => this.setState({ dCats: {}, dTied: false, dBadFixed: false, dTieIdx: 0, dCatIdx: 0, dRules: {} }),
+
+      tProgress: "Transfers to review · " + (tQueue.length ? (tQueue.indexOf(tCur) + 1) + " of " + tQueue.length : "clear"),
+      tDots: (tQueue.length ? tQueue : [0]).map((x, i) => ({ w: x === tCur ? 26 : 12, bg: x === tCur ? "var(--color-accent-400)" : "var(--color-neutral-900)" })),
+      tCard: tCur === "bad" ? {
+        kicker: "Auto-match looks wrong",
+        title: "Wells Fargo Savings → Citi · everyday",
+        meta: "Currents paired these on Sep 7 because the amounts agreed",
+        amount: "$120.00 moved",
+        legs: [
+          { name: "Transfer out", meta: "Sep 7 · Wells Fargo Savings · out", amount: "−$120.00", style: "dashed", border: "var(--color-accent)" },
+          { name: "Citi · everyday credit", meta: "Sep 7 · returned purchase, not a payment", amount: "+$120.00", style: "solid", border: "var(--color-warn)" }
+        ],
+        note: "The Citi credit was a refund on a returned purchase, so this is not one movement. Untie it and each leg stands on its own — the transfer out stays uncategorised for you to place, the credit stays a refund.",
+        noteColor: "var(--color-warn)",
+        actions: [
+          { key: "U", label: "Untie · they are separate", border: "var(--color-accent)", color: "var(--color-accent-300)", onClick: () => this.setState({ dBadFixed: true, dTieIdx: 0 }) },
+          { key: "K", label: "Keep the match", border: "var(--color-neutral-800)", color: "var(--color-neutral-500)", onClick: () => this.setState({ dBadFixed: true, dTieIdx: 0 }) },
+          { key: "F", label: "Match it to something else…", border: "var(--color-neutral-800)", color: "var(--color-neutral-500)", onClick: () => {} }
+        ],
+        footnote: "U untie · K keep · ↑↓ move through the queue"
+      } : {
+        kicker: "Two legs, one movement?",
+        title: "BofA camper loan autopay",
+        meta: "Sep 1 out of Wells Fargo Checking, Sep 2 into the camper loan",
+        amount: "$465.00",
+        legs: [
+          { name: "BOFA PAYMT", meta: "Sep 1 · Wells Fargo Checking · out", amount: "−$465.00", style: "dashed", border: "var(--color-accent)" },
+          { name: "Payment received", meta: "Sep 2 · BofA camper loan · in", amount: "+$465.00", style: "dashed", border: "var(--color-accent)" }
+        ],
+        note: "Tie them and it becomes one movement: camper loan −$14,320 → −$13,855, counted once. Currents will match it every month after this.",
+        noteColor: "var(--color-accent-400)",
+        actions: [
+          { key: "Y", label: "Tie them", border: "var(--color-accent)", color: "var(--color-accent-300)", onClick: () => this.setState({ dTied: true, dTieIdx: 0 }) },
+          { key: "N", label: "Not a pair", border: "var(--color-neutral-800)", color: "var(--color-neutral-500)", onClick: () => this.setState({ dTied: true, dTieIdx: 0 }) },
+          { key: "F", label: "Find a different match…", border: "var(--color-neutral-800)", color: "var(--color-neutral-500)", onClick: () => {} }
+        ],
+        footnote: "Y tie · N not a pair · ↑↓ move through the queue"
+      },
+
+      cProgress: dUncat.length ? "Needs a category · " + (Math.min(st.dCatIdx, dUncat.length - 1) + 1) + " of " + dUncat.length : "Needs a category · clear",
+      cDots: (dUncat.length ? dUncat : [0]).map((x, i) => ({ w: i === Math.min(st.dCatIdx, dUncat.length - 1) ? 26 : 12, bg: i === Math.min(st.dCatIdx, dUncat.length - 1) ? "var(--color-accent-400)" : "var(--color-neutral-900)" })),
+      onCatBack: () => this.setState((s) => ({ dCatIdx: Math.max(0, s.dCatIdx - 1) })),
+      onCatSkip: () => this.setState((s) => ({ dCatIdx: s.dCatIdx + 1 })),
+      cCard: dCatCur ? {
+        kicker: editOf(dCatCur.id, "date", dCatCur.d) + " · " + dCatCur.acct,
+        title: editOf(dCatCur.id, "nickname", dCatCur.desc),
+        meta: dCatCur.seen ? "Seen " + dCatCur.seen : "First time you've seen this merchant",
+        amount: fmtc(dCatCur.amt),
+        options: this.optionsFor(dCatCur, (label) => this.setCat(dCatCur.id, label, "d")),
+        moreRows: st.dQueueMore ? "1fr" : "0fr",
+        moreLabel: st.dQueueMore ? "Hide the full list" : "Search every category…",
+        onMore: () => this.setState((s) => ({ dQueueMore: !s.dQueueMore, dQueueSearch: "" })),
+        search: st.dQueueSearch,
+        onSearch: (e) => this.setState({ dQueueSearch: e.target.value }),
+        picker: this.buildPicker(
+          st.dQueueSearch, null, dCatCur.suggest,
+          (label) => this.setState((s) => ({ dCats: Object.assign({}, s.dCats, { [dCatCur.id]: label }), dQueueMore: false, dQueueSearch: "" })),
+          (label) => this.setState((s) => ({ dCats: Object.assign({}, s.dCats, { [dCatCur.id]: label }), dQueueMore: false, dQueueSearch: "" }))
+        ),
+        ruleLabel: "Always categorise " + editOf(dCatCur.id, "nickname", dCatCur.desc) + " as " + (dCatCur.suggest || "this"),
+        ruleNote: st.dRules[dCatCur.id] ? "Applies to past ones too · every one from now on" : "R to toggle",
+        ruleMark: st.dRules[dCatCur.id] ? "✓" : "",
+        ruleMarkBg: st.dRules[dCatCur.id] ? "var(--color-accent-700)" : "transparent",
+        ruleMarkBorder: st.dRules[dCatCur.id] ? "var(--color-accent)" : "var(--color-neutral-800)",
+        ruleBg: st.dRules[dCatCur.id] ? "var(--color-accent-900)" : "transparent",
+        ruleBorder: st.dRules[dCatCur.id] ? "var(--color-accent)" : "var(--color-neutral-800)",
+        onRule: () => this.setState((s) => ({ dRules: Object.assign({}, s.dRules, { [dCatCur.id]: !s.dRules[dCatCur.id] }) }))
+      } : { options: [] },
+
+      bulkRows: dSelCount > 0 ? "1fr" : "0fr",
+      bulkLabel: dSelCount + " selected · " + fmt(dList.filter((t) => st.dSelected[t.id]).reduce((s, t) => s + Math.abs(t.amt), 0)),
+      bulkActions: [
+        { label: "Set category…", border: "var(--color-accent)", color: "var(--color-accent-300)" },
+        { label: "Make a rule from these", border: "var(--color-accent-800)", color: "var(--color-accent-400)" },
+        { label: "Tie as one movement", border: "var(--color-neutral-800)", color: "var(--color-neutral-500)" },
+        { label: "Hide from spending", border: "var(--color-neutral-800)", color: "var(--color-neutral-500)" }
+      ].map((b) => Object.assign({ onClick: () => {} }, b)),
+      onClearSel: () => this.setState({ dSelected: {} }),
+
+      rows: dList.map((t) => {
+        const cat = t.loose ? t.cat : this.catOf(t, "d");
+        const needs = t.type === "spend" && (t.loose ? cat === "Uncategorised" : !cat);
+        const bad = t.tied === "bad";
+        const sel = !!st.dSelected[t.id];
+        const picking = st.dPicker === t.id;
+        const base = this.legRow(t, st.dExpanded, dToggle, {}, () => this.setState({ dBadFixed: true }));
+        return Object.assign(base, {
+          date: editOf(t.id, "date", t.d),
+          desc: editOf(t.id, "nickname", t.desc),
+          account: t.acct,
+          openBg: st.dDetail === t.id ? "var(--color-accent-900)" : "transparent",
+          onOpen: (e) => { e.stopPropagation(); this.setState({ dDetail: t.id, dField: null }); },
+          isMovement: t.type === "move",
+          fromName: t.from || "", toName: t.to || "",
+          subColor: bad ? "var(--color-warn)" : "var(--color-accent-400)",
+          subNote: bad ? "· auto-match looks wrong" : "· counted once",
+          mark: needs ? "var(--color-accent)" : bad ? "var(--color-warn)" : "transparent",
+          rowBg: picking || sel ? "var(--color-accent-900)" : "transparent",
+          checkMark: sel ? "✓" : "",
+          checkBg: sel ? "var(--color-accent-700)" : "transparent",
+          checkBorder: sel ? "var(--color-accent)" : "var(--color-neutral-800)",
+          onSelect: (e) => { e.stopPropagation(); this.setState((s) => ({ dSelected: Object.assign({}, s.dSelected, { [t.id]: !s.dSelected[t.id] }) })); },
+          catText: needs ? "Uncategorised · " + (t.suggest || "pick") : cat,
+          catStyle: needs ? "dashed" : "solid",
+          catBorder: needs ? "var(--color-accent)" : "var(--color-neutral-800)",
+          catBg: needs ? "var(--color-accent-900)" : "transparent",
+          catColor: needs ? "var(--color-accent-300)" : "var(--color-neutral-400)",
+          onCat: (e) => { e.stopPropagation(); this.setState((s) => ({ dPicker: s.dPicker === t.id ? null : t.id })); },
+          pickRows: picking ? "1fr" : "0fr",
+          pickHint: t.seen ? "Seen " + t.seen + " · " + (t.suggest || "") + " every time" : "Type to search every category",
+          rowSearch: st.dRowSearch,
+          onRowSearch: (e) => this.setState({ dRowSearch: e.target.value }),
+          picker: this.buildPicker(
+            picking ? st.dRowSearch : "", cat, t.suggest,
+            (label) => this.setState((s) => ({ dCats: Object.assign({}, s.dCats, { [t.id]: label }), dPicker: null, dRowSearch: "" })),
+            (label) => this.setState((s) => ({ dCats: Object.assign({}, s.dCats, { [t.id]: label }), dPicker: null, dRowSearch: "" }))
+          ),
+          legNoteColor: bad ? "var(--color-warn)" : "var(--color-accent-400)",
+          untieLabel: bad ? "Wrong match · untie" : "Untie",
+          untieBorder: bad ? "var(--color-accent)" : "var(--color-neutral-800)",
+          untieColor: bad ? "var(--color-warn)" : "var(--color-neutral-500)",
+          amount: t.type === "move" ? fmtc(t.amt) + " moved" : fmtc(t.amt),
+          amountColor: t.type === "income" ? "var(--color-accent-400)" : t.type === "move" ? "var(--color-neutral-400)" : "var(--color-text)"
+        });
+      })
+    };
+
+    // ── 2a detail drawer ──
+    const dt = st.dDetail ? (TX.find((x) => x.id === st.dDetail) || null) : null;
+    const raw = dt ? rawFor(dt) : null;
+    const dtCat = dt ? this.catOf(dt, "d") : null;
+    d.detailOpen = !!dt;
+    d.drawerX = dt ? "0%" : "104%";
+    d.scrimOpacity = dt ? 1 : 0;
+    d.scrimEvents = dt ? "auto" : "none";
+    d.onCloseDetail = () => this.setState({ dDetail: null, dField: null });
+    d.detail = dt ? {
+      title: editOf(dt.id, "nickname", dt.desc),
+      amount: dt.type === "move" ? fmtc(dt.amt) + " moved" : fmtc(dt.amt),
+      amountColor: dt.type === "income" ? "var(--color-accent-400)" : dt.type === "move" ? "var(--color-neutral-400)" : "var(--color-text)",
+      accountLine: dt.acct + (dt.to ? "  →  " + dt.to : ""),
+      nicknamed: editOf(dt.id, "nickname", dt.desc) !== dt.desc ? "Renamed from " + dt.desc : "",
+
+      rawOpenRows: st.dRawOpen ? "1fr" : "0fr",
+      rawCaret: st.dRawOpen ? 0 : -90,
+      onToggleRaw: () => this.setState((s) => ({ dRawOpen: !s.dRawOpen })),
+      rawDesc: raw.desc,
+      rawMemo: raw.memo,
+      rawLines: [
+        { k: "Posted", v: raw.posted },
+        { k: /^(Initiated|Received)/.test(raw.auth) ? "Originated" : "Authorized", v: raw.auth },
+        { k: "Reference", v: raw.ref },
+        { k: "Merchant code", v: raw.mcc },
+        { k: "Channel", v: raw.channel },
+        { k: "Location", v: raw.where },
+        { k: "Account", v: dt.acct },
+        { k: "Amount as sent", v: (dt.amt < 0 ? "-" : "") + Math.abs(dt.amt).toFixed(2) + " USD" }
+      ],
+
+      fields: [
+        {
+          key: "nickname", label: "Nickname", hint: "What you call this merchant. Applies everywhere.",
+          value: editOf(dt.id, "nickname", dt.desc),
+          onChange: (e) => setEdit(dt.id, "nickname", e.target.value)
+        },
+        {
+          key: "date", label: "Date", hint: "The bank posted " + raw.posted + ".",
+          value: editOf(dt.id, "date", dt.d),
+          onChange: (e) => setEdit(dt.id, "date", e.target.value)
+        },
+        {
+          key: "description", label: "Description", hint: "Yours to write. The statement text above never changes.",
+          value: editOf(dt.id, "description", ""),
+          placeholder: "e.g. weekly shop, split with Sam",
+          onChange: (e) => setEdit(dt.id, "description", e.target.value)
+        }
+      ],
+
+      catValue: dtCat || "Uncategorised",
+      catColor: dtCat ? "var(--color-text)" : "var(--color-accent-300)",
+      catPlaceholder: dtCat ? "Change category" : "Pick a category",
+      catSection: dtCat ? (SECTION_OF[dtCat] || "") : "",
+      catOpen: st.dCatOpen,
+      catRows: st.dCatOpen ? "1fr" : "0fr",
+      catCaret: st.dCatOpen ? 0 : -90,
+      onCatToggle: () => this.setState((s) => ({ dCatOpen: !s.dCatOpen, dCatSearch: "" })),
+      catSearch: st.dCatSearch,
+      onCatSearch: (e) => this.setState({ dCatSearch: e.target.value }),
+      picker: this.buildPicker(
+        st.dCatSearch, dtCat, dt.suggest,
+        (label) => this.setState((s) => ({ dCats: Object.assign({}, s.dCats, { [dt.id]: label }), dCatOpen: false, dCatSearch: "" })),
+        (label) => this.setState((s) => ({ dCats: Object.assign({}, s.dCats, { [dt.id]: label }), dCatOpen: false, dCatSearch: "" }))
+      ),
+      ruleLine: "Always categorise " + editOf(dt.id, "nickname", dt.desc) + " this way",
+      ruleMark: st.dRules[dt.id] ? "✓" : "",
+      ruleBg: st.dRules[dt.id] ? "var(--color-accent-700)" : "transparent",
+      ruleBorder: st.dRules[dt.id] ? "var(--color-accent)" : "var(--color-neutral-800)",
+      onRule: () => this.setState((s) => ({ dRules: Object.assign({}, s.dRules, { [dt.id]: !s.dRules[dt.id] }) })),
+
+      noteValue: editOf(dt.id, "note", ""),
+      onNote: (e) => setEdit(dt.id, "note", e.target.value),
+
+      isMovement: dt.type === "move",
+      legs: dt.legs || [],
+      legNote: dt.legNote || "",
+      legNoteColor: dt.tied === "bad" ? "var(--color-warn)" : "var(--color-accent-400)",
+      untieLabel: dt.tied === "bad" ? "Wrong match · untie" : "Untie",
+      onUntie: () => this.setState({ dBadFixed: true, dDetail: null })
+    } : { fields: [], rawLines: [], catOptions: [], legs: [] };
+
+    const stub = STUBS[st.page];
+
+    const openAcct = st.acctOpen === undefined ? "wf-check" : st.acctOpen;
+    const acctGroups = ACCT_PAGE_GROUPS.map((g) => ({
+      label: g.label, total: g.total, note: g.note, addLabel: g.addLabel,
+      rows: g.rows.map((r) => {
+        const open = openAcct === r.id && !!r.schedule;
+        const level = r.level;
+        return {
+          name: r.name, sub: r.sub, today: r.today, expected: r.expected, projected: r.projected,
+          conn: r.conn,
+          connColor: r.live ? "var(--color-neutral-500)" : "var(--color-neutral-600)",
+          dotBg: r.live ? "var(--color-accent)" : "transparent",
+          dotBorder: r.live ? "var(--color-accent)" : "var(--color-neutral-700)",
+          expectedColor: r.muted ? "var(--color-neutral-600)" : (r.accent ? "var(--color-accent-400)" : "var(--color-neutral-300)"),
+          projColor: level === "over" ? "var(--color-over)" : level === "warn" ? "var(--color-warn)" : "var(--color-neutral-300)",
+          projWeight: level === "over" ? "600" : "400",
+          edge: open ? "var(--color-accent)" : "transparent",
+          rowBg: open ? "var(--row-raise)" : "transparent",
+          open,
+          onToggle: r.schedule ? () => this.setState((s) => ({ acctOpen: (s.acctOpen === undefined ? "wf-check" : s.acctOpen) === r.id ? null : r.id })) : () => {},
+          schedule: (r.schedule || []).map((s) => ({ label: s.label, amount: s.amount, color: s.up ? "var(--color-accent-400)" : "var(--color-neutral-300)" })),
+          endFrom: r.endFrom, endTo: r.endTo, role: r.role,
+          floorPct: r.floorPct, floorNote: r.floorNote,
+          floorColor: level === "over" ? "var(--color-over)" : level === "warn" ? "var(--color-warn)" : "var(--color-accent-600)",
+          onOpenTransactions: () => this.setState((s) => ({ page: "transactions", pageTick: s.pageTick + 1 }))
+        };
+      })
+    }));
+
+    return {
+      acctGroups, isAccounts: st.page === "accounts",
+      nav, month, bar: segs, summary, sections, home, d,
+      isBudget: st.page === "budget", isHome: st.page === "home", isTransactions: st.page === "transactions", isStub: !!stub,
+      stubTitle: stub ? stub.title : "", stubNote: stub ? stub.note : "",
+      pageAnim: animate ? (st.pageTick % 2 ? "fadeB" : "fadeA") : "none",
+      ltb: {
+        text: fmt(st.ltbDisplay),
+        color: t.left < 0 ? "var(--color-warn)" : t.left > 0 ? "var(--color-accent-300)" : "var(--color-accent-400)",
+        anim: alt(st.animTick)
+      },
+      flex: {
+        plannedText: fmt(t.planned.flex),
+        meta: fmt(t.moved.flex) + " spent · " + fmt(t.planned.flex - t.moved.flex) + " left",
+        count: m.flex.length + " categories",
+        caret: st.open.flex ? 0 : -90,
+        gridRows: st.open.flex ? "1fr" : "0fr",
+        onToggle: () => this.setState((x) => ({ open: Object.assign({}, x.open, { flex: !x.open.flex }) })),
+        rows: flexRows
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

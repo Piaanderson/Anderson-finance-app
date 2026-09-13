@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/nocturne-29dc598a-853e-4a00-a520-2f69c2311f06/styles.css">
+<script src="_ds/nocturne-29dc598a-853e-4a00-a520-2f69c2311f06/_ds_bundle.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+  body { margin:0; background:var(--color-bg); color:var(--color-text); font-family:var(--font-body); }
+  a { color:var(--color-accent-300); text-underline-offset:3px; } a:hover { color:var(--color-accent-200); }
+</style>
+</helmet>
+
+<section style="padding:60px 60px 80px; display:flex; flex-direction:column; gap:34px">
+  <div style="max-width:960px; display:flex; flex-direction:column; gap:12px">
+    <div style="font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--color-accent)">Turn 1 — accounts</div>
+    <h1 style="margin:0; font-size:42px; font-weight:500; letter-spacing:-0.02em; font-family:var(--font-heading)">Accounts</h1>
+    <p style="margin:0; color:var(--color-neutral-400); font-size:15px; text-wrap:pretty">Three different answers to "what is the accounts page for". <a href="#1a">1a</a> treats it as the balance sheet — every account on one grid that adds up to net worth, detail inline. <a href="#1b">1b</a> treats it as a per-account workspace — thin roster, deep panel. <a href="#1c">1c</a> treats it as thirty days of runway — each account a card showing what is still coming at it, detail on its own page. The sidebar list stays on the budget page in all three; the house carries equity as its headline with the mortgage underneath; balances, dates and the roster are the same September 2026 scenario throughout.</p>
+  </div>
+
+  <div style="display:flex; gap:64px; align-items:flex-start">
+
+    <!-- ═══════════════════════ 1a ═══════════════════════ -->
+    <div id="1a" style="width:1320px; flex:0 0 1320px; display:flex; flex-direction:column; gap:18px">
+      <div style="display:flex; align-items:baseline; gap:14px; flex-wrap:wrap">
+        <span style="font-family:ui-monospace,Menlo,monospace; font-size:12px; padding:4px 9px; border:1px solid var(--color-accent); border-radius:4px; color:var(--color-accent-300)">1a</span>
+        <h2 style="margin:0; font-size:26px; font-weight:500; letter-spacing:-0.015em">The balance sheet</h2>
+        <span style="color:var(--color-neutral-500); font-size:14px">One grid, four groups, arithmetic that ends at net worth. Detail expands in place.</span>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap">
+        <span style="font-size:12px; color:var(--color-accent-300); background:var(--color-accent-900); border:1px solid var(--color-accent-800); border-radius:999px; padding:4px 11px">Motion: row springs open, scheduled lines stagger in 40ms apart</span>
+        <span style="font-size:12px; color:var(--color-accent-300); background:var(--color-accent-900); border:1px solid var(--color-accent-800); border-radius:999px; padding:4px 11px">Motion: projected-low figure rolls when anything upstream changes</span>
+        <span style="font-size:12px; color:var(--color-accent-300); background:var(--color-accent-900); border:1px solid var(--color-accent-800); border-radius:999px; padding:4px 11px">Motion: group subtotals count up, then the net-worth line re-solves left to right</span>
+      </div>
+
+      <div style="border:1px solid var(--color-neutral-800); border-radius:12px; overflow:hidden; background:var(--color-bg); box-shadow:0 16px 40px rgba(0,0,0,0.55)">
+        <div style="display:grid; grid-template-columns:172px minmax(0,1fr)">
+          <dc-import name="AppRail" active="Accounts" hint-size="172px,100%"></dc-import>
+
+          <div style="display:flex; flex-direction:column; min-width:0">
+            <div style="padding:18px 24px 15px; border-bottom:1px solid var(--color-neutral-900); background:linear-gradient(180deg,var(--color-surface),var(--color-bg)); display:flex; flex-direction:column; gap:13px">
+              <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap">
+                <div style="display:flex; flex-direction:column; gap:4px">
+                  <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">September 2026 · day 12 of 30 · income $8,240</span>
+                  <span style="font-size:22px; font-weight:500">15 accounts</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px">
+                  <span style="font-size:12.5px; padding:8px 13px; border-radius:999px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Refresh all</span>
+                  <span style="font-size:12.5px; padding:8px 14px; border-radius:999px; border:1px solid var(--color-accent); color:var(--color-accent-300)">Add account</span>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--color-neutral-600)">
+                <span style="display:flex; align-items:center; gap:7px"><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block"></span>13 connected · refreshed 6:40 am</span>
+                <span style="width:1px; height:13px; background:var(--color-neutral-800)"></span>
+                <span style="display:flex; align-items:center; gap:7px"><span style="width:6px; height:6px; border-radius:50%; border:1px solid var(--color-neutral-700); display:block"></span>2 manual</span>
+                <span style="width:1px; height:13px; background:var(--color-neutral-800)"></span>
+                <span>Ally Checking is projected to go <span style="color:oklch(0.63 0.20 24); font-weight:600">−$41</span> before the next paycheck</span>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:minmax(0,1.6fr) 132px 112px 176px 160px; gap:0 14px; align-items:center; padding:9px 24px; background:var(--color-surface); border-bottom:1px solid var(--color-neutral-900); font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--color-neutral-600)">
+              <span>Account</span>
+              <span>Connection</span>
+              <span style="text-align:right">Balance today</span>
+              <span style="text-align:right">Before month end</span>
+              <span style="text-align:right; display:flex; align-items:center; justify-content:flex-end; gap:6px">Projected<span style="position:relative; display:inline-flex; align-items:center; color:var(--color-neutral-600); cursor:help" style-hover="--tip-op:1; --tip-vis:visible; color:var(--color-accent)"><svg width="13" height="13" viewBox="0 0 256 256" fill="currentColor" style="display:block"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"/></svg><span style="position:absolute; bottom:calc(100% + 7px); right:-6px; white-space:nowrap; background:var(--color-surface); border:1px solid var(--color-accent-800); border-radius:var(--radius-sm, 6px); padding:6px 9px; font-size:11.5px; letter-spacing:0; text-transform:none; color:var(--color-accent-100); box-shadow:var(--shadow-md); opacity:var(--tip-op,0); visibility:var(--tip-vis,hidden); transition:opacity 120ms ease; pointer-events:none">Projected balance by next paycheck</span></span></span>
+            </div>
+
+            <!-- CASH -->
+            <div style="display:flex; align-items:baseline; gap:12px; padding:15px 24px 8px">
+              <span style="font-size:13px; color:var(--color-accent-400)">▾</span>
+              <span style="font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-accent-300)">Cash</span>
+              <span style="font-size:18px; font-weight:500">$57,455</span>
+              <span style="font-size:12px; color:var(--color-neutral-600)">6 accounts · +$1,204 this month</span>
+            </div>
+
+            <div style="border-left:2px solid var(--color-accent); background:var(--color-surface)">
+              <div style="display:grid; grid-template-columns:minmax(0,1.6fr) 132px 112px 176px 160px; gap:0 14px; align-items:center; padding:10px 24px 10px 22px; font-size:13px">
+                <span style="display:flex; flex-direction:column; gap:2px; min-width:0">
+                  <span>Wells Fargo Checking</span>
+                  <span style="font-size:11.5px; color:var(--color-neutral-600)">Checking · ••4187 · pays every Needs and Debt category</span>
+                </span>
+                <span style="display:flex; align-items:center; gap:7px; font-size:12px; color:var(--color-neutral-500)"><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block"></span>6:40 am</span>
+                <span style="text-align:right">$4,182</span>
+                <span style="text-align:right; color:var(--color-neutral-300)">+$4,120 in · $988 due</span>
+                <span style="text-align:right; color:var(--color-neutral-300)">$4,182</span>
+              </div>
+              <div style="margin:0 24px 14px 22px; border:1px solid var(--color-accent-800); border-radius:10px; background:var(--color-bg); padding:15px 17px; display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:22px">
+                <div style="display:flex; flex-direction:column; gap:9px">
+                  <span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Scheduled before Sep 30</span>
+                  <div style="display:flex; justify-content:space-between; font-size:12.5px"><span style="color:var(--color-neutral-400)">Sep 15 · Paycheck 2 of 2</span><span style="color:var(--color-accent-300)">+$4,120</span></div>
+                  <div style="display:flex; justify-content:space-between; font-size:12.5px"><span style="color:var(--color-neutral-400)">Sep 20 · Water → City utilities <span style="color:var(--color-neutral-600)">Needs</span></span><span style="color:var(--color-neutral-300)">−$103</span></div>
+                  <div style="display:flex; justify-content:space-between; font-size:12.5px"><span style="color:var(--color-neutral-400)">Sep 22 · Phones → Verizon <span style="color:var(--color-neutral-600)">Needs</span></span><span style="color:var(--color-neutral-300)">−$120</span></div>
+                  <div style="display:flex; justify-content:space-between; font-size:12.5px"><span style="color:var(--color-neutral-400)">Sep 25 · Citi everyday + travel <span style="color:var(--color-neutral-600)">Debt</span></span><span style="color:var(--color-neutral-300)">−$300</span></div>
+                  <div style="display:flex; justify-content:space-between; font-size:12.5px"><span style="color:var(--color-neutral-400)">Sep 28 · Camper loan → BofA <span style="color:var(--color-neutral-600)">Debt</span></span><span style="color:var(--color-neutral-300)">−$465</span></div>
+                  <div style="display:flex; justify-content:space-between; font-size:12.5px; border-top:1px solid var(--color-neutral-900); padding-top:8px"><span style="color:var(--color-neutral-500)">Balance on Sep 30</span><span>$4,182 <span style="color:var(--color-accent-300)">→ $7,314</span></span></div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:10px">
+                  <span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Its role in the budget</span>
+                  <span style="font-size:12.5px; color:var(--color-neutral-400); text-wrap:pretty">Every Needs and Debt category pays from this account. $3,171 paid, $855 due.</span>
+                  <div style="border:1px solid var(--color-neutral-800); border-radius:9px; padding:11px 13px; display:flex; flex-direction:column; gap:7px; background:var(--color-surface)">
+                    <div style="display:flex; justify-content:space-between; font-size:12.5px"><span style="color:var(--color-neutral-500)">Projected low</span><span style="color:var(--color-accent-300)">$2,910 on Sep 29</span></div>
+                    <div style="height:5px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden"><div style="width:69%; height:100%; background:var(--color-accent-600)"></div></div>
+                    <span style="font-size:11.5px; color:var(--color-neutral-600)">Clears the $2,000 floor you set by $910.</span>
+                  </div>
+                  <div style="display:flex; gap:7px; flex-wrap:wrap">
+                    <span style="font-size:12px; padding:6px 12px; border-radius:8px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Reconcile</span>
+                    <span style="font-size:12px; padding:6px 12px; border-radius:8px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Rename</span>
+                    <span style="font-size:12px; padding:6px 12px; border-radius:8px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">See in Transactions</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:minmax(0,1.6fr) 132px 112px 176px 160px; gap:0 14px; align-items:center; padding:10px 24px; border-top:1px solid var(--color-neutral-900); font-size:13px">
+              <span style="display:flex; flex-direction:column; gap:2px"><span>Capital One Checking</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Checking · ••8830 · every Flex category spends from here</span></span>
+              <span style="display:flex; align-items:center; gap:7px; font-size:12px; color:var(--color-neutral-500)"><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block"></span>6:40 am</span>
+              <span style="text-align:right">$1,340</span>
+              <span style="text-align:right; color:var(--color-neutral-300)">$1,254 due</span>
+              <span style="text-align:right; color:oklch(0.74 0.14 65)">$86</span>
+            </div>
+            <div style="display:grid; grid-template-columns:minmax(0,1.6fr) 132px 112px 176px 160px; gap:0 14px; align-items:center; padding:10px 24px; border-top:1px solid var(--color-neutral-900); font-size:13px">
+              <span style="display:flex; flex-direction:column; gap:2px"><span>Ally Checking</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Checking · ••2091 · storage unit and gym auto-pay from here</span></span>
+              <span style="display:flex; align-items:center; gap:7px; font-size:12px; color:var(--color-neutral-500)"><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block"></span>6:38 am</span>
+              <span style="text-align:right">$793</span>
+              <span style="text-align:right; color:var(--color-neutral-300)">$834 due</span>
+              <span style="text-align:right; color:oklch(0.63 0.20 24); font-weight:600">−$41</span>
+            </div>
+            <div style="display:grid; grid-template-columns:minmax(0,1.6fr) 132px 112px 176px 160px; gap:0 14px; align-items:center; padding:10px 24px; border-top:1px solid var(--color-neutral-900); font-size:13px">
+              <span style="display:flex; flex-direction:column; gap:2px"><span>Wells Fargo Savings</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Savings · ••7742 · emergency fund</span></span>
+              <span style="display:flex; align-items:center; gap:7px; font-size:12px; color:var(--color-neutral-500)"><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block"></span>6:40 am</span>
+              <span style="text-align:right">$49,000</span>
+              <span style="text-align:right; color:var(--color-neutral-600)">nothing scheduled</span>
+              <span style="text-align:right; color:var(--color-neutral-400)">$49,000</span>
+            </div>
+            <div style="display:grid; grid-template-columns:minmax(0,1.6fr) 132px 112px 176px 160px; gap:0 14px; align-items:center; padding:10px 24px; border-top:1px solid var(--color-neutral-900); font-size:13px">
+              <span style="display:flex; flex-direction:column; gap:2px"><span>CapOne · Vacation</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Savings envelope · Savings budget $300 · goal $3,000</span></span>
+              <span style="display:flex; align-items:center; gap:7px; font-size:12px; color:var(--color-neutral-500)"><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block"></span>6:40 am</span>
+              <span style="text-align:right">$1,250</span>
+              <span style="text-align:right; color:var(--color-neutral-300)">$300 due with the Sep 15 paycheck</span>
+              <span style="text-align:right; color:var(--color-neutral-400)">$1,250</span>
+            </div>
+            <div style="display:grid; grid-template-columns:minmax(0,1.6fr) 132px 112px 176px 160px; gap:0 14px; align-items:center; padding:10px 24px; border-top:1px solid var(--color-neutral-900); font-size:13px">
+              <span style="display:flex; flex-direction:column; gap:2px"><span>HOA + birthdays savings</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Savings envelope · Savings budget $175 · goal $1,500</span></span>
+              <span style="display:flex; align-items:center; gap:7px; font-size:12px; color:var(--color-neutral-600)"><span style="width:6px; height:6px; border-radius:50%; border:1px solid var(--color-neutral-700); display:block"></span>manual</span>
+              <span style="text-align:right">$890</span>
+              <span style="text-align:right; color:var(--color-neutral-300)">$175 moved Sep 8</span>
+              <span style="text-align:right; color:var(--color-neutral-400)">$890</span>
+            </div>
+            <div style="padding:9px 24px 4px; border-top:1px solid var(--color-neutral-900)"><span style="font-size:12.5px; color:var(--color-accent-300)">+ Add a cash account</span></div>
+
+            <!-- INVESTED -->
+            <div style="display:flex; align-items:baseline; gap:12px; padding:18px 24px 8px; border-top:1px solid var(--color-neutral-900); margin-top:12px">
+              <span style="font-size:13px; color:var(--color-accent-400)">▾</span>
+              <span style="font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-accent-300)">Invested</span>
+              <span style="font-size:18px; font-weight:500">$18,920</span>
+              <span style="font-size:12px; color:var(--color-neutral-600)">1 account · +$500 this month</span>
+            </div>
+            <div style="display:grid; grid-template-columns:minmax(0,1.6fr) 132px 112px 176px 160px; gap:0 14px; align-items:center; padding:10px 24px; border-top:1px solid var(--color-neutral-900); font-size:13px">
+              <span style="display:flex; flex-direction:column; gap:2px"><span>Schwab Roth</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Retirement · $500 contributed Sep 5 · Savings budget</span></span>
+              <span style="display:flex; align-items:center; gap:7px; font-size:12px; color:var(--color-neutral-500)"><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block"></span>6:41 am</span>
+              <span style="text-align:right">$18,920</span>
+              <span style="text-align:right; color:var(--color-neutral-600)">next Oct 5</span>
+              <span style="text-align:right; color:var(--color-neutral-400)">$18,920</span>
+            </div>
+            <div style="padding:9px 24px 4px; border-top:1px solid var(--color-neutral-900)"><span style="font-size:12.5px; color:var(--color-accent-300)">+ Add an investment account</span></div>
+
+            <!-- DEBT -->
+            <div style="display:flex; align-items:baseline; gap:12px; padding:18px 24px 8px; border-top:1px solid var(--color-neutral-900); margin-top:12px">
+              <span style="font-size:13px; color:var(--color-accent-400)">▾</span>
+              <span style="font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-accent-300)">Debt</span>
+              <span style="font-size:18px; font-weight:500">−$23,115</span>
+              <span style="font-size:12px; color:var(--color-neutral-600)">6 accounts · $1,097 moved · $618 due · mortgage shown with the house</span>
+            </div>
+            <div style="display:grid; grid-template-columns:minmax(0,1.6fr) 132px 112px 176px 160px; gap:0 14px; align-items:center; padding:10px 24px; border-top:1px solid var(--color-neutral-900); font-size:13px">
+              <span style="display:flex; flex-direction:column; gap:2px"><span>Chase card</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Credit card · ••4412 · Debt budget $400 · limit $6,500</span></span>
+              <span style="display:flex; align-items:center; gap:7px; font-size:12px; color:var(--color-neutral-500)"><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block"></span>6:40 am</span>
+              <span style="text-align:right">−$2,860</span>
+              <span style="text-align:right; color:var(--color-accent-300)">$400 moved Sep 8</span>
+              <span style="text-align:right; color:var(--color-neutral-300)">−$3,020</span>
+            </div>
+            <div style="display:grid; grid-template-columns:minmax(0,1.6fr) 132px 112px 176px 160px; gap:0 14px; align-items:center; padding:10px 24px; border-top:1px solid var(--color-neutral-900); font-size:13px">
+              <span style="display:flex; flex-direction:column; gap:2px"><span>Capital One card</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Credit card · ••8830 · Debt budget $250</span></span>
+              <span style="display:flex; align-items:center; gap:7px; font-size:12px; color:var(--color-neutral-500)"><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block"></span>6:40 am</span>
+              <span style="text-align:right">−$1,240</span>
+              <span style="text-align:right; color:var(--color-neutral-300)">$250 due Sep 25</span>
+              <span style="text-align:right; color:var(--color-neutral-300)">−$1,412</span>
+            </div>
+            <div style="display:grid; grid-template-columns:minmax(0,1.6fr) 132px 112px 176px 160px; gap:0 14px; align-items:center; padding:10px 24px; border-top:1px solid var(--color-neutral-900); font-size:13px">
+              <span style="display:flex; flex-direction:column; gap:2px"><span>Citi · everyday</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Credit card · ••3301 · Debt budget $120</span></span>
+              <span style="display:flex; align-items:center; gap:7px; font-size:12px; color:var(--color-neutral-500)"><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block"></span>6:39 am</span>
+              <span style="text-align:right">−$640</span>
+              <span style="text-align:right; color:var(--color-neutral-300)">$120 due Sep 25</span>
+              <span style="text-align:right; color:var(--color-neutral-300)">−$688</span>
+            </div>
+            <div style="display:grid; grid-template-columns:minmax(0,1.6fr) 132px 112px 176px 160px; gap:0 14px; align-items:center; padding:10px 24px; border-top:1px solid var(--color-neutral-900); font-size:13px">
+              <span style="display:flex; flex-direction:column; gap:2px"><span>Citi · travel</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Credit card · ••3319 · Debt budget $180</span></span>
+              <span style="display:flex; align-items:center; gap:7px; font-size:12px; color:var(--color-neutral-600)"><span style="width:6px; height:6px; border-radius:50%; border:1px solid var(--color-neutral-700); display:block"></span>manual</span>
+              <span style="text-align:right">−$1,905</span>
+              <span style="text-align:right; color:var(--color-neutral-300)">$180 due Sep 25</span>
+              <span style="text-align:right; color:var(--color-neutral-300)">−$1,905</span>
+            </div>
+            <div style="display:grid; grid-template-columns:minmax(0,1.6fr) 132px 112px 176px 160px; gap:0 14px; align-items:center; padding:10px 24px; border-top:1px solid var(--color-neutral-900); font-size:13px">
+              <span style="display:flex; flex-direction:column; gap:2px"><span>BofA camper loan</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Instalment loan · Debt budget $465 · 27 payments left</span></span>
+              <span style="display:flex; align-items:center; gap:7px; font-size:12px; color:var(--color-neutral-500)"><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block"></span>6:37 am</span>
+              <span style="text-align:right">−$14,320</span>
+              <span style="text-align:right; color:var(--color-neutral-300)">$465 due Sep 28</span>
+              <span style="text-align:right; color:var(--color-neutral-300)">−$14,320</span>
+            </div>
+            <div style="display:grid; grid-template-columns:minmax(0,1.6fr) 132px 112px 176px 160px; gap:0 14px; align-items:center; padding:10px 24px; border-top:1px solid var(--color-neutral-900); font-size:13px">
+              <span style="display:flex; flex-direction:column; gap:2px"><span>Wells Fargo PLOC</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Line of credit · Debt budget $300</span></span>
+              <span style="display:flex; align-items:center; gap:7px; font-size:12px; color:var(--color-neutral-500)"><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block"></span>6:40 am</span>
+              <span style="text-align:right">−$2,150</span>
+              <span style="text-align:right; color:var(--color-accent-300)">$300 moved Sep 8</span>
+              <span style="text-align:right; color:var(--color-neutral-300)">−$2,168</span>
+            </div>
+            <div style="padding:9px 24px 4px; border-top:1px solid var(--color-neutral-900)"><span style="font-size:12.5px; color:var(--color-accent-300)">+ Add a card or loan</span></div>
+
+            <!-- PROPERTY -->
+            <div style="display:flex; align-items:baseline; gap:12px; padding:18px 24px 8px; border-top:1px solid var(--color-neutral-900); margin-top:12px">
+              <span style="font-size:13px; color:var(--color-accent-400)">▾</span>
+              <span style="font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-accent-300)">Property</span>
+              <span style="font-size:18px; font-weight:500">$124,600</span>
+              <span style="font-size:12px; color:var(--color-neutral-600)">equity · house and mortgage read as one line</span>
+            </div>
+            <div style="padding:12px 24px 16px; border-top:1px solid var(--color-neutral-900); display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:24px; align-items:center">
+              <div style="display:flex; flex-direction:column; gap:9px">
+                <div style="display:flex; align-items:baseline; justify-content:space-between; gap:16px">
+                  <span style="font-size:13px">Home · 1428 Rockhurst Dr</span>
+                  <span style="font-size:11.5px; color:var(--color-neutral-600)">Estimated value $412,000</span>
+                </div>
+                <div style="display:flex; height:28px; border-radius:6px; overflow:hidden; gap:2px">
+                  <div style="flex:2874; background:var(--color-neutral-800); display:flex; align-items:center; padding:0 10px"><span style="font-size:11.5px; color:var(--color-neutral-300)">owed −$287,400</span></div>
+                  <div style="flex:1246; background:linear-gradient(180deg,var(--color-accent-700),var(--color-accent-800)); display:flex; align-items:center; padding:0 10px"><span style="font-size:11.5px; color:var(--color-accent-100)">equity $124,600</span></div>
+                </div>
+                <span style="font-size:11.5px; color:var(--color-neutral-600)">Rocket Mortgage · $2,180 due Oct 1</span>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px; text-align:right">
+                <span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Equity today</span>
+                <span style="font-size:22px; font-weight:500">$124,600</span>
+                <span style="font-size:11.5px; color:var(--color-neutral-600)">+$1,180 this month as the balance came down</span>
+              </div>
+            </div>
+
+            <div style="margin-top:14px; padding:16px 24px 20px; border-top:1px solid var(--color-neutral-800); background:linear-gradient(180deg,transparent,var(--color-surface)); display:flex; align-items:baseline; justify-content:space-between; gap:24px; flex-wrap:wrap">
+              <span style="font-size:13px; color:var(--color-neutral-500)">Cash $57,455 &nbsp;+&nbsp; Invested $18,920 &nbsp;+&nbsp; Home equity $124,600 &nbsp;−&nbsp; Debt $23,115</span>
+              <span style="display:flex; align-items:baseline; gap:10px"><span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">Net worth</span><span style="font-size:26px; font-weight:500">$177,860</span><span style="font-size:12.5px; color:var(--color-accent-300)">+$3,412 this month</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap">
+        <div style="width:640px; flex:0 0 640px; display:flex; flex-direction:column; gap:9px">
+          <span style="font-size:11.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Add account · choose type — opens in place at the foot of the group</span>
+          <div style="border:1px solid var(--color-accent-800); border-radius:12px; background:linear-gradient(160deg,var(--color-accent-900),var(--color-bg)); padding:18px 20px; display:flex; flex-direction:column; gap:15px">
+            <span style="font-size:19px; font-weight:500">Add a cash account</span>
+            <div style="display:flex; gap:10px">
+              <div style="flex:1; border:1px solid var(--color-accent); border-radius:10px; padding:13px 14px; display:flex; flex-direction:column; gap:5px; background:var(--color-bg)">
+                <span style="font-size:14px; color:var(--color-accent-200)">Connect the bank</span>
+                <span style="font-size:11.5px; color:var(--color-neutral-500); text-wrap:pretty">Balances refresh nightly and transactions arrive on their own.</span>
+              </div>
+              <div style="flex:1; border:1px solid var(--color-neutral-800); border-radius:10px; padding:13px 14px; display:flex; flex-direction:column; gap:5px; background:var(--color-bg)">
+                <span style="font-size:14px; color:var(--color-neutral-300)">Track it manually</span>
+                <span style="font-size:11.5px; color:var(--color-neutral-600); text-wrap:pretty">You enter the balance. Transactions come in by file import.</span>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">What kind of account</span>
+              <div style="display:flex; gap:7px; flex-wrap:wrap">
+                <span style="font-size:12.5px; padding:6px 12px; border-radius:999px; border:1px solid var(--color-accent); background:var(--color-accent-900); color:var(--color-accent-200)">Checking</span>
+                <span style="font-size:12.5px; padding:6px 12px; border-radius:999px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Savings</span>
+                <span style="font-size:12.5px; padding:6px 12px; border-radius:999px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Savings envelope</span>
+                <span style="font-size:12.5px; padding:6px 12px; border-radius:999px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Credit card</span>
+                <span style="font-size:12.5px; padding:6px 12px; border-radius:999px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Loan</span>
+                <span style="font-size:12.5px; padding:6px 12px; border-radius:999px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Investment</span>
+                <span style="font-size:12.5px; padding:6px 12px; border-radius:999px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Property</span>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; border:1px solid var(--color-neutral-800); border-radius:10px; padding:11px 13px; background:var(--color-bg)">
+              <span style="font-size:12.5px; color:var(--color-neutral-500)">Search your bank</span>
+              <span style="margin-left:auto; font-size:11.5px; color:var(--color-neutral-600)">11,400 institutions</span>
+            </div>
+            <span style="font-size:11.5px; color:var(--color-neutral-600)">The group is already decided — you opened this from Cash.</span>
+          </div>
+        </div>
+
+        <div style="width:640px; flex:0 0 640px; display:flex; flex-direction:column; gap:9px">
+          <span style="font-size:11.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Add account · just connected</span>
+          <div style="border:1px solid var(--color-accent-800); border-radius:12px; background:linear-gradient(160deg,var(--color-accent-900),var(--color-bg)); padding:18px 20px; display:flex; flex-direction:column; gap:14px">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:16px">
+              <span style="font-size:19px; font-weight:500">Chase · connected</span>
+              <span style="font-size:12px; color:var(--color-accent-300)">6:41 am · 3 accounts found</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <div style="display:flex; align-items:center; gap:11px; border:1px solid var(--color-neutral-800); border-radius:9px; padding:11px 13px; background:var(--color-bg)">
+                <span style="width:17px; height:17px; border-radius:5px; border:1px solid var(--color-neutral-800); display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--color-neutral-600)">✓</span>
+                <span style="font-size:13px; color:var(--color-neutral-400)">Chase card ••4412</span>
+                <span style="margin-left:auto; display:flex; align-items:center; gap:10px"><span style="font-size:11.5px; color:var(--color-neutral-600)">already tracked · matched</span><span style="font-size:13px; color:var(--color-neutral-400)">−$2,860</span></span>
+              </div>
+              <div style="display:flex; align-items:center; gap:11px; border:1px solid var(--color-accent); border-radius:9px; padding:11px 13px; background:var(--color-accent-900)">
+                <span style="width:17px; height:17px; border-radius:5px; border:1px solid var(--color-accent); background:var(--color-accent-800); display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--color-accent-100)">✓</span>
+                <span style="font-size:13px">Chase Freedom ••9081</span>
+                <span style="margin-left:auto; display:flex; align-items:center; gap:10px"><span style="font-size:11.5px; color:var(--color-accent-300)">Debt</span><span style="font-size:13px">−$412</span></span>
+              </div>
+              <div style="display:flex; align-items:center; gap:11px; border:1px solid var(--color-accent); border-radius:9px; padding:11px 13px; background:var(--color-accent-900)">
+                <span style="width:17px; height:17px; border-radius:5px; border:1px solid var(--color-accent); background:var(--color-accent-800); display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--color-accent-100)">✓</span>
+                <span style="font-size:13px">Chase Savings ••2210</span>
+                <span style="margin-left:auto; display:flex; align-items:center; gap:10px"><span style="font-size:11.5px; color:var(--color-accent-300)">Cash</span><span style="font-size:13px">$1,900</span></span>
+              </div>
+            </div>
+            <div style="border-left:1px solid var(--color-accent-800); padding:9px 0 9px 14px; display:flex; flex-direction:column; gap:5px">
+              <span style="font-size:12.5px; color:var(--color-neutral-400)">90 days of history will land in Transactions to review — 46 to categorise.</span>
+              <span style="font-size:12.5px; color:var(--color-neutral-400)">Chase sends pending transactions, so those show in Transactions marked pending.</span>
+              <span style="font-size:12.5px; color:var(--color-neutral-400)">Neither new account is tied to a budget category yet.</span>
+            </div>
+            <div style="display:flex; gap:9px">
+              <span style="font-size:13px; padding:9px 15px; border-radius:9px; border:1px solid var(--color-accent); color:var(--color-accent-200)">Add 2 accounts</span>
+              <span style="font-size:13px; padding:9px 15px; border-radius:9px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-500)">Not now</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════ 1b ═══════════════════════ -->
+    <div id="1b" style="width:1320px; flex:0 0 1320px; display:flex; flex-direction:column; gap:18px">
+      <div style="display:flex; align-items:baseline; gap:14px; flex-wrap:wrap">
+        <span style="font-family:ui-monospace,Menlo,monospace; font-size:12px; padding:4px 9px; border:1px solid var(--color-accent); border-radius:4px; color:var(--color-accent-300)">1b</span>
+        <h2 style="margin:0; font-size:26px; font-weight:500; letter-spacing:-0.015em">Roster and workspace</h2>
+        <span style="color:var(--color-neutral-500); font-size:14px">Thin grouped list, deep panel. One account at a time, with its budget row and the movement behind it.</span>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap">
+        <span style="font-size:12px; color:var(--color-accent-300); background:var(--color-accent-900); border:1px solid var(--color-accent-800); border-radius:999px; padding:4px 11px">Motion: accent bar slides to the selected row, panel cross-fades in 180ms</span>
+        <span style="font-size:12px; color:var(--color-accent-300); background:var(--color-accent-900); border:1px solid var(--color-accent-800); border-radius:999px; padding:4px 11px">Motion: the two legs draw their wire outward from centre on open</span>
+        <span style="font-size:12px; color:var(--color-accent-300); background:var(--color-accent-900); border:1px solid var(--color-accent-800); border-radius:999px; padding:4px 11px">Motion: modal lifts from the Add button, bank list filters as you type</span>
+      </div>
+
+      <div style="border:1px solid var(--color-neutral-800); border-radius:12px; overflow:hidden; background:var(--color-bg); box-shadow:0 16px 40px rgba(0,0,0,0.55)">
+        <div style="display:grid; grid-template-columns:172px 316px minmax(0,1fr)">
+          <dc-import name="AppRail" active="Accounts" hint-size="172px,100%"></dc-import>
+
+          <div style="border-right:1px solid var(--color-neutral-900); background:var(--color-surface); display:flex; flex-direction:column; min-width:0">
+            <div style="padding:15px 16px 12px; display:flex; flex-direction:column; gap:11px; border-bottom:1px solid var(--color-neutral-900)">
+              <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px">
+                <span style="font-size:17px; font-weight:500">Accounts</span>
+                <span style="font-size:12px; color:var(--color-accent-300)">Add</span>
+              </div>
+              <div style="border:1px solid var(--color-neutral-800); border-radius:8px; padding:7px 10px; font-size:12.5px; color:var(--color-neutral-600); background:var(--color-bg)">Search 15 accounts</div>
+            </div>
+
+            <div style="padding:13px 16px 5px; display:flex; align-items:baseline; justify-content:space-between"><span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-accent-300)">Cash</span><span style="font-size:12.5px">$57,455</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:8px 16px; font-size:13px"><span>Wells Fargo Checking</span><span style="color:var(--color-neutral-400)">$4,182</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:8px 16px; font-size:13px"><span>Capital One Checking</span><span style="color:var(--color-neutral-400)">$1,340</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:8px 16px; font-size:13px"><span>Ally Checking</span><span style="color:var(--color-neutral-400)">$793</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:8px 16px; font-size:13px"><span>Wells Fargo Savings</span><span style="color:var(--color-neutral-400)">$49,000</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:8px 16px; font-size:13px"><span>CapOne · Vacation</span><span style="color:var(--color-neutral-400)">$1,250</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:8px 16px; font-size:13px"><span style="display:flex; align-items:center; gap:7px">HOA + birthdays<span style="width:5px; height:5px; border-radius:50%; border:1px solid var(--color-neutral-700); display:block"></span></span><span style="color:var(--color-neutral-400)">$890</span></div>
+
+            <div style="padding:13px 16px 5px; display:flex; align-items:baseline; justify-content:space-between"><span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-accent-300)">Invested</span><span style="font-size:12.5px">$18,920</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:8px 16px; font-size:13px"><span>Schwab Roth</span><span style="color:var(--color-neutral-400)">$18,920</span></div>
+
+            <div style="padding:13px 16px 5px; display:flex; align-items:baseline; justify-content:space-between"><span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-accent-300)">Property</span><span style="font-size:12.5px">$124,600</span></div>
+            <div style="display:flex; flex-direction:column; gap:3px; padding:8px 16px">
+              <div style="display:flex; justify-content:space-between; gap:10px; font-size:13px"><span>Home · equity</span><span style="color:var(--color-neutral-400)">$124,600</span></div>
+              <div style="display:flex; justify-content:space-between; gap:10px; font-size:11.5px; color:var(--color-neutral-600)"><span>owed on Rocket Mortgage</span><span>−$287,400</span></div>
+            </div>
+
+            <div style="padding:13px 16px 5px; display:flex; align-items:baseline; justify-content:space-between"><span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-accent-300)">Debt</span><span style="font-size:12.5px">−$23,115</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:8px 16px 8px 14px; font-size:13px; border-left:2px solid var(--color-accent); background:var(--color-accent-900); color:var(--color-accent-100)"><span>Chase card</span><span>−$2,860</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:8px 16px; font-size:13px"><span>Capital One card</span><span style="color:var(--color-neutral-400)">−$1,240</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:8px 16px; font-size:13px"><span>Citi · everyday</span><span style="color:var(--color-neutral-400)">−$640</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:8px 16px; font-size:13px"><span style="display:flex; align-items:center; gap:7px">Citi · travel<span style="width:5px; height:5px; border-radius:50%; border:1px solid var(--color-neutral-700); display:block"></span></span><span style="color:var(--color-neutral-400)">−$1,905</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:8px 16px; font-size:13px"><span>BofA camper loan</span><span style="color:var(--color-neutral-400)">−$14,320</span></div>
+            <div style="display:flex; justify-content:space-between; gap:10px; padding:8px 16px 16px; font-size:13px"><span>Wells Fargo PLOC</span><span style="color:var(--color-neutral-400)">−$2,150</span></div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; min-width:0">
+            <div style="padding:20px 24px 17px; border-bottom:1px solid var(--color-neutral-900); background:linear-gradient(180deg,var(--color-surface),var(--color-bg)); display:flex; flex-direction:column; gap:15px">
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:24px; flex-wrap:wrap">
+                <div style="display:flex; flex-direction:column; gap:5px">
+                  <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">Credit card · Chase · ••4412 · refreshed 6:40 am</span>
+                  <span style="font-size:27px; font-weight:500; letter-spacing:-0.015em">Chase card</span>
+                </div>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px">
+                  <span style="font-size:30px; font-weight:500; letter-spacing:-0.015em">−$2,860</span>
+                  <span style="font-size:12px; color:var(--color-neutral-500)">was −$3,260 on Sep 1</span>
+                </div>
+              </div>
+              <div style="display:grid; grid-template-columns:minmax(0,1fr) 260px; gap:22px; align-items:center">
+                <div style="display:flex; flex-direction:column; gap:7px">
+                  <div style="height:8px; border-radius:4px; background:var(--color-neutral-900); overflow:hidden"><div style="width:44%; height:100%; background:linear-gradient(90deg,var(--color-accent-700),var(--color-accent-500))"></div></div>
+                  <span style="font-size:12px; color:var(--color-neutral-600)">44% of a $6,500 limit used · $3,640 available</span>
+                </div>
+                <div style="display:flex; gap:7px; justify-content:flex-end; flex-wrap:wrap">
+                  <span style="font-size:12px; padding:6px 12px; border-radius:8px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Reconcile</span>
+                  <span style="font-size:12px; padding:6px 12px; border-radius:8px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Disconnect</span>
+                  <span style="font-size:12px; padding:6px 12px; border-radius:8px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Archive</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="padding:18px 24px; border-bottom:1px solid var(--color-neutral-900); display:flex; flex-direction:column; gap:13px">
+              <span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Its role in the budget</span>
+              <div style="display:grid; grid-template-columns:minmax(0,1fr) 96px minmax(0,1.25fr); gap:0 14px; align-items:center">
+                <div style="display:flex; align-items:center; gap:10px"><span style="font-size:13px; flex:1">Debt · Chase card</span><span style="width:96px; text-align:right; font-size:13px; border:1px solid var(--color-neutral-800); border-radius:8px; padding:6px 10px; background:var(--color-surface)">$400</span></div>
+                <div style="display:flex; align-items:center"><span style="flex:1; height:1px; background:linear-gradient(to right,var(--color-accent-700),var(--color-accent))"></span><span style="font-size:11px; color:var(--color-accent-400); margin-left:4px">→</span></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px; padding:6px 0"><span>Chase · 4412</span><span style="color:var(--color-neutral-300)">−$3,260 <span style="color:var(--color-accent-300)">→ −$2,860</span></span></div>
+              </div>
+              <div style="border-left:1px solid var(--color-accent-800); margin-left:2px; padding:11px 0 11px 16px; display:flex; flex-direction:column; gap:6px; background:var(--color-surface); border-radius:0 8px 8px 0">
+                <div style="font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--color-neutral-600)">The movement behind $400</div>
+                <div style="display:flex; justify-content:space-between; font-size:12.5px; padding-right:16px"><span style="color:var(--color-neutral-500)">Sep 8 · Wells Fargo Checking</span><span style="color:var(--color-neutral-300)">−$400.00 out</span></div>
+                <div style="display:flex; justify-content:space-between; font-size:12.5px; padding-right:16px"><span style="color:var(--color-neutral-500)">Sep 8 · Chase card payment received</span><span style="color:var(--color-neutral-300)">+$400.00 in</span></div>
+                <div style="font-size:11px; color:var(--color-accent-300)">Tied · counted once · balance −$3,260 → −$2,860</div>
+              </div>
+              <span style="font-size:12.5px; color:var(--color-neutral-500)">$400 moved · $0 due. The Debt budget is settled for this card.</span>
+            </div>
+
+            <div style="padding:18px 24px; border-bottom:1px solid var(--color-neutral-900); display:flex; flex-direction:column; gap:12px">
+              <span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Expected before month end</span>
+              <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px">
+                <div style="border:1px solid var(--color-neutral-800); border-radius:10px; padding:12px 13px; background:var(--color-surface); display:flex; flex-direction:column; gap:4px">
+                  <span style="font-size:12px; color:var(--color-neutral-600)">Statement closes</span>
+                  <span style="font-size:16px">Sep 28</span>
+                </div>
+                <div style="border:1px solid var(--color-neutral-800); border-radius:10px; padding:12px 13px; background:var(--color-surface); display:flex; flex-direction:column; gap:4px">
+                  <span style="font-size:12px; color:var(--color-neutral-600)">Payment due</span>
+                  <span style="font-size:16px">Oct 3 · $2,860</span>
+                </div>
+                <div style="border:1px solid var(--color-accent-800); border-radius:10px; padding:12px 13px; background:var(--color-accent-900); display:flex; flex-direction:column; gap:4px">
+                  <span style="font-size:12px; color:var(--color-accent-400)">Projected on Sep 30</span>
+                  <span style="font-size:16px; color:var(--color-accent-100)">−$3,180</span>
+                </div>
+              </div>
+              <span style="font-size:12px; color:var(--color-neutral-600)">Assumes the last two weeks spend like the first twelve days. Nothing else is scheduled against this card.</span>
+            </div>
+
+            <div style="padding:18px 24px 22px; display:flex; flex-direction:column; gap:11px">
+              <div style="display:flex; align-items:baseline; justify-content:space-between">
+                <span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Recent activity</span>
+                <span style="font-size:12px; color:var(--color-accent-300)">See all 34 in Transactions</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; font-size:13px; padding:7px 0; border-bottom:1px solid var(--color-neutral-900)"><span style="width:52px; color:var(--color-neutral-500)">Sep 11</span><span style="flex:1">Harris Teeter</span><span style="font-size:12px; padding:3px 9px; border-radius:999px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Groceries</span><span style="width:80px; text-align:right; color:var(--color-neutral-300)">−$84.20</span></div>
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; font-size:13px; padding:7px 0; border-bottom:1px solid var(--color-neutral-900)"><span style="width:52px; color:var(--color-neutral-500)">Sep 10</span><span style="flex:1">Shell · Battleground</span><span style="font-size:12px; padding:3px 9px; border-radius:999px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Fuel</span><span style="width:80px; text-align:right; color:var(--color-neutral-300)">−$41.06</span></div>
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; font-size:13px; padding:7px 0; border-bottom:1px solid var(--color-neutral-900)"><span style="width:52px; color:var(--color-neutral-500)">Sep 8</span><span style="flex:1">Payment received · Wells Fargo Checking</span><span style="font-size:12px; padding:3px 9px; border-radius:999px; border:1px solid var(--color-accent-800); background:var(--color-accent-900); color:var(--color-accent-300)">Transfer · tied</span><span style="width:80px; text-align:right; color:var(--color-accent-300)">+$400.00</span></div>
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; font-size:13px; padding:7px 0"><span style="width:52px; color:var(--color-neutral-500)">Sep 6</span><span style="flex:1">Tate St Coffee</span><span style="font-size:12px; padding:3px 9px; border-radius:999px; border:1px dashed var(--color-neutral-700); color:var(--color-neutral-500)">no category</span><span style="width:80px; text-align:right; color:var(--color-neutral-300)">−$9.75</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap">
+        <div style="width:640px; flex:0 0 640px; display:flex; flex-direction:column; gap:9px">
+          <span style="font-size:11.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Add account · choose type — a modal over the roster, connection first</span>
+          <div style="border:1px solid var(--color-neutral-800); border-radius:12px; background:var(--color-bg); box-shadow:0 20px 48px rgba(0,0,0,0.6); overflow:hidden">
+            <div style="padding:17px 20px 14px; border-bottom:1px solid var(--color-neutral-900); display:flex; flex-direction:column; gap:12px">
+              <span style="font-size:19px; font-weight:500">Add an account</span>
+              <div style="border:1px solid var(--color-accent); border-radius:9px; padding:9px 12px; background:var(--color-accent-900); display:flex; align-items:center; gap:9px">
+                <span style="font-size:13px; color:var(--color-accent-100)">chase</span>
+                <span style="width:1px; height:14px; background:var(--color-accent-700)"></span>
+                <span style="font-size:12px; color:var(--color-accent-400)">searching 11,400 institutions</span>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column">
+              <div style="display:flex; align-items:center; gap:11px; padding:11px 20px; border-bottom:1px solid var(--color-neutral-900)"><span style="width:26px; height:26px; border-radius:7px; border:1px solid var(--color-neutral-800); display:block"></span><span style="font-size:13.5px">Chase</span><span style="margin-left:auto; font-size:11.5px; color:var(--color-neutral-600)">cards, checking, savings</span></div>
+              <div style="display:flex; align-items:center; gap:11px; padding:11px 20px; border-bottom:1px solid var(--color-neutral-900)"><span style="width:26px; height:26px; border-radius:7px; border:1px solid var(--color-neutral-800); display:block"></span><span style="font-size:13.5px">Chase Bank USA</span><span style="margin-left:auto; font-size:11.5px; color:var(--color-neutral-600)">cards</span></div>
+              <div style="display:flex; align-items:center; gap:11px; padding:11px 20px; border-bottom:1px solid var(--color-neutral-900)"><span style="width:26px; height:26px; border-radius:7px; border:1px solid var(--color-neutral-800); display:block"></span><span style="font-size:13.5px">J.P. Morgan Wealth</span><span style="margin-left:auto; font-size:11.5px; color:var(--color-neutral-600)">investments</span></div>
+            </div>
+            <div style="padding:15px 20px 18px; border-top:1px solid var(--color-neutral-800); display:flex; flex-direction:column; gap:11px; background:var(--color-surface)">
+              <span style="font-size:12.5px; color:var(--color-neutral-500)">Not there, or you would rather not connect it? Track it manually.</span>
+              <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px">
+                <span style="font-size:12.5px; padding:9px 11px; border-radius:9px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400); text-align:center">Checking</span>
+                <span style="font-size:12.5px; padding:9px 11px; border-radius:9px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400); text-align:center">Savings</span>
+                <span style="font-size:12.5px; padding:9px 11px; border-radius:9px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400); text-align:center">Credit card</span>
+                <span style="font-size:12.5px; padding:9px 11px; border-radius:9px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400); text-align:center">Loan</span>
+                <span style="font-size:12.5px; padding:9px 11px; border-radius:9px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400); text-align:center">Investment</span>
+                <span style="font-size:12.5px; padding:9px 11px; border-radius:9px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400); text-align:center">Property</span>
+              </div>
+              <span style="font-size:11.5px; color:var(--color-neutral-600)">Manual accounts need a balance and a group. Two of yours are manual today.</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:640px; flex:0 0 640px; display:flex; flex-direction:column; gap:9px">
+          <span style="font-size:11.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Add account · connecting</span>
+          <div style="border:1px solid var(--color-neutral-800); border-radius:12px; background:var(--color-bg); box-shadow:0 20px 48px rgba(0,0,0,0.6); overflow:hidden">
+            <div style="padding:17px 20px 15px; border-bottom:1px solid var(--color-neutral-900); display:flex; align-items:baseline; justify-content:space-between; gap:16px">
+              <span style="font-size:19px; font-weight:500">Chase</span>
+              <span style="font-size:12px; color:var(--color-accent-300)">about 20 seconds left</span>
+            </div>
+            <div style="padding:16px 20px; display:flex; flex-direction:column; gap:12px; border-bottom:1px solid var(--color-neutral-900)">
+              <div style="display:flex; align-items:center; gap:11px; font-size:13px"><span style="width:18px; height:18px; border-radius:50%; border:1px solid var(--color-accent); background:var(--color-accent-800); display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--color-accent-100)">✓</span><span style="color:var(--color-neutral-400)">Signed in</span></div>
+              <div style="display:flex; align-items:center; gap:11px; font-size:13px"><span style="width:18px; height:18px; border-radius:50%; border:1px solid var(--color-accent); background:var(--color-accent-800); display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--color-accent-100)">✓</span><span style="color:var(--color-neutral-400)">Read 3 accounts</span></div>
+              <div style="display:flex; align-items:center; gap:11px; font-size:13px"><span style="width:18px; height:18px; border-radius:50%; border:1px solid var(--color-accent); display:block"></span><span style="color:var(--color-accent-200)">Importing 90 days of history</span><span style="margin-left:auto; font-size:12px; color:var(--color-neutral-600)">212 of 340</span></div>
+              <div style="height:5px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden"><div style="width:62%; height:100%; background:linear-gradient(90deg,var(--color-accent-700),var(--color-accent))"></div></div>
+              <div style="display:flex; align-items:center; gap:11px; font-size:13px"><span style="width:18px; height:18px; border-radius:50%; border:1px solid var(--color-neutral-800); display:block"></span><span style="color:var(--color-neutral-600)">Match against accounts you already track</span></div>
+            </div>
+            <div style="padding:15px 20px 18px; display:flex; flex-direction:column; gap:8px; background:var(--color-surface)">
+              <span style="font-size:12.5px; color:var(--color-neutral-400)">You can leave this. It finishes in the background and Transactions will hold what needs answering.</span>
+              <span style="font-size:12.5px; color:var(--color-neutral-500)">Chase sends pending transactions, so those will show in Transactions marked pending until they clear.</span>
+              <span style="align-self:flex-start; margin-top:5px; font-size:13px; padding:9px 15px; border-radius:9px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Close</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════ 1c ═══════════════════════ -->
+    <div id="1c" style="width:1320px; flex:0 0 1320px; display:flex; flex-direction:column; gap:18px">
+      <div style="display:flex; align-items:baseline; gap:14px; flex-wrap:wrap">
+        <span style="font-family:ui-monospace,Menlo,monospace; font-size:12px; padding:4px 9px; border:1px solid var(--color-accent); border-radius:4px; color:var(--color-accent-300)">1c</span>
+        <h2 style="margin:0; font-size:26px; font-weight:500; letter-spacing:-0.015em">Thirty days of runway</h2>
+        <span style="color:var(--color-neutral-500); font-size:14px">Cards, not rows. Each account carries the rest of the month on a dated strip. Detail is its own page.</span>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap">
+        <span style="font-size:12px; color:var(--color-accent-300); background:var(--color-accent-900); border:1px solid var(--color-accent-800); border-radius:999px; padding:4px 11px">Motion: strips draw left to right on load, the day-12 marker lands last</span>
+        <span style="font-size:12px; color:var(--color-accent-300); background:var(--color-accent-900); border:1px solid var(--color-accent-800); border-radius:999px; padding:4px 11px">Motion: notches lift and label on hover, neighbours dim</span>
+        <span style="font-size:12px; color:var(--color-accent-300); background:var(--color-accent-900); border:1px solid var(--color-accent-800); border-radius:999px; padding:4px 11px">Motion: the card grows into its own page — shared element, 240ms</span>
+      </div>
+
+      <div style="border:1px solid var(--color-neutral-800); border-radius:12px; overflow:hidden; background:var(--color-bg); box-shadow:0 16px 40px rgba(0,0,0,0.55)">
+        <div style="display:grid; grid-template-columns:172px minmax(0,1fr)">
+          <dc-import name="AppRail" active="Accounts" hint-size="172px,100%"></dc-import>
+
+          <div style="display:flex; flex-direction:column; min-width:0">
+            <div style="padding:18px 24px 16px; border-bottom:1px solid var(--color-neutral-900); background:linear-gradient(180deg,var(--color-surface),var(--color-bg)); display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap">
+              <div style="display:flex; flex-direction:column; gap:4px">
+                <span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">September 2026 · day 12 of 30 · income $8,240</span>
+                <span style="font-size:22px; font-weight:500">The rest of the month, account by account</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px">
+                <span style="font-size:12.5px; color:var(--color-neutral-600)">13 connected · 2 manual · 6:40 am</span>
+                <span style="font-size:12.5px; padding:8px 14px; border-radius:999px; border:1px solid var(--color-accent); color:var(--color-accent-300)">Add account</span>
+              </div>
+            </div>
+
+            <div style="padding:18px 24px 8px; display:flex; align-items:baseline; gap:12px">
+              <span style="font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-accent-300)">Cash</span>
+              <span style="font-size:18px; font-weight:500">$57,455</span>
+              <span style="font-size:12px; color:var(--color-neutral-600)">$988 leaves before Sep 30 · $4,595 arrives</span>
+            </div>
+            <div style="padding:0 24px 16px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px">
+              <div style="border:1px solid var(--color-accent-800); border-radius:11px; background:linear-gradient(160deg,var(--color-surface),var(--color-bg)); padding:14px 15px; display:flex; flex-direction:column; gap:12px">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px">
+                  <div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:14px">Wells Fargo Checking</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Needs and Debt pay from here</span></div>
+                  <span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block; margin-top:6px"></span>
+                </div>
+                <span style="font-size:23px; font-weight:500; letter-spacing:-0.015em">$4,182</span>
+                <div style="display:flex; flex-direction:column; gap:6px">
+                  <div style="position:relative; height:30px; border-radius:6px; background:var(--color-neutral-900); overflow:hidden">
+                    <div style="position:absolute; left:0; top:0; bottom:0; width:40%; background:linear-gradient(90deg,var(--color-accent-800),var(--color-accent-700))"></div>
+                    <div style="position:absolute; left:40%; top:0; bottom:0; width:2px; background:var(--color-accent)"></div>
+                    <div style="position:absolute; left:50%; top:6px; bottom:6px; width:1px; background:var(--color-accent-500)"></div>
+                    <div style="position:absolute; left:63%; top:6px; bottom:6px; width:1px; background:var(--color-accent-500)"></div>
+                    <div style="position:absolute; left:73%; top:6px; bottom:6px; width:1px; background:var(--color-accent-500)"></div>
+                    <div style="position:absolute; left:83%; top:6px; bottom:6px; width:1px; background:var(--color-accent-500)"></div>
+                    <div style="position:absolute; left:93%; top:6px; bottom:6px; width:1px; background:var(--color-accent-500)"></div>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; font-size:10.5px; color:var(--color-neutral-600)"><span>Sep 12</span><span>Sep 20</span><span>Sep 25</span><span>Sep 30</span></div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:4px; font-size:12px">
+                  <div style="display:flex; justify-content:space-between"><span style="color:var(--color-neutral-500)">Still coming</span><span style="color:var(--color-neutral-300)">+$4,120 in · $988 due</span></div>
+                  <div style="display:flex; justify-content:space-between"><span style="color:var(--color-neutral-500)">Low point</span><span style="color:var(--color-accent-300)">$2,910 on Sep 29</span></div>
+                </div>
+              </div>
+
+              <div style="border:1px solid var(--color-neutral-800); border-radius:11px; background:var(--color-surface); padding:14px 15px; display:flex; flex-direction:column; gap:12px">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px">
+                  <div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:14px">Capital One Checking</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Flex spending</span></div>
+                  <span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block; margin-top:6px"></span>
+                </div>
+                <span style="font-size:23px; font-weight:500; letter-spacing:-0.015em">$1,340</span>
+                <div style="display:flex; flex-direction:column; gap:6px">
+                  <div style="position:relative; height:30px; border-radius:6px; background:var(--color-neutral-900); overflow:hidden">
+                    <div style="position:absolute; left:0; top:0; bottom:0; width:40%; background:linear-gradient(90deg,var(--color-accent-800),var(--color-accent-700))"></div>
+                    <div style="position:absolute; left:40%; top:0; bottom:0; width:2px; background:var(--color-accent)"></div>
+                    <div style="position:absolute; left:73%; top:6px; bottom:6px; width:1px; background:var(--color-accent-500)"></div>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; font-size:10.5px; color:var(--color-neutral-600)"><span>Sep 12</span><span>Sep 25</span><span>Sep 30</span></div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:4px; font-size:12px">
+                  <div style="display:flex; justify-content:space-between"><span style="color:var(--color-neutral-500)">Still coming</span><span style="color:var(--color-neutral-300)">$250 due</span></div>
+                  <div style="display:flex; justify-content:space-between"><span style="color:var(--color-neutral-500)">Low point</span><span style="color:var(--color-neutral-400)">$1,090 on Sep 25</span></div>
+                </div>
+              </div>
+
+              <div style="border:1px solid var(--color-neutral-800); border-radius:11px; background:var(--color-surface); padding:14px 15px; display:flex; flex-direction:column; gap:12px">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px">
+                  <div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:14px">Ally Checking</span><span style="font-size:11.5px; color:var(--color-neutral-600)">No categories pay from here</span></div>
+                  <span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block; margin-top:6px"></span>
+                </div>
+                <span style="font-size:23px; font-weight:500; letter-spacing:-0.015em">$793</span>
+                <div style="display:flex; flex-direction:column; gap:6px">
+                  <div style="position:relative; height:30px; border-radius:6px; background:var(--color-neutral-900); overflow:hidden">
+                    <div style="position:absolute; left:0; top:0; bottom:0; width:40%; background:linear-gradient(90deg,var(--color-neutral-800),var(--color-neutral-700))"></div>
+                    <div style="position:absolute; left:40%; top:0; bottom:0; width:2px; background:var(--color-accent)"></div>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; font-size:10.5px; color:var(--color-neutral-600)"><span>Sep 12</span><span>Sep 30</span></div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:4px; font-size:12px">
+                  <div style="display:flex; justify-content:space-between"><span style="color:var(--color-neutral-500)">Still coming</span><span style="color:var(--color-neutral-600)">nothing scheduled</span></div>
+                  <div style="display:flex; justify-content:space-between"><span style="color:var(--color-neutral-500)">Low point</span><span style="color:var(--color-neutral-400)">$793</span></div>
+                </div>
+              </div>
+
+              <div style="border:1px solid var(--color-neutral-800); border-radius:11px; background:var(--color-surface); padding:14px 15px; display:flex; flex-direction:column; gap:10px">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px">
+                  <div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:14px">Wells Fargo Savings</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Emergency fund</span></div>
+                  <span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block; margin-top:6px"></span>
+                </div>
+                <span style="font-size:23px; font-weight:500; letter-spacing:-0.015em">$49,000</span>
+                <span style="font-size:12px; color:var(--color-neutral-600)">Untouched this month. No category moves money in or out.</span>
+              </div>
+
+              <div style="border:1px solid var(--color-neutral-800); border-radius:11px; background:var(--color-surface); padding:14px 15px; display:flex; flex-direction:column; gap:10px">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px">
+                  <div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:14px">CapOne · Vacation</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Savings envelope · goal $3,000</span></div>
+                  <span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block; margin-top:6px"></span>
+                </div>
+                <span style="font-size:23px; font-weight:500; letter-spacing:-0.015em">$1,250</span>
+                <div style="height:6px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden"><div style="width:42%; height:100%; background:var(--color-accent-600)"></div></div>
+                <span style="font-size:12px; color:var(--color-neutral-500)">$300 due Sep 15 from the Savings budget · 42% of goal</span>
+              </div>
+
+              <div style="border:1px solid var(--color-neutral-800); border-radius:11px; background:var(--color-surface); padding:14px 15px; display:flex; flex-direction:column; gap:10px">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px">
+                  <div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:14px">HOA + birthdays savings</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Savings envelope · goal $1,500</span></div>
+                  <span style="width:6px; height:6px; border-radius:50%; border:1px solid var(--color-neutral-700); display:block; margin-top:6px"></span>
+                </div>
+                <span style="font-size:23px; font-weight:500; letter-spacing:-0.015em">$890</span>
+                <div style="height:6px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden"><div style="width:59%; height:100%; background:var(--color-accent-600)"></div></div>
+                <span style="font-size:12px; color:var(--color-neutral-500)">You keep this one by hand · $175 moved Sep 8</span>
+              </div>
+            </div>
+
+            <div style="padding:14px 24px 8px; border-top:1px solid var(--color-neutral-900); display:flex; align-items:baseline; gap:12px">
+              <span style="font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-accent-300)">Invested and property</span>
+              <span style="font-size:18px; font-weight:500">$143,520</span>
+            </div>
+            <div style="padding:0 24px 16px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.6fr); gap:12px">
+              <div style="border:1px solid var(--color-neutral-800); border-radius:11px; background:var(--color-surface); padding:14px 15px; display:flex; flex-direction:column; gap:10px">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px">
+                  <div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:14px">Schwab Roth</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Retirement</span></div>
+                  <span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block; margin-top:6px"></span>
+                </div>
+                <span style="font-size:23px; font-weight:500; letter-spacing:-0.015em">$18,920</span>
+                <span style="font-size:12px; color:var(--color-neutral-500)">$500 contributed Sep 5 from the Savings budget · next Oct 5</span>
+              </div>
+              <div style="border:1px solid var(--color-accent-800); border-radius:11px; background:linear-gradient(160deg,var(--color-surface),var(--color-bg)); padding:14px 15px; display:flex; flex-direction:column; gap:11px">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px">
+                  <div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:14px">Home · 1428 Rockhurst Dr</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Value edited by hand Aug 30</span></div>
+                  <span style="width:6px; height:6px; border-radius:50%; border:1px solid var(--color-neutral-700); display:block; margin-top:6px"></span>
+                </div>
+                <div style="display:flex; align-items:baseline; gap:10px"><span style="font-size:23px; font-weight:500; letter-spacing:-0.015em">$124,600</span><span style="font-size:12px; color:var(--color-neutral-500)">equity</span></div>
+                <div style="display:flex; flex-direction:column; gap:5px">
+                  <div style="display:flex; justify-content:space-between; font-size:11.5px"><span style="color:var(--color-neutral-500)">Estimated value</span><span style="color:var(--color-neutral-300)">$412,000</span></div>
+                  <div style="display:flex; height:26px; border-radius:6px; overflow:hidden; gap:2px">
+                    <div style="flex:2874; background:var(--color-neutral-800); display:flex; align-items:center; padding:0 9px"><span style="font-size:11px; color:var(--color-neutral-300)">owed −$287,400</span></div>
+                    <div style="flex:1246; background:linear-gradient(180deg,var(--color-accent-700),var(--color-accent-800)); display:flex; align-items:center; padding:0 9px"><span style="font-size:11px; color:var(--color-accent-100)">equity $124,600</span></div>
+                  </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:var(--color-neutral-500)">Rocket Mortgage</span><span style="color:var(--color-neutral-300)">$2,180 due Oct 1</span></div>
+              </div>
+            </div>
+
+            <div style="padding:14px 24px 8px; border-top:1px solid var(--color-neutral-900); display:flex; align-items:baseline; gap:12px">
+              <span style="font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-accent-300)">Debt</span>
+              <span style="font-size:18px; font-weight:500">−$23,115</span>
+              <span style="font-size:12px; color:var(--color-neutral-600)">$1,097 moved · $618 due</span>
+            </div>
+            <div style="padding:0 24px 22px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px">
+              <div style="border:1px solid var(--color-neutral-800); border-radius:11px; background:var(--color-surface); padding:14px 15px; display:flex; flex-direction:column; gap:10px">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px"><div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:14px">Chase card</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Debt budget $400</span></div><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block; margin-top:6px"></span></div>
+                <span style="font-size:23px; font-weight:500; letter-spacing:-0.015em">−$2,860</span>
+                <div style="height:6px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden"><div style="width:100%; height:100%; background:var(--color-accent-600)"></div></div>
+                <span style="font-size:12px; color:var(--color-accent-300)">$400 moved Sep 8 · nothing due</span>
+              </div>
+              <div style="border:1px solid var(--color-neutral-800); border-radius:11px; background:var(--color-surface); padding:14px 15px; display:flex; flex-direction:column; gap:10px">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px"><div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:14px">Capital One card</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Debt budget $250</span></div><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block; margin-top:6px"></span></div>
+                <span style="font-size:23px; font-weight:500; letter-spacing:-0.015em">−$1,240</span>
+                <div style="height:6px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden"><div style="width:0%; height:100%; background:var(--color-accent-600)"></div></div>
+                <span style="font-size:12px; color:var(--color-neutral-400)">$250 due Sep 25</span>
+              </div>
+              <div style="border:1px solid var(--color-neutral-800); border-radius:11px; background:var(--color-surface); padding:14px 15px; display:flex; flex-direction:column; gap:10px">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px"><div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:14px">Citi · everyday</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Debt budget $120</span></div><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block; margin-top:6px"></span></div>
+                <span style="font-size:23px; font-weight:500; letter-spacing:-0.015em">−$640</span>
+                <div style="height:6px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden"><div style="width:0%; height:100%; background:var(--color-accent-600)"></div></div>
+                <span style="font-size:12px; color:var(--color-neutral-400)">$120 due Sep 25</span>
+              </div>
+              <div style="border:1px solid var(--color-neutral-800); border-radius:11px; background:var(--color-surface); padding:14px 15px; display:flex; flex-direction:column; gap:10px">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px"><div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:14px">Citi · travel</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Debt budget $180 · manual</span></div><span style="width:6px; height:6px; border-radius:50%; border:1px solid var(--color-neutral-700); display:block; margin-top:6px"></span></div>
+                <span style="font-size:23px; font-weight:500; letter-spacing:-0.015em">−$1,905</span>
+                <div style="height:6px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden"><div style="width:0%; height:100%; background:var(--color-accent-600)"></div></div>
+                <span style="font-size:12px; color:var(--color-neutral-400)">$180 due Sep 25 · you update the balance</span>
+              </div>
+              <div style="border:1px solid var(--color-neutral-800); border-radius:11px; background:var(--color-surface); padding:14px 15px; display:flex; flex-direction:column; gap:10px">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px"><div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:14px">BofA camper loan</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Debt budget $465 · 27 left</span></div><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block; margin-top:6px"></span></div>
+                <span style="font-size:23px; font-weight:500; letter-spacing:-0.015em">−$14,320</span>
+                <div style="height:6px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden"><div style="width:0%; height:100%; background:var(--color-accent-600)"></div></div>
+                <span style="font-size:12px; color:var(--color-neutral-400)">$465 due Sep 28 · paid off Dec 2028</span>
+              </div>
+              <div style="border:1px solid var(--color-neutral-800); border-radius:11px; background:var(--color-surface); padding:14px 15px; display:flex; flex-direction:column; gap:10px">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px"><div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:14px">Wells Fargo PLOC</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Debt budget $300</span></div><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block; margin-top:6px"></span></div>
+                <span style="font-size:23px; font-weight:500; letter-spacing:-0.015em">−$2,150</span>
+                <div style="height:6px; border-radius:3px; background:var(--color-neutral-900); overflow:hidden"><div style="width:100%; height:100%; background:var(--color-accent-600)"></div></div>
+                <span style="font-size:12px; color:var(--color-accent-300)">$300 moved Sep 8 · interest posts Sep 30</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:9px">
+        <span style="font-size:11.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Account detail — its own page, reached by tapping a card</span>
+        <div style="border:1px solid var(--color-neutral-800); border-radius:12px; overflow:hidden; background:var(--color-bg); box-shadow:0 16px 40px rgba(0,0,0,0.55)">
+          <div style="display:grid; grid-template-columns:172px minmax(0,1fr)">
+            <dc-import name="AppRail" active="Accounts" hint-size="172px,100%"></dc-import>
+            <div style="display:flex; flex-direction:column; min-width:0">
+              <div style="padding:16px 24px 18px; border-bottom:1px solid var(--color-neutral-900); background:linear-gradient(180deg,var(--color-surface),var(--color-bg)); display:flex; flex-direction:column; gap:14px">
+                <span style="font-size:12px; color:var(--color-accent-300)">← Accounts · Cash</span>
+                <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap">
+                  <div style="display:flex; flex-direction:column; gap:5px">
+                    <span style="font-size:29px; font-weight:500; letter-spacing:-0.02em">Wells Fargo Checking</span>
+                    <span style="font-size:12.5px; color:var(--color-neutral-500)">Checking · ••4187 · Wells Fargo · refreshed 6:40 am</span>
+                  </div>
+                  <div style="display:flex; align-items:baseline; gap:22px">
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:3px"><span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">Today</span><span style="font-size:27px; font-weight:500">$4,182</span></div>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:3px"><span style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--color-neutral-600)">Sep 30</span><span style="font-size:27px; font-weight:500; color:var(--color-accent-300)">$7,314</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="padding:18px 24px; border-bottom:1px solid var(--color-neutral-900); display:flex; flex-direction:column; gap:12px">
+                <div style="display:flex; align-items:baseline; justify-content:space-between; gap:16px"><span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Runway to Sep 30</span><span style="font-size:12.5px; color:var(--color-accent-300)">Low point $2,910 on Sep 29 · $910 above your floor</span></div>
+                <div style="position:relative; height:74px; border-radius:8px; background:var(--color-neutral-900); overflow:hidden">
+                  <div style="position:absolute; left:0; top:0; bottom:0; width:40%; background:linear-gradient(90deg,var(--color-accent-900),var(--color-accent-800))"></div>
+                  <div style="position:absolute; left:40%; top:0; bottom:0; width:2px; background:var(--color-accent)"></div>
+                  <div style="position:absolute; left:50%; top:10px; bottom:10px; width:2px; background:var(--color-accent)"></div>
+                  <div style="position:absolute; left:63%; top:10px; bottom:10px; width:1px; background:var(--color-accent-500)"></div>
+                  <div style="position:absolute; left:73%; top:10px; bottom:10px; width:1px; background:var(--color-accent-500)"></div>
+                  <div style="position:absolute; left:83%; top:10px; bottom:10px; width:1px; background:var(--color-accent-500)"></div>
+                  <div style="position:absolute; left:93%; top:10px; bottom:10px; width:1px; background:var(--color-accent)"></div>
+                </div>
+                <div style="position:relative; height:34px; font-size:11.5px">
+                  <div style="position:absolute; left:0%; top:0; display:flex; flex-direction:column; gap:2px"><span style="color:var(--color-neutral-400)">Sep 12</span><span style="color:var(--color-neutral-600)">today · $4,182</span></div>
+                  <div style="position:absolute; left:50%; top:0; display:flex; flex-direction:column; gap:2px"><span style="color:var(--color-neutral-400)">Sep 15</span><span style="color:var(--color-accent-300)">+$4,120</span></div>
+                  <div style="position:absolute; left:63%; top:0; display:flex; flex-direction:column; gap:2px"><span style="color:var(--color-neutral-400)">Sep 20</span><span style="color:var(--color-neutral-600)">−$103</span></div>
+                  <div style="position:absolute; left:73%; top:0; display:flex; flex-direction:column; gap:2px"><span style="color:var(--color-neutral-400)">Sep 22</span><span style="color:var(--color-neutral-600)">−$120</span></div>
+                  <div style="position:absolute; left:83%; top:0; display:flex; flex-direction:column; gap:2px"><span style="color:var(--color-neutral-400)">Sep 25</span><span style="color:var(--color-neutral-600)">−$300</span></div>
+                  <div style="position:absolute; right:0; top:0; display:flex; flex-direction:column; gap:2px; text-align:right"><span style="color:var(--color-neutral-400)">Sep 28–29</span><span style="color:var(--color-neutral-600)">−$465 · low $2,910</span></div>
+                </div>
+              </div>
+
+              <div style="padding:18px 24px; border-bottom:1px solid var(--color-neutral-900); display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:24px">
+                <div style="display:flex; flex-direction:column; gap:12px">
+                  <span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Categories that pay from here</span>
+                  <div style="display:grid; grid-template-columns:minmax(0,1fr) 96px minmax(0,1.15fr); gap:0 14px; align-items:center; row-gap:5px">
+                    <div style="display:flex; align-items:center; gap:10px"><span style="font-size:13px; flex:1">Needs · 7 categories</span><span style="width:96px; text-align:right; font-size:13px; border:1px solid var(--color-neutral-800); border-radius:8px; padding:6px 10px; background:var(--color-surface)">$4,026</span></div>
+                    <div style="display:flex; align-items:center"><span style="flex:1; height:1px; background:linear-gradient(to right,var(--color-accent-700),var(--color-accent))"></span><span style="font-size:11px; color:var(--color-accent-400); margin-left:4px">→</span></div>
+                    <div style="display:flex; justify-content:space-between; font-size:13px; padding:6px 0"><span style="color:var(--color-neutral-400)">this account</span><span style="color:var(--color-neutral-300)">$3,171 paid · $855 due</span></div>
+                    <div style="display:flex; align-items:center; gap:10px"><span style="font-size:13px; flex:1">Debt · 6 accounts</span><span style="width:96px; text-align:right; font-size:13px; border:1px solid var(--color-neutral-800); border-radius:8px; padding:6px 10px; background:var(--color-surface)">$1,715</span></div>
+                    <div style="display:flex; align-items:center"><span style="flex:1; height:1px; background:linear-gradient(to right,var(--color-accent-700),var(--color-accent))"></span><span style="font-size:11px; color:var(--color-accent-400); margin-left:4px">→</span></div>
+                    <div style="display:flex; justify-content:space-between; font-size:13px; padding:6px 0"><span style="color:var(--color-neutral-400)">this account</span><span style="color:var(--color-neutral-300)">$1,097 moved · $618 due</span></div>
+                    <div style="display:flex; align-items:center; gap:10px"><span style="font-size:13px; flex:1">Savings · 2 envelopes</span><span style="width:96px; text-align:right; font-size:13px; border:1px solid var(--color-neutral-800); border-radius:8px; padding:6px 10px; background:var(--color-surface)">$475</span></div>
+                    <div style="display:flex; align-items:center"><span style="flex:1; height:1px; background:repeating-linear-gradient(to right,var(--color-neutral-700) 0 4px,transparent 4px 8px)"></span><span style="font-size:11px; color:var(--color-neutral-600); margin-left:4px">→</span></div>
+                    <div style="display:flex; justify-content:space-between; font-size:13px; padding:6px 0"><span style="color:var(--color-neutral-400)">this account</span><span style="color:var(--color-neutral-300)">$175 moved · $300 due</span></div>
+                  </div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:12px">
+                  <span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Account</span>
+                  <div style="display:flex; justify-content:space-between; font-size:12.5px"><span style="color:var(--color-neutral-500)">Connection</span><span style="color:var(--color-neutral-300)">Wells Fargo · nightly</span></div>
+                  <div style="display:flex; justify-content:space-between; font-size:12.5px"><span style="color:var(--color-neutral-500)">Pending from the bank</span><span style="color:var(--color-neutral-300)">2 · shown in Transactions</span></div>
+                  <div style="display:flex; justify-content:space-between; font-size:12.5px"><span style="color:var(--color-neutral-500)">Low-balance floor</span><span style="color:var(--color-neutral-300)">$2,000</span></div>
+                  <div style="display:flex; justify-content:space-between; font-size:12.5px"><span style="color:var(--color-neutral-500)">Group</span><span style="color:var(--color-neutral-300)">Cash</span></div>
+                  <div style="display:flex; gap:7px; flex-wrap:wrap; margin-top:4px">
+                    <span style="font-size:12px; padding:6px 12px; border-radius:8px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Reconcile</span>
+                    <span style="font-size:12px; padding:6px 12px; border-radius:8px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Rename</span>
+                    <span style="font-size:12px; padding:6px 12px; border-radius:8px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Archive</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="padding:18px 24px 22px; display:flex; flex-direction:column; gap:10px">
+                <div style="display:flex; align-items:baseline; justify-content:space-between"><span style="font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Last few movements</span><span style="font-size:12px; color:var(--color-accent-300)">See all in Transactions</span></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; font-size:13px; padding:7px 0; border-bottom:1px solid var(--color-neutral-900)"><span style="width:52px; color:var(--color-neutral-500)">Sep 8</span><span style="flex:1">Chase card payment</span><span style="font-size:12px; padding:3px 9px; border-radius:999px; border:1px solid var(--color-accent-800); background:var(--color-accent-900); color:var(--color-accent-300)">Transfer · tied</span><span style="width:88px; text-align:right; color:var(--color-neutral-300)">−$400.00</span></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; font-size:13px; padding:7px 0; border-bottom:1px solid var(--color-neutral-900)"><span style="width:52px; color:var(--color-neutral-500)">Sep 8</span><span style="flex:1">Wells Fargo PLOC payment</span><span style="font-size:12px; padding:3px 9px; border-radius:999px; border:1px solid var(--color-accent-800); background:var(--color-accent-900); color:var(--color-accent-300)">Transfer · tied</span><span style="width:88px; text-align:right; color:var(--color-neutral-300)">−$300.00</span></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; font-size:13px; padding:7px 0; border-bottom:1px solid var(--color-neutral-900)"><span style="width:52px; color:var(--color-neutral-500)">Sep 6</span><span style="flex:1">Duke Energy</span><span style="font-size:12px; padding:3px 9px; border-radius:999px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Electric</span><span style="width:88px; text-align:right; color:var(--color-neutral-300)">−$138.00</span></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; font-size:13px; padding:7px 0"><span style="width:52px; color:var(--color-neutral-500)">Sep 1</span><span style="flex:1">Paycheck 1 of 2</span><span style="font-size:12px; padding:3px 9px; border-radius:999px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Income</span><span style="width:88px; text-align:right; color:var(--color-accent-300)">+$4,120.00</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap">
+        <div style="width:640px; flex:0 0 640px; display:flex; flex-direction:column; gap:9px">
+          <span style="font-size:11.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Add account · choose type — a page, not a modal</span>
+          <div style="border:1px solid var(--color-neutral-800); border-radius:12px; background:var(--color-bg); overflow:hidden; box-shadow:0 16px 40px rgba(0,0,0,0.55)">
+            <div style="padding:18px 22px 16px; border-bottom:1px solid var(--color-neutral-900); background:linear-gradient(180deg,var(--color-surface),var(--color-bg)); display:flex; flex-direction:column; gap:7px">
+              <span style="font-size:12px; color:var(--color-accent-300)">← Accounts</span>
+              <span style="font-size:24px; font-weight:500; letter-spacing:-0.015em">Add an account</span>
+              <span style="font-size:12.5px; color:var(--color-neutral-500)">Step 1 of 3 · what it is, then who holds it, then where it sits</span>
+            </div>
+            <div style="padding:16px 22px 20px; display:flex; flex-direction:column; gap:14px">
+              <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px">
+                <div style="border:1px solid var(--color-accent); border-radius:10px; padding:13px 14px; background:var(--color-accent-900); display:flex; flex-direction:column; gap:4px"><span style="font-size:14px; color:var(--color-accent-100)">Checking or savings</span><span style="font-size:11.5px; color:var(--color-accent-400)">Cash · goes into the runway view</span></div>
+                <div style="border:1px solid var(--color-neutral-800); border-radius:10px; padding:13px 14px; display:flex; flex-direction:column; gap:4px"><span style="font-size:14px; color:var(--color-neutral-300)">Credit card</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Debt · reads against a payment category</span></div>
+                <div style="border:1px solid var(--color-neutral-800); border-radius:10px; padding:13px 14px; display:flex; flex-direction:column; gap:4px"><span style="font-size:14px; color:var(--color-neutral-300)">Loan or line of credit</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Debt · payment schedule and payoff date</span></div>
+                <div style="border:1px solid var(--color-neutral-800); border-radius:10px; padding:13px 14px; display:flex; flex-direction:column; gap:4px"><span style="font-size:14px; color:var(--color-neutral-300)">Investment</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Invested · contributions come from Savings</span></div>
+                <div style="border:1px solid var(--color-neutral-800); border-radius:10px; padding:13px 14px; display:flex; flex-direction:column; gap:4px"><span style="font-size:14px; color:var(--color-neutral-300)">Savings envelope</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Cash · a goal and a monthly amount</span></div>
+                <div style="border:1px solid var(--color-neutral-800); border-radius:10px; padding:13px 14px; display:flex; flex-direction:column; gap:4px"><span style="font-size:14px; color:var(--color-neutral-300)">Property</span><span style="font-size:11.5px; color:var(--color-neutral-600)">Pairs with a mortgage and shows equity</span></div>
+              </div>
+              <div style="border-top:1px solid var(--color-neutral-900); padding-top:14px; display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+                <span style="font-size:13px; padding:9px 15px; border-radius:9px; border:1px solid var(--color-accent); color:var(--color-accent-200)">Connect the bank</span>
+                <span style="font-size:13px; padding:9px 15px; border-radius:9px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Enter it manually</span>
+                <span style="font-size:11.5px; color:var(--color-neutral-600)">Connecting is the quicker path. Manual accounts still take file imports.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:640px; flex:0 0 640px; display:flex; flex-direction:column; gap:9px">
+          <span style="font-size:11.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--color-neutral-600)">Add account · just connected — new cards drop into the grid</span>
+          <div style="border:1px solid var(--color-neutral-800); border-radius:12px; background:var(--color-bg); overflow:hidden; box-shadow:0 16px 40px rgba(0,0,0,0.55)">
+            <div style="padding:18px 22px 16px; border-bottom:1px solid var(--color-neutral-900); background:linear-gradient(180deg,var(--color-surface),var(--color-bg)); display:flex; flex-direction:column; gap:6px">
+              <span style="font-size:24px; font-weight:500; letter-spacing:-0.015em">Chase is connected</span>
+              <span style="font-size:12.5px; color:var(--color-neutral-500)">6:41 am · 3 accounts read · 90 days of history importing</span>
+            </div>
+            <div style="padding:16px 22px 20px; display:flex; flex-direction:column; gap:12px">
+              <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px">
+                <div style="border:1px solid var(--color-accent); border-radius:11px; background:linear-gradient(160deg,var(--color-accent-900),var(--color-bg)); padding:13px 14px; display:flex; flex-direction:column; gap:8px">
+                  <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px"><span style="font-size:13.5px">Chase Freedom ••9081</span><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block; margin-top:5px"></span></div>
+                  <span style="font-size:20px; font-weight:500">−$412</span>
+                  <span style="font-size:11.5px; color:var(--color-accent-300)">Debt · no payment category yet</span>
+                </div>
+                <div style="border:1px solid var(--color-accent); border-radius:11px; background:linear-gradient(160deg,var(--color-accent-900),var(--color-bg)); padding:13px 14px; display:flex; flex-direction:column; gap:8px">
+                  <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px"><span style="font-size:13.5px">Chase Savings ••2210</span><span style="width:6px; height:6px; border-radius:50%; background:var(--color-accent); display:block; margin-top:5px"></span></div>
+                  <span style="font-size:20px; font-weight:500">$1,900</span>
+                  <span style="font-size:11.5px; color:var(--color-accent-300)">Cash · nothing scheduled</span>
+                </div>
+              </div>
+              <div style="border:1px solid var(--color-neutral-800); border-radius:10px; padding:12px 13px; background:var(--color-surface); display:flex; flex-direction:column; gap:6px">
+                <span style="font-size:12.5px; color:var(--color-neutral-400)">Chase card ••4412 was already here. Matched, not duplicated.</span>
+                <span style="font-size:12.5px; color:var(--color-neutral-400)">46 imported transactions need a category. They are waiting in Transactions.</span>
+                <span style="font-size:12.5px; color:var(--color-neutral-400)">Chase sends pending transactions, so those appear there marked pending.</span>
+              </div>
+              <div style="display:flex; gap:9px; flex-wrap:wrap">
+                <span style="font-size:13px; padding:9px 15px; border-radius:9px; border:1px solid var(--color-accent); color:var(--color-accent-200)">Give them categories</span>
+                <span style="font-size:13px; padding:9px 15px; border-radius:9px; border:1px solid var(--color-neutral-800); color:var(--color-neutral-400)">Later</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+</x-dc>
+</body>
+</html>
