@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import { signIn } from "@/auth";
+import { PasskeySignIn } from "@/features/auth/passkey-sign-in";
 
 export const metadata: Metadata = { title: "Sign in" };
 
 export default function SignInPage() {
-  const googleEnabled = Boolean(
-    process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
-  );
   const devEnabled =
     process.env.NODE_ENV !== "production" &&
     process.env.AUTH_DEV_BYPASS === "true";
@@ -20,18 +18,7 @@ export default function SignInPage() {
           Sign in to connect accounts and build a plan around where your money
           actually lives.
         </p>
-        {googleEnabled ? (
-          <form
-            action={async () => {
-              "use server";
-              await signIn("google", { redirectTo: "/accounts" });
-            }}
-          >
-            <button className="button" type="submit">
-              Continue with Google
-            </button>
-          </form>
-        ) : null}
+        <PasskeySignIn />
         {devEnabled ? (
           <form
             action={async (formData) => {
@@ -57,11 +44,6 @@ export default function SignInPage() {
               Local development sign-in
             </button>
           </form>
-        ) : null}
-        {!googleEnabled && !devEnabled ? (
-          <p role="status" className="warning">
-            Configure an OAuth provider to enable sign-in.
-          </p>
         ) : null}
       </section>
     </main>

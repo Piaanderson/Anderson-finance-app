@@ -34,18 +34,97 @@ enum SyncJobStatus {
   FAILED
 }
 
+enum PasskeyCeremonyType {
+  AUTHENTICATION
+  REGISTRATION_BOOTSTRAP
+  REGISTRATION_USER
+}
+
+enum AuthThrottleScope {
+  AUTH_OPTIONS
+  AUTH_VERIFY
+  BOOTSTRAP_OPTIONS
+  BOOTSTRAP_VERIFY
+  RECOVERY_VERIFY
+  MANAGEMENT
+}
+
 model User {
-  id            String            @id @default(cuid())
+  id            String              @id @default(cuid())
   name          String?
-  email         String?           @unique
+  email         String?             @unique
   emailVerified DateTime?
   image         String?
   accounts      Account[]
   sessions      Session[]
   memberships   HouseholdMember[]
-  linkedItems   PlaidItem[]       @relation("LinkedBy")
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  linkedItems   PlaidItem[]         @relation("LinkedBy")
+  passkeys      PasskeyCredential[]
+  ceremonies    PasskeyCeremony[]
+  recoveryCodes RecoveryCode[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model PasskeyCredential {
+  id           String    @id @default(cuid())
+  userId       String
+  credentialId String    @unique
+  publicKey    Bytes
+  counter      BigInt    @default(0)
+  transports   String[]
+  deviceType   String
+  backedUp     Boolean
+  name         String?
+  lastUsedAt   DateTime?
+  revokedAt    DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId, revokedAt])
+}
+
+model PasskeyCeremony {
+  id                String              @id @default(cuid())
+  type              PasskeyCeremonyType
+  challenge         String              @unique
+  userId            String?
+  userHandle        String
+  registrationName  String?
+  registrationEmail String?
+  credentialName    String?
+  expiresAt         DateTime
+  consumedAt        DateTime?
+  user              User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime            @default(now())
+
+  @@index([type, expiresAt])
+  @@index([userId])
+}
+
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String    @unique
+  usedAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+
+  @@index([userId, usedAt])
+}
+
+model AuthThrottle {
+  id              String            @id @default(cuid())
+  scope           AuthThrottleScope
+  keyHash         String
+  attempts        Int               @default(0)
+  windowStartedAt DateTime          @default(now())
+  blockedUntil    DateTime?
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([scope, keyHash])
+  @@index([blockedUntil])
 }
 
 model Account {
@@ -110,51 +189,51 @@ model HouseholdMember {
 }
 
 model PlaidItem {
-  id                   String          @id @default(cuid())
-  householdId          String
-  linkedByUserId       String
-  plaidItemId          String          @unique
-  institutionId        String?
-  institutionName      String?
+  id                    String             @id @default(cuid())
+  householdId           String
+  linkedByUserId        String
+  plaidItemId           String             @unique
+  institutionId         String?
+  institutionName       String?
   accessTokenCiphertext String
-  accessTokenIv        String
-  accessTokenTag       String
-  encryptionKeyVersion Int             @default(1)
-  syncCursor           String?
-  status               PlaidItemStatus @default(ACTIVE)
-  errorCode            String?
-  consentExpiresAt     DateTime?
-  lastSyncedAt         DateTime?
-  household            Household       @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  linkedBy             User            @relation("LinkedBy", fields: [linkedByUserId], references: [id], onDelete: Restrict)
-  accounts             FinancialAccount[]
-  syncJobs             SyncJob[]
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
+  accessTokenIv         String
+  accessTokenTag        String
+  encryptionKeyVersion  Int                @default(1)
+  syncCursor            String?
+  status                PlaidItemStatus    @default(ACTIVE)
+  errorCode             String?
+  consentExpiresAt      DateTime?
+  lastSyncedAt          DateTime?
+  household             Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  linkedBy              User               @relation("LinkedBy", fields: [linkedByUserId], references: [id], onDelete: Restrict)
+  accounts              FinancialAccount[]
+  syncJobs              SyncJob[]
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
 
   @@index([householdId])
   @@index([status])
 }
 
 model FinancialAccount {
-  id                 String        @id @default(cuid())
-  householdId        String
-  plaidItemId        String
-  plaidAccountId     String        @unique
-  name               String
-  officialName       String?
-  mask               String?
-  type               String
-  subtype            String?
-  currentBalance     Decimal?      @db.Decimal(18, 2)
-  availableBalance   Decimal?      @db.Decimal(18, 2)
-  isoCurrencyCode    String?
-  isActive           Boolean       @default(true)
-  household          Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  plaidItem          PlaidItem     @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
-  transactions       Transaction[]
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  id               String        @id @default(cuid())
+  householdId      String
+  plaidItemId      String
+  plaidAccountId   String        @unique
+  name             String
+  officialName     String?
+  mask             String?
+  type             String
+  subtype          String?
+  currentBalance   Decimal?      @db.Decimal(18, 2)
+  availableBalance Decimal?      @db.Decimal(18, 2)
+  isoCurrencyCode  String?
+  isActive         Boolean       @default(true)
+  household        Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  plaidItem        PlaidItem     @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
+  transactions     Transaction[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   @@index([householdId, type])
   @@index([plaidItemId])
@@ -163,7 +242,7 @@ model FinancialAccount {
 model Transaction {
   id                   String           @id @default(cuid())
   householdId          String
-  accountId             String
+  accountId            String
   plaidTransactionId   String           @unique
   pendingTransactionId String?
   name                 String
@@ -192,18 +271,18 @@ model Transaction {
 }
 
 model Category {
-  id          String             @id @default(cuid())
-  householdId String
-  name        String
-  section     String
-  sortOrder   Int                @default(0)
-  archivedAt  DateTime?
-  household   Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  id           String             @id @default(cuid())
+  householdId  String
+  name         String
+  section      String
+  sortOrder    Int                @default(0)
+  archivedAt   DateTime?
+  household    Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
   transactions Transaction[]
-  rules       MerchantRule[]
-  allocations BudgetAllocation[]
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  rules        MerchantRule[]
+  allocations  BudgetAllocation[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
 
   @@unique([householdId, name])
   @@index([householdId, section, sortOrder])
@@ -236,15 +315,15 @@ model BudgetMonth {
 }
 
 model BudgetAllocation {
-  id            String      @id @default(cuid())
-  budgetMonthId String
-  categoryId    String
-  planned       Decimal     @db.Decimal(18, 2)
+  id                   String      @id @default(cuid())
+  budgetMonthId        String
+  categoryId           String
+  planned              Decimal     @db.Decimal(18, 2)
   destinationAccountId String?
-  budgetMonth   BudgetMonth @relation(fields: [budgetMonthId], references: [id], onDelete: Cascade)
-  category      Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  budgetMonth          BudgetMonth @relation(fields: [budgetMonthId], references: [id], onDelete: Cascade)
+  category             Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 
   @@unique([budgetMonthId, categoryId])
 }
@@ -263,19 +342,19 @@ model TransferMatch {
 }
 
 model SyncJob {
-  id          String        @id @default(cuid())
-  plaidItemId String
-  dedupeKey   String        @unique
-  reason      SyncReason
-  status      SyncJobStatus @default(PENDING)
-  attempts    Int           @default(0)
-  rerunRequested Boolean    @default(false)
-  runAfter    DateTime      @default(now())
-  lockedAt    DateTime?
-  lastError   String?
-  plaidItem   PlaidItem     @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id             String        @id @default(cuid())
+  plaidItemId    String
+  dedupeKey      String        @unique
+  reason         SyncReason
+  status         SyncJobStatus @default(PENDING)
+  attempts       Int           @default(0)
+  rerunRequested Boolean       @default(false)
+  runAfter       DateTime      @default(now())
+  lockedAt       DateTime?
+  lastError      String?
+  plaidItem      PlaidItem     @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([status, runAfter])
 }

@@ -9,7 +9,8 @@ const links = [
   { href: "/budget", label: "Budget" },
   { href: "/accounts", label: "Accounts" },
   { href: "/transactions", label: "Transactions" },
-  { href: "/categories", label: "Categories" }
+  { href: "/categories", label: "Categories" },
+  { href: "/settings/security", label: "Security" }
 ] as const;
 
 export function AppSidebar({ netWorth }: { netWorth: number }) {

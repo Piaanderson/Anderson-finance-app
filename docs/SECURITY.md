@@ -16,6 +16,20 @@ database exports, credentials, and support screenshots as confidential.
   descriptions, account numbers, or balances.
 - The local credentials provider is disabled whenever `NODE_ENV=production`.
 
+## Passkeys
+
+- Production WebAuthn verification must use the exact HTTPS
+  `PASSKEY_ORIGIN` and its matching `PASSKEY_RP_ID`.
+- Registration requires a discoverable credential and user verification.
+  Challenges expire after five minutes and are consumed before verification
+  so failed responses cannot be replayed.
+- `PASSKEY_BOOTSTRAP_TOKEN` exists only while creating the first owner. Remove
+  it from Railway immediately after setup succeeds.
+- Recovery codes are random, HMAC-hashed with `AUTH_SECRET`, displayed once,
+  and consumed atomically. Regenerating codes invalidates every prior code.
+- Never log WebAuthn responses, challenges, bootstrap tokens, or recovery
+  codes.
+
 ## Authorization
 
 All finance records are owned by a `Household`. Server code derives the active
@@ -45,6 +59,6 @@ choose a household ID. New endpoints must:
 - Review dependency advisories; do not apply breaking `npm audit --force`
   updates without testing.
 - Confirm production has no `AUTH_DEV_BYPASS` value.
-- Confirm HTTPS callback, redirect, and webhook URLs.
+- Confirm the passkey relying-party host, HTTPS origin, and Plaid webhook URL.
 - Confirm a recent backup and restore drill.
 - Confirm logs and error reports contain no financial payloads.

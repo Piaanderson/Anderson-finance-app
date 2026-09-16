@@ -32,7 +32,11 @@ the repository.
 
 Copy the names from `.env.example`. In production:
 
-- set `AUTH_SECRET`, Google OAuth credentials, and the public `AUTH_URL`;
+- set `AUTH_SECRET` and the public `AUTH_URL`;
+- set `PASSKEY_RP_ID` to the public hostname, `PASSKEY_ORIGIN` to its HTTPS
+  origin, and `PASSKEY_RP_NAME=Currents`;
+- set a strong `PASSKEY_BOOTSTRAP_TOKEN` only while creating the first owner at
+  `/setup`, then remove it;
 - set Plaid production credentials, `PLAID_ENV=production`, and an HTTPS
   `PLAID_WEBHOOK_URL`;
 - set a random `TOKEN_ENCRYPTION_KEY` and version;
@@ -49,9 +53,10 @@ them without writing them to source.
 
 The web and worker services run `prisma migrate deploy` before starting. Deploy
 PostgreSQL first, web second, then worker and cron. The web health check is
-`/api/health`. Configure the Google redirect URI as
-`https://<domain>/api/auth/callback/google` and the Plaid webhook as
-`https://<domain>/api/plaid/webhook` after Railway assigns the domain.
+`/api/health`. Passkeys are bound to the configured production hostname, so
+changing domains requires a deliberate credential migration. Configure the
+Plaid webhook as `https://<domain>/api/plaid/webhook` after Railway assigns the
+domain.
 
 ## Backups and recovery
 
