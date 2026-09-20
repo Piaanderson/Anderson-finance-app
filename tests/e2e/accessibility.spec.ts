@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { prisma } from "../../src/server/db";
 
 test("sign-in surface has no automatically detectable WCAG violations", async ({
   page
@@ -50,6 +52,146 @@ test("a local user can sign in and use the shared application shell", async ({
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
   expect(results.violations).toEqual([]);
+});
+
+test("account recovery controls are labelled, keyboard-operable, and announced", async ({
+  page
+}, testInfo) => {
+  const fixture = `account-controls-${testInfo.project.name}-${randomUUID()}`;
+  const email = `${fixture}@example.test`;
+  let householdId: string | null = null;
+  let userId: string | null = null;
+
+  try {
+    await page.goto("/sign-in");
+    await page.getByLabel("Development email").fill(email);
+    await page
+      .getByRole("button", { name: "Local development sign-in" })
+      .click();
+    await expect(page).toHaveURL(/\/accounts$/);
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    const membership = await prisma.householdMember.findFirstOrThrow({
+      where: { userId: user.id }
+    });
+    userId = user.id;
+    householdId = membership.householdId;
+    const loginItemId = `${fixture}-login-item`;
+    const errorItemId = `${fixture}-error-item`;
+    await prisma.plaidItem.createMany({
+      data: [
+        {
+          id: loginItemId,
+          householdId,
+          linkedByUserId: userId,
+          plaidItemId: `${fixture}-login-plaid-item`,
+          institutionName: "Fixture reconnect bank",
+          accessTokenCiphertext: "fixture",
+          accessTokenIv: "fixture",
+          accessTokenTag: "fixture",
+          status: "LOGIN_REQUIRED",
+          errorCode: "ITEM_LOGIN_REQUIRED",
+          lastSyncedAt: new Date("2026-09-18T12:00:00.000Z")
+        },
+        {
+          id: errorItemId,
+          householdId,
+          linkedByUserId: userId,
+          plaidItemId: `${fixture}-error-plaid-item`,
+          institutionName: "Fixture error bank",
+          accessTokenCiphertext: "fixture",
+          accessTokenIv: "fixture",
+          accessTokenTag: "fixture",
+          status: "ERROR",
+          errorCode: "INSTITUTION_NOT_RESPONDING",
+          lastSyncedAt: new Date("2026-09-19T12:00:00.000Z")
+        }
+      ]
+    });
+    await prisma.financialAccount.createMany({
+      data: [
+        {
+          id: `${fixture}-login-account`,
+          householdId,
+          plaidItemId: loginItemId,
+          plaidAccountId: `${fixture}-login-plaid-account`,
+          name: "Reconnect checking",
+          type: "depository",
+          currentBalance: "250.00"
+        },
+        {
+          id: `${fixture}-error-account`,
+          householdId,
+          plaidItemId: errorItemId,
+          plaidAccountId: `${fixture}-error-plaid-account`,
+          name: "Error checking",
+          type: "depository",
+          currentBalance: "125.00"
+        }
+      ]
+    });
+    await page.route("**/api/plaid/items/**", async (route) => {
+      if (route.request().method() === "POST") {
+        await route.fulfill({
+          status: 202,
+          contentType: "application/json",
+          body: JSON.stringify({ queued: true })
+        });
+        return;
+      }
+      if (route.request().method() === "DELETE") {
+        await route.fulfill({ status: 204, body: "" });
+        return;
+      }
+      await route.continue();
+    });
+    await page.reload();
+
+    const reconnectCard = page.getByRole("article", {
+      name: "Fixture reconnect bank"
+    });
+    const errorCard = page.getByRole("article", {
+      name: "Fixture error bank"
+    });
+    await expect(reconnectCard.getByText("Reconnect required")).toBeVisible();
+    await expect(
+      reconnectCard.getByRole("button", {
+        name: "Reconnect Fixture reconnect bank",
+        exact: true
+      })
+    ).toBeVisible();
+    await expect(errorCard.getByText("Sync stopped")).toBeVisible();
+
+    const retry = errorCard.getByRole("button", {
+      name: "Try sync again for Fixture error bank",
+      exact: true
+    });
+    await retry.focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(retry).toBeFocused();
+    await expect
+      .poll(() =>
+        retry.evaluate((element) => getComputedStyle(element).outlineStyle)
+      )
+      .not.toBe("none");
+    await page.keyboard.press("Enter");
+    await expect(
+      errorCard.getByRole("status").getByText("Sync retry queued.")
+    ).toBeVisible();
+
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(results.violations).toEqual([]);
+  } finally {
+    if (householdId) {
+      await prisma.household.deleteMany({ where: { id: householdId } });
+    }
+    if (userId) {
+      await prisma.user.deleteMany({ where: { id: userId } });
+    }
+  }
 });
 
 test("a local owner can add and use a passkey and recovery code", async ({

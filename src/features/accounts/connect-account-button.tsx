@@ -1,75 +1,80 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  usePlaidLink,
-  type PlaidLinkOnSuccessMetadata
-} from "react-plaid-link";
+import type { PlaidLinkOnSuccessMetadata } from "react-plaid-link";
+import { usePlaidConnectionManager } from "./plaid-link-provider";
 
 export function ConnectAccountButton() {
   const router = useRouter();
-  const [linkToken, setLinkToken] = useState<string | null>(null);
+  const { startLink } = usePlaidConnectionManager();
+  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    fetch("/api/plaid/link-token", { method: "POST" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Connection is unavailable.");
-        return (await response.json()) as { linkToken: string };
-      })
-      .then((data) => setLinkToken(data.linkToken))
-      .catch(() => setMessage("Bank connection is not configured yet."));
-  }, []);
-
-  const onSuccess = useCallback(
-    async (
-      publicToken: string | null,
-      metadata: PlaidLinkOnSuccessMetadata
-    ) => {
-      if (!publicToken) {
-        setMessage("Plaid did not return a connection token.");
-        return;
-      }
-      setMessage("Saving your connection…");
-      const response = await fetch("/api/plaid/exchange", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          publicToken,
-          institutionId: metadata.institution?.institution_id,
-          institutionName: metadata.institution?.name
-        })
+  async function connect() {
+    setBusy(true);
+    setMessage("Preparing secure bank connection…");
+    try {
+      await startLink({
+        onSuccess: async (
+          publicToken: string | null,
+          metadata: PlaidLinkOnSuccessMetadata
+        ) => {
+          if (!publicToken) {
+            setMessage("Plaid did not return a connection token.");
+            setBusy(false);
+            return;
+          }
+          setMessage("Saving your connection…");
+          try {
+            const response = await fetch("/api/plaid/exchange", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                publicToken,
+                institutionId: metadata.institution?.institution_id,
+                institutionName: metadata.institution?.name
+              })
+            });
+            if (!response.ok) throw new Error("exchange");
+            setMessage("Connected. Accounts are syncing now.");
+            router.refresh();
+          } catch {
+            setMessage("The connection could not be saved.");
+          } finally {
+            setBusy(false);
+          }
+        },
+        onExit: (error) => {
+          setBusy(false);
+          setMessage(
+            error
+              ? "Connection closed before it was completed."
+              : "Connection canceled."
+          );
+        },
+        onUnavailable: () => {
+          setBusy(false);
+          setMessage("Secure bank connection is unavailable. Try again.");
+        }
       });
-      setMessage(
-        response.ok
-          ? "Connected. Accounts are syncing now."
-          : "The connection could not be saved."
-      );
-      if (response.ok) router.refresh();
-    },
-    [router]
-  );
-
-  const { open, ready } = usePlaidLink({
-    token: linkToken,
-    onSuccess,
-    onExit: (error) => {
-      if (error) setMessage("Connection closed before it was completed.");
+    } catch {
+      setBusy(false);
+      setMessage("Bank connection is not configured yet.");
     }
-  });
+  }
 
   return (
     <>
       <button
         className="button"
         type="button"
-        onClick={() => open()}
-        disabled={!ready}
+        onClick={() => void connect()}
+        disabled={busy}
       >
-        Connect account
+        {busy ? "Opening Plaid…" : "Connect account"}
       </button>
-      <span role="status" className="muted">
+      <span role="status" className="muted status-region" aria-live="polite">
         {message}
       </span>
     </>

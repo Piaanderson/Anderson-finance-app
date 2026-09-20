@@ -334,5 +334,42 @@ describe("finite Plaid worker processing", () => {
       lockedAt: null,
       lastError: "Plaid request failed (INSTITUTION_NOT_RESPONDING)."
     });
+    await expect(
+      prisma.plaidItem.findUniqueOrThrow({ where: { id: fixture.itemId } })
+    ).resolves.toMatchObject({
+      status: "ERROR",
+      errorCode: "INSTITUTION_NOT_RESPONDING"
+    });
+  });
+
+  it("stops immediately and requests reconnect for ITEM_LOGIN_REQUIRED", async () => {
+    const fixture = await createFixture();
+    await createPendingJob(fixture);
+    const claimed = await claimNextSyncJob({
+      dedupeKey: fixture.dedupeKey
+    });
+    const sync = vi.fn().mockRejectedValue({
+      response: { data: { error_code: "ITEM_LOGIN_REQUIRED" } }
+    });
+    const log = { info: vi.fn(), error: vi.fn() };
+
+    await expect(processClaimedSyncJob(claimed!, { sync, log })).resolves.toBe(
+      "failed"
+    );
+    await expect(
+      prisma.syncJob.findUniqueOrThrow({
+        where: { dedupeKey: fixture.dedupeKey }
+      })
+    ).resolves.toMatchObject({
+      status: "FAILED",
+      attempts: 1,
+      lastError: "Plaid request failed (ITEM_LOGIN_REQUIRED)."
+    });
+    await expect(
+      prisma.plaidItem.findUniqueOrThrow({ where: { id: fixture.itemId } })
+    ).resolves.toMatchObject({
+      status: "LOGIN_REQUIRED",
+      errorCode: "ITEM_LOGIN_REQUIRED"
+    });
   });
 });

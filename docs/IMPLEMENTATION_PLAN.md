@@ -13,8 +13,9 @@ Last updated: 2026-09-19
 - Board:
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
-- Next action: execute
-  [#5 Complete Plaid Item lifecycle and recovery UX](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/5)
+- Next action: obtain explicit approval to commit and push locally accepted
+  [#5 Complete Plaid Item lifecycle and recovery UX](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/5),
+  then verify its GitLab pipeline and GitHub mirror.
 
 ## Product finish line
 
@@ -123,10 +124,11 @@ Goal: make the existing ingestion path safe to rely on before expanding UI.
 - [x] Test job deduplication, retry, rerun, and interrupted-worker recovery.
 - [x] Add negative cross-household tests for every mutating finance endpoint.
 - [x] Bound transaction sizes for large initial syncs.
-- Normalize Plaid errors into actionable Item states.
-- Add update mode for `LOGIN_REQUIRED`.
-- Add account refresh, reconnect, disconnect, last-sync, and status controls.
-- Surface failed or stale syncs without logging private financial data.
+- [x] Normalize Plaid errors into actionable Item states.
+- [x] Add update mode for `LOGIN_REQUIRED`.
+- [x] Add account refresh, reconnect, disconnect, last-sync, and status
+      controls.
+- [x] Surface failed or stale syncs without logging private financial data.
 
 Exit evidence:
 
@@ -468,14 +470,11 @@ Local environment: Node 22.23.2, npm 10.9.8, Docker 29.4.0, Docker Compose
 
 Remaining risks:
 
-- The parallel development browser run logs Plaid's warning that
-  `link-initialize.js` was embedded more than once. It did not affect the
-  passing tests or Sandbox worker sync, but the Link lifecycle should be
-  resolved with issues #4–#5 rather than ignored before production use.
 - This baseline reused three existing Sandbox Items and proved account and
   transaction synchronization through the real worker. A brand-new Link
-  connection, signed webhook delivery, update mode, and failure recovery
-  remain explicit Phase 1 work in issues #4–#5.
+  connection and signed webhook delivery remain staging checks before
+  production use. Issue #5 resolved the duplicate Link-script warning with a
+  single, lazy page-level Link controller.
 - `npm ci` reports two moderate development-only advisories; the production
   dependency audit is clean. Avoid `npm audit fix --force` because it proposes
   breaking upgrades.
@@ -602,11 +601,84 @@ Remaining risks:
 - All automated tests intentionally use generated keys, mocked Plaid methods,
   and local PostgreSQL. Trial-environment institution behavior and signed
   webhook delivery still require the staging work planned before production.
-- Issue #5 still owns reconnect/update mode and user-facing Item lifecycle
-  controls; this slice does not add that UI.
+
+### Issue #5 Plaid Item lifecycle evidence — 2026-09-19
+
+Implementation:
+
+- Plaid failures now become explicit Item states. `ITEM_LOGIN_REQUIRED` stops
+  retrying immediately and requests reconnect; an eighth failed attempt marks
+  the Item `ERROR`. Successful sync and `LOGIN_REPAIRED` clear the stored safe
+  error code and restore `ACTIVE`.
+- Item `ERROR`, `PENDING_EXPIRATION`, and `PENDING_DISCONNECT` webhooks are
+  normalized without storing display messages or unchecked external strings.
+  Only allowlisted Plaid error-code characters can reach the database or logs.
+- `/api/plaid/link-token` accepts an optional local Item ID, derives its
+  household from the authenticated membership, decrypts the existing access
+  token only on the server, and follows Plaid update mode by omitting new-Item
+  products. A foreign or removed Item returns 404 before a Plaid call.
+- Connect and reconnect share one lazy page-level Plaid Link controller. New
+  connections still exchange a public token; update mode never exchanges one
+  because the existing access token remains valid. The Link script is not
+  loaded until the user starts a Link flow.
+- The Accounts page shows exact last-sync time, first-sync and over-24-hour
+  stale states, queued/running retry state, active account counts, and distinct
+  recovery copy. `LOGIN_REQUIRED` offers Reconnect; terminal failure offers
+  Try sync again. Every connection can be disconnected.
+- Refresh enqueues the existing idempotent job. Disconnect calls Plaid
+  `/item/remove`, then atomically clears encrypted token material, marks the
+  Item removed, deactivates only its household-owned accounts, and terminates
+  queued/running jobs. Account chunks now verify the active Item and worker
+  claim so a concurrent disconnect cannot reactivate accounts.
+- Controls are native labelled buttons with 44px targets and visible focus.
+  Context is associated with each control, status updates use a polite live
+  region, failures use `role="alert"`, and the destructive disconnect action
+  requires confirmation. Desktop and mobile WCAG 2.1 AA scans pass.
+- Unique, self-cleaning lifecycle fixtures mock Link-token creation and Item
+  removal, prove create versus update mode, foreign-Item rejection, manual
+  refresh, disconnect cleanup, safe failure behavior, and absence of access
+  tokens/account names in logs. Worker and webhook tests prove the two
+  recovery states.
+
+Verification:
+
+- `npx vitest run src/features/accounts/connection-status.test.ts
+src/server/plaid/webhooks.test.ts` — passed: 2 files and 23 tests.
+- `npx vitest run tests/integration/plaid-item-lifecycle.test.ts
+tests/integration/plaid-jobs-worker.test.ts
+tests/integration/plaid-sync.test.ts` — passed: 3 files and 16 tests.
+- `npx playwright test tests/e2e/accessibility.spec.ts --grep 'account
+recovery controls'` — passed on desktop and mobile: 2 tests.
+- `npm run test:unit` — passed: 8 files and 39 tests.
+- `npm run test:integration` — passed: 4 files and 29 tests.
+- `npm test` — passed: 12 files and 68 tests.
+- `npm run typecheck`, `npm run lint`, and `npm run format:check` — passed
+  with no findings.
+- `npm run build` — passed with Next.js 16.3.5; all 20 static-generation tasks
+  completed.
+- `npm run test:e2e` — passed on desktop and mobile: 9 passed and the mobile
+  duplicate of the Chromium-CDP-only passkey test was explicitly skipped.
+  The prior duplicate Plaid Link script warning did not recur.
+- `git diff --check` and edited-file IDE diagnostics — passed with no
+  findings.
+- Every Vitest Plaid method is an in-process mock. The lifecycle browser test
+  intercepts its local Item actions and never opens Link; no acceptance test
+  sends a request to Plaid.
+
+Remaining risks:
+
+- Real institution reauthentication, OAuth redirects, expiring consent, and
+  signed `LOGIN_REPAIRED` delivery still require Trial/staging verification.
+  Local and CI tests deliberately use mocked Plaid methods and local
+  PostgreSQL.
+- Disconnect preserves existing transactions for historical reporting while
+  deactivating accounts. Phase 2 must define how removed Plaid sources appear
+  alongside manual accounts without implying that old balances are current.
 
 ## Next handoff
 
-Begin issue #5 for Plaid Item lifecycle, reconnect/update mode, account
-controls, and user-facing failed or stale sync states. Keep roadmap issue #1
-and the full Currents goal open; the private v1 application is not complete.
+After push approval, verify issue #5's GitLab pipeline and GitHub mirror, then
+begin
+[#6 Generalize the financial account and balance model](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/6).
+Keep roadmap issue #1 and the full Currents goal open; the private v1
+application is not complete.

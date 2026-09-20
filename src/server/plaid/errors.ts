@@ -1,5 +1,11 @@
 const SAFE_ERROR_CODE = /^[A-Z0-9_]{1,100}$/;
 
+export function safePlaidErrorCode(value: unknown): string | null {
+  return typeof value === "string" && SAFE_ERROR_CODE.test(value)
+    ? value
+    : null;
+}
+
 function responseData(error: unknown): unknown {
   if (typeof error !== "object" || error === null || !("response" in error)) {
     return null;
@@ -20,8 +26,7 @@ export function plaidErrorCode(error: unknown): string | null {
   if (typeof data !== "object" || data === null || !("error_code" in data)) {
     return null;
   }
-  const code = data.error_code;
-  return typeof code === "string" && SAFE_ERROR_CODE.test(code) ? code : null;
+  return safePlaidErrorCode(data.error_code);
 }
 
 export function sanitizedPlaidError(error: unknown) {

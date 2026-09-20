@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/server/db";
+import { safePlaidErrorCode } from "@/server/plaid/errors";
 import { enqueuePlaidSync } from "@/server/plaid/jobs";
 import { plaidWebhook, verifyPlaidWebhook } from "@/server/plaid/webhooks";
 
@@ -34,15 +35,32 @@ export async function POST(request: Request) {
 
   if (event.webhook_code === "SYNC_UPDATES_AVAILABLE") {
     await enqueuePlaidSync(item.id, "WEBHOOK");
+  } else if (event.webhook_code === "LOGIN_REPAIRED") {
+    await prisma.plaidItem.update({
+      where: { id: item.id },
+      data: { status: "ACTIVE", errorCode: null }
+    });
+    await enqueuePlaidSync(item.id, "WEBHOOK");
+  } else if (event.webhook_code === "ERROR") {
+    const errorCode =
+      safePlaidErrorCode(event.error?.error_code) ?? "ITEM_ERROR";
+    await prisma.plaidItem.update({
+      where: { id: item.id },
+      data: {
+        status:
+          errorCode === "ITEM_LOGIN_REQUIRED" ? "LOGIN_REQUIRED" : "ERROR",
+        errorCode
+      }
+    });
   } else if (
-    event.webhook_code === "ERROR" &&
-    event.error?.error_code === "ITEM_LOGIN_REQUIRED"
+    event.webhook_code === "PENDING_EXPIRATION" ||
+    event.webhook_code === "PENDING_DISCONNECT"
   ) {
     await prisma.plaidItem.update({
       where: { id: item.id },
       data: {
         status: "LOGIN_REQUIRED",
-        errorCode: event.error.error_code
+        errorCode: event.webhook_code
       }
     });
   }

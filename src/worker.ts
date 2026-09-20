@@ -58,18 +58,30 @@ export async function processClaimedSyncJob(
     return completed.count === 1 ? "completed" : "rerun";
   } catch (error) {
     const safeError = sanitizedPlaidError(error);
-    const terminal = job.attempts >= 8;
+    const loginRequired = safeError.code === "ITEM_LOGIN_REQUIRED";
+    const terminal = loginRequired || job.attempts >= 8;
     const failedAt = now();
-    await prisma.syncJob.updateMany({
-      where: { id: job.id, status: "RUNNING" },
-      data: {
-        status: terminal ? "FAILED" : "PENDING",
-        rerunRequested: false,
-        lockedAt: null,
-        lastError: safeError.message,
-        runAfter: terminal
-          ? failedAt
-          : new Date(failedAt.getTime() + retryDelayMs(job.attempts))
+    await prisma.$transaction(async (tx) => {
+      const updated = await tx.syncJob.updateMany({
+        where: { id: job.id, status: "RUNNING" },
+        data: {
+          status: terminal ? "FAILED" : "PENDING",
+          rerunRequested: false,
+          lockedAt: null,
+          lastError: safeError.message,
+          runAfter: terminal
+            ? failedAt
+            : new Date(failedAt.getTime() + retryDelayMs(job.attempts))
+        }
+      });
+      if (updated.count === 1 && terminal) {
+        await tx.plaidItem.updateMany({
+          where: { id: job.plaidItemId, status: { not: "REMOVED" } },
+          data: {
+            status: loginRequired ? "LOGIN_REQUIRED" : "ERROR",
+            errorCode: safeError.code ?? "SYNC_FAILED"
+          }
+        });
       }
     });
     log.error("plaid.sync.failed", {

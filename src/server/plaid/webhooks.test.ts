@@ -272,4 +272,84 @@ describe("Plaid webhook route", () => {
     expect(mocks.enqueuePlaidSync).not.toHaveBeenCalled();
     expect(mocks.updateItem).not.toHaveBeenCalled();
   });
+
+  it("clears reconnect state and queues a sync after LOGIN_REPAIRED", async () => {
+    const key = await signingKey();
+    const rawBody = JSON.stringify({
+      webhook_type: "ITEM",
+      webhook_code: "LOGIN_REPAIRED",
+      item_id: "known-item"
+    });
+    mockVerificationKey(key);
+    mocks.findItem.mockResolvedValue({ id: "local-item" });
+    const token = await signedWebhook(key, rawBody);
+
+    const response = await POST(
+      new Request("http://currents.test/api/plaid/webhook", {
+        method: "POST",
+        headers: { "Plaid-Verification": token },
+        body: rawBody
+      })
+    );
+
+    expect(response.status).toBe(204);
+    expect(mocks.updateItem).toHaveBeenCalledWith({
+      where: { id: "local-item" },
+      data: { status: "ACTIVE", errorCode: null }
+    });
+    expect(mocks.enqueuePlaidSync).toHaveBeenCalledWith(
+      "local-item",
+      "WEBHOOK"
+    );
+  });
+
+  it("separates login-required and other Item errors", async () => {
+    const key = await signingKey();
+    mockVerificationKey(key);
+    mocks.findItem.mockResolvedValue({ id: "local-item" });
+
+    for (const errorCode of [
+      "ITEM_LOGIN_REQUIRED",
+      "INSTITUTION_NOT_RESPONDING",
+      "unsafe bank details"
+    ]) {
+      const rawBody = JSON.stringify({
+        webhook_type: "ITEM",
+        webhook_code: "ERROR",
+        item_id: "known-item",
+        error: { error_code: errorCode }
+      });
+      const token = await signedWebhook(key, rawBody);
+      const response = await POST(
+        new Request("http://currents.test/api/plaid/webhook", {
+          method: "POST",
+          headers: { "Plaid-Verification": token },
+          body: rawBody
+        })
+      );
+      expect(response.status).toBe(204);
+    }
+
+    expect(mocks.updateItem).toHaveBeenNthCalledWith(1, {
+      where: { id: "local-item" },
+      data: {
+        status: "LOGIN_REQUIRED",
+        errorCode: "ITEM_LOGIN_REQUIRED"
+      }
+    });
+    expect(mocks.updateItem).toHaveBeenNthCalledWith(2, {
+      where: { id: "local-item" },
+      data: {
+        status: "ERROR",
+        errorCode: "INSTITUTION_NOT_RESPONDING"
+      }
+    });
+    expect(mocks.updateItem).toHaveBeenNthCalledWith(3, {
+      where: { id: "local-item" },
+      data: {
+        status: "ERROR",
+        errorCode: "ITEM_ERROR"
+      }
+    });
+  });
 });

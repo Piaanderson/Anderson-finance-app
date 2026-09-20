@@ -549,7 +549,7 @@ const coveredBoundaries = new Set([
 const classifiedNonIsolationBoundaries = new Map([
   [
     "POST src/app/api/plaid/link-token/route.ts",
-    "Creates a short-lived Plaid Link token but does not mutate finance records."
+    "Creates a short-lived Plaid Link token without mutating finance records; update-mode ownership is covered in plaid-item-lifecycle.test.ts."
   ],
   [
     "POST src/app/api/plaid/webhook/route.ts",

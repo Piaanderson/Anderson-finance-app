@@ -25,16 +25,46 @@ function chunks<T>(values: T[], size: number) {
   return result;
 }
 
+async function assertActiveClaim(
+  tx: Prisma.TransactionClient,
+  plaidItem: { id: string; householdId: string },
+  jobId: string
+) {
+  const [item, job] = await Promise.all([
+    tx.plaidItem.findFirst({
+      where: {
+        id: plaidItem.id,
+        householdId: plaidItem.householdId,
+        status: { not: "REMOVED" }
+      },
+      select: { id: true }
+    }),
+    tx.syncJob.findFirst({
+      where: {
+        id: jobId,
+        plaidItemId: plaidItem.id,
+        status: "RUNNING"
+      },
+      select: { id: true }
+    })
+  ]);
+  if (!item || !job) {
+    throw new Error("Plaid sync job lost its active Item claim.");
+  }
+}
+
 async function upsertAccounts(
   plaidItem: {
     id: string;
     householdId: string;
   },
-  accounts: AccountBase[]
+  accounts: AccountBase[],
+  jobId: string
 ) {
   const activeIds = accounts.map((account) => account.account_id);
   for (const accountChunk of chunks(accounts, ACCOUNT_CHUNK_SIZE)) {
     await prisma.$transaction(async (tx) => {
+      await assertActiveClaim(tx, plaidItem, jobId);
       for (const account of accountChunk) {
         const existing = await tx.financialAccount.findUnique({
           where: { plaidAccountId: account.account_id },
@@ -79,13 +109,16 @@ async function upsertAccounts(
     });
   }
 
-  await prisma.financialAccount.updateMany({
-    where: {
-      plaidItemId: plaidItem.id,
-      householdId: plaidItem.householdId,
-      plaidAccountId: { notIn: activeIds }
-    },
-    data: { isActive: false }
+  await prisma.$transaction(async (tx) => {
+    await assertActiveClaim(tx, plaidItem, jobId);
+    await tx.financialAccount.updateMany({
+      where: {
+        plaidItemId: plaidItem.id,
+        householdId: plaidItem.householdId,
+        plaidAccountId: { notIn: activeIds }
+      },
+      data: { isActive: false }
+    });
   });
 }
 
@@ -248,7 +281,7 @@ export async function syncPlaidItem(itemId: string, jobId: string) {
   const accountResponse = await plaid.accountsGet({
     access_token: accessToken
   });
-  await upsertAccounts(item, accountResponse.data.accounts);
+  await upsertAccounts(item, accountResponse.data.accounts, jobId);
 
   const accountRows = await prisma.financialAccount.findMany({
     where: { plaidItemId: item.id, householdId: item.householdId },
