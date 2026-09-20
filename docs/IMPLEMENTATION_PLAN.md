@@ -13,9 +13,8 @@ Last updated: 2026-09-19
 - Board:
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
-- Next action: obtain explicit push approval for locally accepted
-  [#4 Harden Plaid webhook verification and sync jobs](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/4),
-  then verify its GitLab pipeline and server-side GitHub mirror
+- Next action: execute
+  [#5 Complete Plaid Item lifecycle and recovery UX](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/5)
 
 ## Product finish line
 
@@ -589,6 +588,14 @@ Verification:
   current.
 - `git diff --check` and edited-file IDE diagnostics — passed with no
   findings.
+- GitLab
+  [pipeline #11](https://gitlab.com/piaanderson-group/anderson-finance-app/-/pipelines/2864599725)
+  passed commit `e8dc17a` in 126 seconds, including PostgreSQL migrations,
+  all 50 Vitest tests without Plaid credentials or network calls, typecheck,
+  lint, formatting, production build, seed, and Chromium browser tests.
+- GitLab's enabled server-side mirror finished successfully with no error, and
+  GitHub `main` resolved to mirrored commit
+  [`e8dc17a`](https://github.com/Piaanderson/Anderson-finance-app/commit/e8dc17ae7f45bca7e4be5b4d625f3066c8d1ec37).
 
 Remaining risks:
 
@@ -600,8 +607,6 @@ Remaining risks:
 
 ## Next handoff
 
-After explicit approval, commit and push issue #4 only to canonical GitLab
-`main`, verify the post-push pipeline and server-side GitHub mirror, add their
-authoritative links to issue #4, and close it. Then begin issue #5 for Plaid
-Item lifecycle and reconnect/update mode. Keep roadmap issue #1 and the full
-Currents goal open; the private v1 application is not complete.
+Begin issue #5 for Plaid Item lifecycle, reconnect/update mode, account
+controls, and user-facing failed or stale sync states. Keep roadmap issue #1
+and the full Currents goal open; the private v1 application is not complete.
