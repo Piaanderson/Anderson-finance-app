@@ -743,6 +743,11 @@ Verification:
   passed commit `ce68ba4`, including schema validation, all five migrations,
   81 tests, typecheck, lint, formatting, production build, seed, and Chromium
   browser tests.
+- GitLab pipeline
+  [#17](https://gitlab.com/piaanderson-group/anderson-finance-app/-/pipelines/2864690864)
+  exposed one remaining fixed-time retry fixture after real time passed its
+  synthetic `runAfter`. Replacing it with a future-relative time passed five
+  consecutive targeted runs and the complete 81-test suite.
 - GitLab's enabled server-side mirror completed without error, and GitHub
   `main` resolved to mirrored commit
   [`ce68ba4`](https://github.com/Piaanderson/Anderson-finance-app/commit/ce68ba4fff25135f033b283ba93379b75c4b9a39).

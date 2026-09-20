@@ -256,7 +256,7 @@ describe("finite Plaid worker processing", () => {
   it("schedules retries and marks the eighth failed attempt terminal", async () => {
     const fixture = await createFixture();
     const job = await createPendingJob(fixture);
-    const firstFailureAt = new Date("2026-09-20T03:00:00.000Z");
+    const firstFailureAt = new Date(Date.now() + 60_000);
     const unsafeError = {
       message:
         "access-sandbox-secret Household Checking Private transaction name",
