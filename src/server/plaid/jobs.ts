@@ -7,33 +7,61 @@ export async function enqueuePlaidSync(
 ) {
   const dedupeKey = `plaid-sync:${plaidItemId}`;
   return prisma.$transaction(async (tx) => {
-    const existing = await tx.syncJob.findUnique({ where: { dedupeKey } });
-    if (existing?.status === "RUNNING") {
+    const existing = await tx.syncJob.upsert({
+      where: { dedupeKey },
+      update: {},
+      create: { plaidItemId, dedupeKey, reason }
+    });
+
+    if (existing.status === "RUNNING") {
       return tx.syncJob.update({
         where: { id: existing.id },
         data: { rerunRequested: true, reason }
       });
     }
-    return tx.syncJob.upsert({
-      where: { dedupeKey },
-      update: {
+
+    if (existing.status === "PENDING") {
+      return tx.syncJob.update({
+        where: { id: existing.id },
+        data: {
+          reason,
+          runAfter: new Date()
+        }
+      });
+    }
+
+    return tx.syncJob.update({
+      where: { id: existing.id },
+      data: {
         reason,
         status: "PENDING",
+        attempts: 0,
         rerunRequested: false,
         runAfter: new Date(),
         lockedAt: null,
-        lastError: null
-      },
-      create: { plaidItemId, dedupeKey, reason }
+        lastError: null,
+        paginationStartCursor: null,
+        paginationCursor: null
+      }
     });
   });
 }
 
-export async function claimNextSyncJob() {
-  await prisma.syncJob.updateMany({
+type ClaimOptions = {
+  dedupeKey?: string;
+  now?: Date;
+};
+
+export async function recoverStaleSyncJobs({
+  dedupeKey,
+  now = new Date()
+}: ClaimOptions = {}) {
+  const staleBefore = new Date(now.getTime() - 15 * 60_000);
+  return prisma.syncJob.updateMany({
     where: {
       status: "RUNNING",
-      lockedAt: { lt: new Date(Date.now() - 15 * 60_000) }
+      lockedAt: { lt: staleBefore },
+      ...(dedupeKey ? { dedupeKey } : {})
     },
     data: {
       status: "PENDING",
@@ -41,10 +69,18 @@ export async function claimNextSyncJob() {
       lastError: "Recovered after an interrupted worker."
     }
   });
+}
+
+export async function claimNextSyncJob({
+  dedupeKey,
+  now = new Date()
+}: ClaimOptions = {}) {
+  await recoverStaleSyncJobs({ dedupeKey, now });
   const candidate = await prisma.syncJob.findFirst({
     where: {
       status: "PENDING",
-      runAfter: { lte: new Date() }
+      runAfter: { lte: now },
+      ...(dedupeKey ? { dedupeKey } : {})
     },
     orderBy: { createdAt: "asc" }
   });
@@ -54,15 +90,12 @@ export async function claimNextSyncJob() {
     where: { id: candidate.id, status: "PENDING" },
     data: {
       status: "RUNNING",
-      lockedAt: new Date(),
+      lockedAt: now,
       rerunRequested: false,
       attempts: { increment: 1 }
     }
   });
 
   if (claimed.count !== 1) return null;
-  return prisma.syncJob.findUnique({
-    where: { id: candidate.id },
-    include: { plaidItem: true }
-  });
+  return prisma.syncJob.findUnique({ where: { id: candidate.id } });
 }

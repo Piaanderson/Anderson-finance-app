@@ -13,7 +13,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  const parsed = plaidWebhook.safeParse(JSON.parse(rawBody));
+  let json: unknown;
+  try {
+    json = JSON.parse(rawBody);
+  } catch {
+    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  }
+
+  const parsed = plaidWebhook.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }

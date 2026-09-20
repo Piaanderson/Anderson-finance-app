@@ -7,6 +7,7 @@ import {
 } from "@/server/authorization";
 import { requireApiHousehold } from "@/server/households";
 import { plaid } from "@/server/plaid/client";
+import { sanitizedPlaidError } from "@/server/plaid/errors";
 import { enqueuePlaidSync } from "@/server/plaid/jobs";
 import { encryptSecret } from "@/server/secrets";
 
@@ -66,11 +67,12 @@ export async function POST(request: Request) {
     if (error instanceof ForbiddenError) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+    const safeError = sanitizedPlaidError(error);
     console.error(
       JSON.stringify({
         level: "error",
         event: "plaid.exchange.failed",
-        message: error instanceof Error ? error.message : "Unknown error"
+        ...(safeError.code ? { errorCode: safeError.code } : {})
       })
     );
     return NextResponse.json(

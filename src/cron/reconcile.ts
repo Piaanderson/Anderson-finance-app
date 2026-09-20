@@ -19,12 +19,11 @@ async function reconcile() {
 }
 
 reconcile()
-  .catch((error) => {
+  .catch(() => {
     console.error(
       JSON.stringify({
         level: "error",
-        event: "plaid.reconciliation.failed",
-        message: error instanceof Error ? error.message : "Unknown error"
+        event: "plaid.reconciliation.failed"
       })
     );
     process.exitCode = 1;

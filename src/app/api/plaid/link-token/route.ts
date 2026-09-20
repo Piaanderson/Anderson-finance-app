@@ -5,6 +5,7 @@ import {
   assertPlaidConfigured,
   plaid
 } from "@/server/plaid/client";
+import { sanitizedPlaidError } from "@/server/plaid/errors";
 import { requireApiHousehold } from "@/server/households";
 
 export async function POST() {
@@ -30,11 +31,12 @@ export async function POST() {
     });
     return NextResponse.json({ linkToken: response.data.link_token });
   } catch (error) {
+    const safeError = sanitizedPlaidError(error);
     console.error(
       JSON.stringify({
         level: "error",
         event: "plaid.link_token.failed",
-        message: error instanceof Error ? error.message : "Unknown error"
+        ...(safeError.code ? { errorCode: safeError.code } : {})
       })
     );
     return NextResponse.json(

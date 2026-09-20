@@ -1,86 +1,134 @@
+import { pathToFileURL } from "node:url";
 import { prisma } from "@/server/db";
 import { claimNextSyncJob } from "@/server/plaid/jobs";
 import { syncPlaidItem } from "@/server/plaid/sync";
+import { sanitizedPlaidError } from "@/server/plaid/errors";
 
-const pollMs = Number(process.env.SYNC_POLL_MS ?? "5000");
-let stopping = false;
+type ClaimedSyncJob = NonNullable<Awaited<ReturnType<typeof claimNextSyncJob>>>;
 
-process.on("SIGTERM", () => {
-  stopping = true;
-});
-process.on("SIGINT", () => {
-  stopping = true;
-});
+type WorkerLogger = {
+  info: (event: string, details?: Record<string, unknown>) => void;
+  error: (event: string, details?: Record<string, unknown>) => void;
+};
 
-function log(event: string, details: Record<string, unknown> = {}) {
-  console.info(JSON.stringify({ level: "info", event, ...details }));
+const logger: WorkerLogger = {
+  info(event, details = {}) {
+    console.info(JSON.stringify({ level: "info", event, ...details }));
+  },
+  error(event, details = {}) {
+    console.error(JSON.stringify({ level: "error", event, ...details }));
+  }
+};
+
+export function retryDelayMs(attempts: number) {
+  return Math.min(30 * 60_000, 2 ** attempts * 5_000);
 }
 
-async function run() {
-  log("worker.started");
-  while (!stopping) {
-    const job = await claimNextSyncJob();
-    if (!job) {
-      await new Promise((resolve) => setTimeout(resolve, pollMs));
-      continue;
-    }
-
-    try {
-      const result = await syncPlaidItem(job.plaidItemId);
-      const completed = await prisma.syncJob.updateMany({
-        where: { id: job.id, rerunRequested: false },
-        data: { status: "COMPLETED", lockedAt: null, lastError: null }
-      });
-      if (completed.count === 0) {
-        await prisma.syncJob.update({
-          where: { id: job.id },
-          data: {
-            status: "PENDING",
-            rerunRequested: false,
-            lockedAt: null,
-            runAfter: new Date()
-          }
-        });
-      }
-      log("plaid.sync.completed", { jobId: job.id, ...result });
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message.slice(0, 500) : "Unknown error";
-      const terminal = job.attempts >= 8;
-      await prisma.syncJob.update({
-        where: { id: job.id },
+export async function processClaimedSyncJob(
+  job: ClaimedSyncJob,
+  {
+    sync = syncPlaidItem,
+    now = () => new Date(),
+    log = logger
+  }: {
+    sync?: typeof syncPlaidItem;
+    now?: () => Date;
+    log?: WorkerLogger;
+  } = {}
+) {
+  try {
+    const result = await sync(job.plaidItemId, job.id);
+    const completed = await prisma.syncJob.updateMany({
+      where: { id: job.id, status: "RUNNING", rerunRequested: false },
+      data: { status: "COMPLETED", lockedAt: null, lastError: null }
+    });
+    if (completed.count === 0) {
+      await prisma.syncJob.updateMany({
+        where: { id: job.id, status: "RUNNING", rerunRequested: true },
         data: {
-          status: terminal ? "FAILED" : "PENDING",
+          status: "PENDING",
+          attempts: 0,
+          rerunRequested: false,
           lockedAt: null,
-          lastError: message,
-          runAfter: new Date(
-            Date.now() + Math.min(30 * 60_000, 2 ** job.attempts * 5_000)
-          )
+          runAfter: now()
         }
       });
-      console.error(
-        JSON.stringify({
-          level: "error",
-          event: "plaid.sync.failed",
-          jobId: job.id,
-          terminal,
-          message
-        })
-      );
     }
+    log.info("plaid.sync.completed", { jobId: job.id, ...result });
+    return completed.count === 1 ? "completed" : "rerun";
+  } catch (error) {
+    const safeError = sanitizedPlaidError(error);
+    const terminal = job.attempts >= 8;
+    const failedAt = now();
+    await prisma.syncJob.updateMany({
+      where: { id: job.id, status: "RUNNING" },
+      data: {
+        status: terminal ? "FAILED" : "PENDING",
+        rerunRequested: false,
+        lockedAt: null,
+        lastError: safeError.message,
+        runAfter: terminal
+          ? failedAt
+          : new Date(failedAt.getTime() + retryDelayMs(job.attempts))
+      }
+    });
+    log.error("plaid.sync.failed", {
+      jobId: job.id,
+      terminal,
+      ...(safeError.code ? { errorCode: safeError.code } : {})
+    });
+    return terminal ? "failed" : "retry";
+  }
+}
+
+export async function runWorker({
+  pollMs = Number(process.env.SYNC_POLL_MS ?? "5000"),
+  shouldStop,
+  sleep = (milliseconds: number) =>
+    new Promise<void>((resolve) => setTimeout(resolve, milliseconds))
+}: {
+  pollMs?: number;
+  shouldStop: () => boolean;
+  sleep?: (milliseconds: number) => Promise<void>;
+}) {
+  logger.info("worker.started");
+  while (!shouldStop()) {
+    const job = await claimNextSyncJob();
+    if (!job) {
+      await sleep(pollMs);
+      continue;
+    }
+    await processClaimedSyncJob(job);
   }
 
   await prisma.$disconnect();
-  log("worker.stopped");
+  logger.info("worker.stopped");
 }
 
-run().catch((error) => {
-  console.error(
-    JSON.stringify({
-      level: "fatal",
-      event: "worker.crashed",
-      message: error instanceof Error ? error.message : "Unknown error"
-    })
-  );
-  process.exitCode = 1;
-});
+async function main() {
+  let stopping = false;
+  process.on("SIGTERM", () => {
+    stopping = true;
+  });
+  process.on("SIGINT", () => {
+    stopping = true;
+  });
+  await runWorker({ shouldStop: () => stopping });
+}
+
+const isEntryPoint =
+  process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isEntryPoint) {
+  main().catch((error) => {
+    const safeError = sanitizedPlaidError(error);
+    console.error(
+      JSON.stringify({
+        level: "fatal",
+        event: "worker.crashed",
+        ...(safeError.code ? { errorCode: safeError.code } : {})
+      })
+    );
+    process.exitCode = 1;
+  });
+}

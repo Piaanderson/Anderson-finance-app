@@ -342,19 +342,21 @@ model TransferMatch {
 }
 
 model SyncJob {
-  id             String        @id @default(cuid())
-  plaidItemId    String
-  dedupeKey      String        @unique
-  reason         SyncReason
-  status         SyncJobStatus @default(PENDING)
-  attempts       Int           @default(0)
-  rerunRequested Boolean       @default(false)
-  runAfter       DateTime      @default(now())
-  lockedAt       DateTime?
-  lastError      String?
-  plaidItem      PlaidItem     @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id                    String        @id @default(cuid())
+  plaidItemId           String
+  dedupeKey             String        @unique
+  reason                SyncReason
+  status                SyncJobStatus @default(PENDING)
+  attempts              Int           @default(0)
+  rerunRequested        Boolean       @default(false)
+  runAfter              DateTime      @default(now())
+  lockedAt              DateTime?
+  lastError             String?
+  paginationStartCursor String?
+  paginationCursor      String?
+  plaidItem             PlaidItem     @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
   @@index([status, runAfter])
 }

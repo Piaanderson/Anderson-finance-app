@@ -13,8 +13,9 @@ Last updated: 2026-09-19
 - Board:
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
-- Next action: execute
-  [#4 Harden Plaid webhook verification and sync jobs](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/4)
+- Next action: obtain explicit push approval for locally accepted
+  [#4 Harden Plaid webhook verification and sync jobs](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/4),
+  then verify its GitLab pipeline and server-side GitHub mirror
 
 ## Product finish line
 
@@ -116,11 +117,13 @@ Exit evidence:
 
 Goal: make the existing ingestion path safe to rely on before expanding UI.
 
-- Test valid and invalid webhook signatures, stale timestamps, and body hashes.
-- Test sync cursor pagination and added, modified, and removed transactions.
-- Test job deduplication, retry, rerun, and interrupted-worker recovery.
+- [x] Test valid and invalid webhook signatures, stale timestamps, and body
+      hashes.
+- [x] Test sync cursor pagination and added, modified, and removed
+      transactions.
+- [x] Test job deduplication, retry, rerun, and interrupted-worker recovery.
 - [x] Add negative cross-household tests for every mutating finance endpoint.
-- Bound transaction sizes for large initial syncs.
+- [x] Bound transaction sizes for large initial syncs.
 - Normalize Plaid errors into actionable Item states.
 - Add update mode for `LOGIN_REQUIRED`.
 - Add account refresh, reconnect, disconnect, last-sync, and status controls.
@@ -386,6 +389,19 @@ At the end of every context:
   Actions. The test proves an omitted route is reported. Plaid Link-token
   creation is classified as non-mutating, the external webhook remains issue
   #4 work, and passkey-only endpoints are outside household-finance scope.
+- 2026-09-19: Plaid transaction synchronization commits at most one
+  100-update page at a time. `PlaidItem.syncCursor` remains the last fully
+  completed cursor, while the claimed `SyncJob` stores the original cursor and
+  current page checkpoint atomically with each page. Interrupted work resumes
+  from its checkpoint; Plaid's documented mutation-during-pagination error
+  resets to the preserved original cursor and safely replays idempotent
+  writes.
+- 2026-09-19: webhook verification uses Plaid's documented ES256 algorithm,
+  fetched JWK, five-minute `maxTokenAge`, and raw-body SHA-256 requirements.
+  No issuer, audience, or other undocumented claims are required.
+- 2026-09-19: Plaid and worker failures are reduced to an allowlisted Plaid
+  error code plus generic text before logging or persistence. Raw external
+  messages and payloads are never logged or stored in `SyncJob.lastError`.
 
 ## Verification log
 
@@ -521,9 +537,71 @@ Remaining risks:
   rejection precedes every local write and sync enqueue. Every boundary that
   receives a local foreign resource ID rejects it before a Plaid call.
 
+### Issue #4 Plaid reliability evidence — 2026-09-19
+
+Implementation:
+
+- Generated ES256 test keys exercise valid webhook signatures plus missing
+  headers, malformed JWTs, wrong algorithms, unknown key IDs, bad signatures,
+  body-hash mismatches, missing claims, stale timestamps, and future-issued
+  tokens. Verification-key retrieval is mocked and the cache is proven to
+  fetch once without logging key material.
+- Validly signed malformed JSON returns 400. Unknown Items and irrelevant
+  events return 204 without writes; duplicate work is absorbed by the
+  one-row-per-Item queue.
+- Account writes use bounded chunks and transaction changes use 100-update
+  pages. Each page and its job checkpoint commit atomically; the stable Item
+  cursor advances only with the final page. Page replay preserves user
+  categories unless an explicit normalized merchant rule applies.
+- Queue tests cover pending, running, completed, and failed deduplication,
+  rerun requests during active work, concurrent claims, exponential retry,
+  eight-attempt terminal failure, and stale-lock recovery. Page commits renew
+  the worker lock.
+- `src/worker.ts` now exposes one finite claimed-job processor and starts its
+  polling loop only when executed as the entry point. SIGTERM and SIGINT still
+  request graceful shutdown after current work.
+- Webhook and sync suites replace the Plaid client module with in-process
+  mocks. Unique PostgreSQL fixtures delete only their generated household and
+  user IDs; no test truncates, resets, or wipes the database.
+- Plaid error sanitization tests inject an access token, account name,
+  transaction name, raw webhook-like body, and complete payload into an
+  external error, then prove none reaches structured logs or persisted job
+  errors.
+
+Verification:
+
+- `npx vitest run src/server/plaid/webhooks.test.ts` — passed: 1 file and 13
+  tests.
+- `npx vitest run tests/integration/plaid-sync.test.ts` — passed: 1 file and 3
+  tests.
+- `npx vitest run tests/integration/plaid-jobs-worker.test.ts` — passed: 1
+  file and 5 tests.
+- `npm run test:unit` — passed after quoting the exclusion glob so it actually
+  excludes integration files: 7 files and 29 tests.
+- `npm run test:integration` — passed: 3 files and 21 tests.
+- `npm test` — passed: 10 files and 50 tests.
+- `npm run typecheck`, `npm run lint`, and `npm run format:check` — passed
+  with no findings.
+- `npm run build` — passed with Next.js 16.3.5; all 20 static-generation tasks
+  completed.
+- `npx prisma validate`, `npm run db:deploy`, and
+  `npx prisma migrate status` — passed; the four-migration schema is valid and
+  current.
+- `git diff --check` and edited-file IDE diagnostics — passed with no
+  findings.
+
+Remaining risks:
+
+- All automated tests intentionally use generated keys, mocked Plaid methods,
+  and local PostgreSQL. Trial-environment institution behavior and signed
+  webhook delivery still require the staging work planned before production.
+- Issue #5 still owns reconnect/update mode and user-facing Item lifecycle
+  controls; this slice does not add that UI.
+
 ## Next handoff
 
-Begin issue #4: harden Plaid webhook verification, synchronization pagination,
-job deduplication, retry/rerun behavior, interrupted-worker recovery, and
-transaction bounds. Keep roadmap issue #1 and the full Currents goal open; the
-private v1 application is not complete.
+After explicit approval, commit and push issue #4 only to canonical GitLab
+`main`, verify the post-push pipeline and server-side GitHub mirror, add their
+authoritative links to issue #4, and close it. Then begin issue #5 for Plaid
+Item lifecycle and reconnect/update mode. Keep roadmap issue #1 and the full
+Currents goal open; the private v1 application is not complete.
