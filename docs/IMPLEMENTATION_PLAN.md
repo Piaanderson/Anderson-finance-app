@@ -5,7 +5,7 @@ Last updated: 2026-09-19
 ## Current status
 
 - Release target: secure, polished private-household v1
-- Current phase: Phase 0 — roadmap and execution baseline
+- Current phase: Phase 1 — Plaid reliability and authorization
 - Roadmap issue:
   [#1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/1)
 - Milestone:
@@ -14,7 +14,7 @@ Last updated: 2026-09-19
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
 - Next action: execute
-  [#2 Establish a reproducible green baseline](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/2)
+  [#3 Prove household isolation at every mutation boundary](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/3)
 
 ## Product finish line
 
@@ -102,8 +102,8 @@ Goal: make the plan and backlog durable before feature work.
 - [x] Create the roadmap issue and vertical-slice backlog.
 - [x] Create the GitLab Issue Board.
 - [x] Reconcile the generated `next-env.d.ts` change.
-- [ ] Run and record the baseline verification suite.
-- [ ] Verify Sandbox connect/sync and current Railway service health.
+- [x] Run and record the baseline verification suite.
+- [x] Verify Sandbox connect/sync and current Railway service health.
 
 Exit evidence:
 
@@ -381,10 +381,80 @@ At the end of every context:
 - 2026-09-19: created and verified one milestone, one issue board with four
   workflow columns, 30 scoped labels, one coordinating issue, and 17
   implementation issues.
-- 2026-09-19: confirmed `next-env.d.ts` has no remaining working-tree change.
+- 2026-09-19: reconciled `next-env.d.ts` as generated output: Next.js 16.3.5
+  explicitly says not to track it, so it is ignored and `npm run typecheck`
+  now runs `next typegen` before `tsc`.
+- 2026-09-19: changed the clean-clone setup to `npm ci`; `npm install` under
+  the documented Node 22/npm 10 combination rewrote lockfile peer metadata,
+  while `npm ci` left `package-lock.json` unchanged.
+
+### Issue #2 baseline evidence — 2026-09-19
+
+Local environment: Node 22.23.2, npm 10.9.8, Docker 29.4.0, Docker Compose
+5.1.2, PostgreSQL client 18.3, and PostgreSQL 17 from `compose.yaml`.
+
+- `npm ci` — passed; 495 packages installed and generated files stayed clean.
+- `docker compose up -d --wait && docker compose ps` — passed; the
+  `postgres:17-alpine` container reported healthy on port 5432.
+- `npm run db:migrate && npm run db:seed` — passed; Prisma reported no pending
+  schema changes and the idempotent seed completed.
+- `npx prisma validate && npx prisma migrate status && npm run db:deploy` —
+  passed; the schema is valid, all three migrations are applied, and deploy
+  found no pending migrations.
+- `npm run typecheck` — passed after generating route types.
+- `npm run lint` — passed with no findings.
+- `npm test` — passed: 6 files and 16 tests.
+- `npm run format:check` — passed.
+- `npm run build` — passed with Next.js 16.3.5; static generation completed
+  20/20 tasks.
+- `npx playwright install chromium && npm run test:e2e` — passed on desktop
+  and mobile: 7 passed and the mobile duplicate of the Chromium-CDP-only
+  passkey test was explicitly skipped.
+- `npm audit --omit=dev --json` — zero production dependency
+  vulnerabilities. `npm ci` reports two moderate development-only findings.
+- `npm run dev` was verified through an already-running checkout instance at
+  `http://localhost:3001`; `GET /api/health` returned `{"status":"ok"}` and
+  `/sign-in` returned HTTP 200. A second server correctly refused to coexist
+  with that checkout's active Next.js development server.
+- `npm run worker` — started cleanly and completed the three existing Plaid
+  Sandbox jobs. The jobs synchronized 13–14 accounts and 390 added
+  transactions each; the safe post-run summary showed 3 active Items,
+  3 completed jobs, and no failed jobs. No access token, account name, or
+  transaction payload was printed.
+- GitLab
+  [pipeline #7](https://gitlab.com/piaanderson-group/anderson-finance-app/-/pipelines/2864527381)
+  passed on commit `588dbddd` in 113 seconds: schema validation, typecheck,
+  lint, 16 unit tests, production build, all migrations, seed, and 4 Chromium
+  Playwright tests.
+- `curl https://web-production-5ec4a.up.railway.app/api/health` — returned
+  `{"status":"ok"}`. Railway reported successful running deployments for web,
+  worker, and PostgreSQL; the cron's latest run exited successfully and its
+  next run was scheduled for `2026-09-20T06:17:00Z`; the PostgreSQL volume was
+  ready at 212.46 MB of 500 MB.
+- `npx --yes @railway/cli@5.57.12 metrics --all --since 1h --json` — web had
+  5 successful requests, zero 4xx/5xx responses, and zero error rate; web,
+  worker, and PostgreSQL had low CPU and memory utilization.
+- `npx --yes @railway/cli@5.57.12 config plan --json` initially exposed four
+  destructive deletions for Plaid credentials. After adding
+  `preserve()` declarations for both credentials on web and worker, the plan
+  passed with zero changes and zero diagnostics.
+
+Remaining risks:
+
+- The parallel development browser run logs Plaid's warning that
+  `link-initialize.js` was embedded more than once. It did not affect the
+  passing tests or Sandbox worker sync, but the Link lifecycle should be
+  resolved with issues #4–#5 rather than ignored before production use.
+- This baseline reused three existing Sandbox Items and proved account and
+  transaction synchronization through the real worker. A brand-new Link
+  connection, signed webhook delivery, update mode, and failure recovery
+  remain explicit Phase 1 work in issues #4–#5.
+- `npm ci` reports two moderate development-only advisories; the production
+  dependency audit is clean. Avoid `npm audit fix --force` because it proposes
+  breaking upgrades.
 
 ## Next handoff
 
-Begin issue #2. Reconcile `next-env.d.ts`, run the full local baseline, verify
-the documented setup and Sandbox/Railway status, then record authoritative
-evidence in this file and the issue before closing it.
+Begin issue #3. Add negative cross-household coverage at every finance mutation
+boundary before expanding Plaid behavior. Keep the roadmap issue open; the
+private v1 application is not complete.

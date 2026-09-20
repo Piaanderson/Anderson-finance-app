@@ -15,7 +15,7 @@
     "worker": "tsx src/worker.ts",
     "cron:sync": "tsx src/cron/reconcile.ts",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",

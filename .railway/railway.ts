@@ -42,7 +42,9 @@ export default defineRailway(() => {
       PASSKEY_ORIGIN: "https://web-production-5ec4a.up.railway.app",
       PASSKEY_RP_ID: "web-production-5ec4a.up.railway.app",
       PASSKEY_RP_NAME: "Currents",
+      PLAID_CLIENT_ID: preserve(),
       PLAID_ENV: preserve(),
+      PLAID_SECRET: preserve(),
       PLAID_WEBHOOK_URL: preserve(),
       TOKEN_ENCRYPTION_KEY: preserve(),
       TOKEN_ENCRYPTION_KEY_VERSION: preserve()
@@ -65,7 +67,9 @@ export default defineRailway(() => {
     env: {
       DATABASE_URL: preserve(),
       LOG_LEVEL: preserve(),
+      PLAID_CLIENT_ID: preserve(),
       PLAID_ENV: preserve(),
+      PLAID_SECRET: preserve(),
       PLAID_WEBHOOK_URL: preserve(),
       SYNC_POLL_MS: preserve(),
       TOKEN_ENCRYPTION_KEY: preserve(),

@@ -16,7 +16,11 @@ as Code:
 
 Railway deprecated per-service `railway.toml` Config as Code for new services
 and will stop reading it on December 1, 2026. Use `railway config plan` to
-preview infrastructure changes and `railway config apply` to apply them.
+preview infrastructure changes and `railway config apply` to apply them. These
+commands require the separate Railway platform CLI 5.42.1 or newer; the
+`railway` package in this repository is the TypeScript IaC SDK, not that CLI.
+Without a global install, run
+`npx --yes @railway/cli@5.57.12 config plan`.
 
 Only `web` receives a public domain. Reference the PostgreSQL service's private
 `DATABASE_URL` from all three application services. Railway cron schedules use

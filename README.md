@@ -11,7 +11,9 @@ Prerequisites: Node 22+, npm, and PostgreSQL.
 1. Copy `.env.example` to `.env` and fill in the local values.
 2. Run `docker compose up -d --wait` (or create the PostgreSQL database named
    in `DATABASE_URL` yourself).
-3. Run `npm install`.
+3. Run `npm ci` for a reproducible install from `package-lock.json`.
+   Before the first browser-test run, install Chromium with
+   `npx playwright install chromium`.
 4. Run `npm run db:migrate && npm run db:seed`.
 5. Run `npm run dev`, then open `http://localhost:3000`.
 6. In another terminal, run `npm run worker` to process Plaid sync jobs.
