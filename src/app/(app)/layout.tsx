@@ -11,13 +11,11 @@ export default async function AuthenticatedLayout({
   const owner = await requireHousehold();
   const accounts = await prisma.financialAccount.findMany({
     where: { householdId: owner.householdId, isActive: true },
-    select: { type: true, currentBalance: true }
+    select: { currentBalance: true }
   });
-  const netWorth = accounts.reduce((sum, account) => {
-    const balance = account.currentBalance?.toNumber() ?? 0;
-    return (
-      sum + (["credit", "loan"].includes(account.type) ? -balance : balance)
-    );
-  }, 0);
+  const netWorth = accounts.reduce(
+    (sum, account) => sum + (account.currentBalance?.toNumber() ?? 0),
+    0
+  );
   return <AppShell netWorth={netWorth}>{children}</AppShell>;
 }

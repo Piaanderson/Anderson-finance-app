@@ -34,7 +34,8 @@ function plaidAccount(
   accountId: string,
   name: string,
   current: number,
-  available: number | null = current
+  available: number | null = current,
+  type: "depository" | "investment" | "credit" | "loan" = "depository"
 ) {
   return {
     account_id: accountId,
@@ -48,8 +49,8 @@ function plaidAccount(
     mask: "1234",
     name,
     official_name: `${name} official`,
-    type: "depository",
-    subtype: "checking"
+    type,
+    subtype: type === "credit" ? "credit card" : "checking"
   } as AccountBase;
 }
 
@@ -163,6 +164,8 @@ async function createFixture() {
         householdId,
         plaidItemId: itemId,
         plaidAccountId,
+        source: "PLAID",
+        classification: "CASH",
         name: "Old account name",
         type: "depository",
         currentBalance: "1.00",
@@ -173,6 +176,8 @@ async function createFixture() {
         householdId,
         plaidItemId: itemId,
         plaidAccountId: stalePlaidAccountId,
+        source: "PLAID",
+        classification: "CASH",
         name: "Stale account",
         type: "depository"
       }
@@ -395,6 +400,8 @@ describe("Plaid transaction synchronization", () => {
       })
     ).resolves.toMatchObject({
       householdId: fixture.householdId,
+      source: "PLAID",
+      classification: "CASH",
       isActive: true
     });
     await expect(
@@ -431,6 +438,39 @@ describe("Plaid transaction synchronization", () => {
       paginationStartCursor: null,
       paginationCursor: null
     });
+  });
+
+  it("stores Plaid liabilities as signed debt positions", async () => {
+    const fixture = await createFixture();
+    mocks.accountsGet.mockResolvedValue({
+      data: {
+        accounts: [
+          plaidAccount(
+            fixture.plaidAccountId,
+            "Credit card",
+            400,
+            600,
+            "credit"
+          )
+        ]
+      }
+    });
+    mocks.transactionsSync.mockResolvedValue(
+      syncPage({ nextCursor: "cursor-1", hasMore: false })
+    );
+
+    await syncPlaidItem(fixture.itemId, fixture.jobId);
+
+    const account = await prisma.financialAccount.findUniqueOrThrow({
+      where: { id: fixture.accountId }
+    });
+    expect(account).toMatchObject({
+      source: "PLAID",
+      classification: "DEBT",
+      type: "credit"
+    });
+    expect(account.currentBalance?.toString()).toBe("-400");
+    expect(account.availableBalance?.toString()).toBe("600");
   });
 
   it("atomically checkpoints a committed page and safely resumes after interruption", async () => {

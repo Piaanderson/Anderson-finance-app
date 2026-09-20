@@ -14,7 +14,7 @@ Last updated: 2026-09-19
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
 - Next action: execute
-  [#6 Generalize the financial account and balance model](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/6).
+  [#7 Add manual accounts, property, and valuation history](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/7).
 
 ## Product finish line
 
@@ -140,15 +140,15 @@ Exit evidence:
 
 Goal: support Plaid and manual financial positions through one honest model.
 
-- Add account-source and financial-classification enums.
-- Generalize financial accounts so manual records do not require Plaid IDs.
-- Define and test one balance-sign convention.
-- Add account balance and manual valuation snapshots.
-- Add manual property, investment, cash, and debt CRUD.
-- Pair property with related debt without combining their source records.
-- Make budget destination accounts explicit relations.
-- Replace free-text category sections with an enum or validated domain type.
-- Migrate and backfill existing data without breaking Plaid sync.
+- [x] Add account-source and financial-classification enums.
+- [x] Generalize financial accounts so manual records do not require Plaid IDs.
+- [x] Define and test one balance-sign convention.
+- [ ] Add account balance and manual valuation snapshots.
+- [ ] Add manual property, investment, cash, and debt CRUD.
+- [ ] Pair property with related debt without combining their source records.
+- [x] Make budget destination accounts explicit relations.
+- [ ] Replace free-text category sections with an enum or validated domain type.
+- [x] Migrate and backfill existing data without breaking Plaid sync.
 
 Exit evidence:
 
@@ -684,12 +684,74 @@ Remaining risks:
   Local and CI tests deliberately use mocked Plaid methods and local
   PostgreSQL.
 - Disconnect preserves existing transactions for historical reporting while
-  deactivating accounts. Phase 2 must define how removed Plaid sources appear
-  alongside manual accounts without implying that old balances are current.
+  deactivating accounts. The generalized model now keeps their `PLAID` source
+  identity but excludes inactive rows from current account and net-worth
+  reads. Issue #7 must add real snapshots before historical trends are shown.
+
+### Issue #6 financial account model evidence — 2026-09-19
+
+Implementation:
+
+- Added required `AccountSource` and `FinancialAccountClassification` enums.
+  The database enforces all-or-nothing provider identity: Plaid accounts keep
+  Item, account, and raw type identifiers; manual accounts cannot store Plaid
+  identifiers.
+- Added Cash, Invested, Property, Debt, and an honest `UNCLASSIFIED` fallback
+  for provider types that cannot be mapped safely. Manual records can represent
+  all four household groups without a Plaid Item.
+- Defined `currentBalance` as the signed net-worth position. Plaid credit and
+  loan amounts owed are negated exactly once; asset overdrafts and liability
+  overpayments retain their economic sign. `availableBalance` remains raw
+  provider availability and is excluded from net worth. The rule is documented
+  in `docs/ACCOUNT_MODEL.md`.
+- Updated Plaid account ingestion, account reads, the authenticated shell, and
+  Home net-worth arithmetic to use the signed position directly. Manual
+  accounts now appear without requiring a bank connection.
+- Added `BudgetAllocation.destinationAccount` as an explicit optional relation,
+  indexed its foreign key, used it in budget reads, and set deletion behavior
+  to clear the destination without deleting the allocation.
+- The migration backfills every legacy row as `PLAID`, maps the four existing
+  provider types deterministically, and converts debt signs in place. Applying
+  it locally preserved all 41 accounts and all provider identifiers: 18 Cash,
+  6 Invested, and 17 Debt, with zero missing Plaid IDs.
+- Added a transactional legacy-schema migration test. It applies the four prior
+  migrations in an isolated PostgreSQL schema, inserts representative cash,
+  investment, credit, and loan rows, applies the new migration, verifies
+  identity and exact signed balances, and rolls back the entire fixture.
+- Added self-cleaning integration coverage for four-class manual positions,
+  database source constraints, direct net-worth reconciliation, manual-account
+  overview reads, and destination relation cleanup. Plaid sync coverage proves
+  liability normalization while retaining raw available credit.
+
+Verification:
+
+- Targeted account-model, migration, Plaid sync, lifecycle, and household
+  boundary run — 5 files and 36 tests passed.
+- `npm run test:unit` — 9 files and 47 tests passed.
+- `npm run test:integration` — 5 files and 34 tests passed.
+- `npm test` — 14 files and 81 tests passed.
+- `npm run typecheck`, `npm run lint`, `npm run format:check`,
+  `npx prisma validate`, `git diff --check`, and edited-file IDE diagnostics —
+  passed with no errors.
+- `npm run build` — passed on Next.js 16.3.5 with all application and API routes
+  compiled.
+- `npm run test:e2e` — 9 Chromium/mobile tests passed and the mobile passkey
+  hardware case was skipped as expected. Accounts recovery remained
+  keyboard-operable and free of automatically detectable WCAG violations.
+
+Remaining risks:
+
+- Issue #7 still owns manual CRUD, property/debt pairing, and sourced valuation
+  snapshots. Historical net-worth charts must remain absent until those
+  snapshots exist.
+- A future Plaid provider type outside depository, investment, credit, and loan
+  is stored as `UNCLASSIFIED` rather than guessed. Phase 5 account maintenance
+  must provide a household-visible remediation path before such an account can
+  be grouped.
 
 ## Next handoff
 
 Begin
-[#6 Generalize the financial account and balance model](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/6).
+[#7 Add manual accounts, property, and valuation history](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/7).
 Keep roadmap issue #1 and the full Currents goal open; the private v1
 application is not complete.

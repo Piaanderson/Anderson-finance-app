@@ -5,6 +5,10 @@ import type {
 } from "plaid";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db";
+import {
+  classificationForPlaidType,
+  positionBalanceFromPlaid
+} from "@/features/accounts/account-model";
 import { decryptSecret } from "@/server/secrets";
 import { plaid } from "./client";
 import { plaidErrorCode } from "./errors";
@@ -77,13 +81,20 @@ async function upsertAccounts(
         ) {
           throw new Error("Plaid account ownership mismatch.");
         }
+        const type = String(account.type);
+        const classification = classificationForPlaidType(type);
         const data = {
+          source: "PLAID" as const,
+          classification,
           name: account.name,
           officialName: account.official_name,
           mask: account.mask,
-          type: String(account.type),
+          type,
           subtype: account.subtype ? String(account.subtype) : null,
-          currentBalance: account.balances.current,
+          currentBalance: positionBalanceFromPlaid(
+            classification,
+            account.balances.current
+          ),
           availableBalance: account.balances.available,
           isoCurrencyCode:
             account.balances.iso_currency_code ??
@@ -115,6 +126,7 @@ async function upsertAccounts(
       where: {
         plaidItemId: plaidItem.id,
         householdId: plaidItem.householdId,
+        source: "PLAID",
         plaidAccountId: { notIn: activeIds }
       },
       data: { isActive: false }
@@ -284,12 +296,20 @@ export async function syncPlaidItem(itemId: string, jobId: string) {
   await upsertAccounts(item, accountResponse.data.accounts, jobId);
 
   const accountRows = await prisma.financialAccount.findMany({
-    where: { plaidItemId: item.id, householdId: item.householdId },
+    where: {
+      plaidItemId: item.id,
+      householdId: item.householdId,
+      source: "PLAID"
+    },
     select: { id: true, plaidAccountId: true }
   });
-  const accountByPlaidId = new Map(
-    accountRows.map((account) => [account.plaidAccountId, account.id])
-  );
+  const accountByPlaidId = new Map<string, string>();
+  for (const account of accountRows) {
+    if (!account.plaidAccountId) {
+      throw new Error("Plaid account is missing its provider identifier.");
+    }
+    accountByPlaidId.set(account.plaidAccountId, account.id);
+  }
   const rules = await prisma.merchantRule.findMany({
     where: { householdId: item.householdId },
     select: { merchantKey: true, categoryId: true }

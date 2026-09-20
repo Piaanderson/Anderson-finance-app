@@ -21,12 +21,10 @@ export default async function DashboardPage() {
     })
   ]);
 
-  const netWorth = accounts.reduce((sum, account) => {
-    const balance = account.currentBalance?.toNumber() ?? 0;
-    return (
-      sum + (["credit", "loan"].includes(account.type) ? -balance : balance)
-    );
-  }, 0);
+  const netWorth = accounts.reduce(
+    (sum, account) => sum + (account.currentBalance?.toNumber() ?? 0),
+    0
+  );
   const spending = monthTransactions
     .filter((transaction) => transaction.amount.toNumber() > 0)
     .reduce((sum, transaction) => sum + transaction.amount.toNumber(), 0);
@@ -45,7 +43,7 @@ export default async function DashboardPage() {
           <article className="card">
             <span className="eyebrow">Net worth</span>
             <strong className="card-value">{signedUsd(netWorth)}</strong>
-            <span className="muted">{accounts.length} connected accounts</span>
+            <span className="muted">{accounts.length} active accounts</span>
           </article>
           <article className="card">
             <span className="eyebrow">Income this month</span>

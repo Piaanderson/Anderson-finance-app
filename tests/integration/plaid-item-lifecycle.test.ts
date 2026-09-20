@@ -137,6 +137,8 @@ beforeAll(async () => {
       householdId: ids.ownerHousehold,
       plaidItemId: ids.ownerItem,
       plaidAccountId: `${key}-owner-plaid-account`,
+      source: "PLAID",
+      classification: "CASH",
       name: "Owner checking",
       type: "depository"
     }

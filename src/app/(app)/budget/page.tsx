@@ -79,7 +79,14 @@ export default async function BudgetPage() {
         month: new Date("2026-09-01T00:00:00.000Z")
       }
     },
-    include: { allocations: { include: { category: true } } }
+    include: {
+      allocations: {
+        include: {
+          category: true,
+          destinationAccount: { select: { name: true, mask: true } }
+        }
+      }
+    }
   });
   const grouped = month
     ? Object.groupBy(
@@ -94,7 +101,13 @@ export default async function BudgetPage() {
           (allocations ?? []).map((allocation) => ({
             name: allocation.category.name,
             planned: allocation.planned.toNumber(),
-            destination: "Planned destination",
+            destination: allocation.destinationAccount
+              ? `${allocation.destinationAccount.name}${
+                  allocation.destinationAccount.mask
+                    ? ` · ${allocation.destinationAccount.mask}`
+                    : ""
+                }`
+              : "No destination account",
             status: "Not moved"
           }))
         ])

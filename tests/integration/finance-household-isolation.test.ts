@@ -151,6 +151,8 @@ async function createFixtures() {
         householdId: ids.householdA,
         plaidItemId: ids.itemA,
         plaidAccountId: `${fixtureKey}-plaid-account-a`,
+        source: "PLAID",
+        classification: "CASH",
         name: "Household A checking",
         type: "depository"
       },
@@ -159,6 +161,8 @@ async function createFixtures() {
         householdId: ids.householdB,
         plaidItemId: ids.itemB,
         plaidAccountId: `${fixtureKey}-plaid-account-b`,
+        source: "PLAID",
+        classification: "CASH",
         name: "Household B checking",
         type: "depository"
       }

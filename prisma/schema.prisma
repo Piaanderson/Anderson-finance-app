@@ -20,6 +20,19 @@ enum PlaidItemStatus {
   REMOVED
 }
 
+enum AccountSource {
+  PLAID
+  MANUAL
+}
+
+enum FinancialAccountClassification {
+  CASH
+  INVESTED
+  PROPERTY
+  DEBT
+  UNCLASSIFIED
+}
+
 enum SyncReason {
   INITIAL
   WEBHOOK
@@ -216,26 +229,29 @@ model PlaidItem {
 }
 
 model FinancialAccount {
-  id               String        @id @default(cuid())
-  householdId      String
-  plaidItemId      String
-  plaidAccountId   String        @unique
-  name             String
-  officialName     String?
-  mask             String?
-  type             String
-  subtype          String?
-  currentBalance   Decimal?      @db.Decimal(18, 2)
-  availableBalance Decimal?      @db.Decimal(18, 2)
-  isoCurrencyCode  String?
-  isActive         Boolean       @default(true)
-  household        Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  plaidItem        PlaidItem     @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
-  transactions     Transaction[]
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  id                 String                         @id @default(cuid())
+  householdId        String
+  source             AccountSource
+  classification     FinancialAccountClassification
+  plaidItemId        String?
+  plaidAccountId     String?                        @unique
+  name               String
+  officialName       String?
+  mask               String?
+  type               String?
+  subtype            String?
+  currentBalance     Decimal?                       @db.Decimal(18, 2)
+  availableBalance   Decimal?                       @db.Decimal(18, 2)
+  isoCurrencyCode    String?
+  isActive           Boolean                        @default(true)
+  household          Household                      @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  plaidItem          PlaidItem?                     @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
+  transactions       Transaction[]
+  budgetDestinations BudgetAllocation[]             @relation("BudgetDestination")
+  createdAt          DateTime                       @default(now())
+  updatedAt          DateTime                       @updatedAt
 
-  @@index([householdId, type])
+  @@index([householdId, classification])
   @@index([plaidItemId])
 }
 
@@ -315,17 +331,19 @@ model BudgetMonth {
 }
 
 model BudgetAllocation {
-  id                   String      @id @default(cuid())
+  id                   String            @id @default(cuid())
   budgetMonthId        String
   categoryId           String
-  planned              Decimal     @db.Decimal(18, 2)
+  planned              Decimal           @db.Decimal(18, 2)
   destinationAccountId String?
-  budgetMonth          BudgetMonth @relation(fields: [budgetMonthId], references: [id], onDelete: Cascade)
-  category             Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @updatedAt
+  budgetMonth          BudgetMonth       @relation(fields: [budgetMonthId], references: [id], onDelete: Cascade)
+  category             Category          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  destinationAccount   FinancialAccount? @relation("BudgetDestination", fields: [destinationAccountId], references: [id], onDelete: SetNull)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
 
   @@unique([budgetMonthId, categoryId])
+  @@index([destinationAccountId])
 }
 
 model TransferMatch {
