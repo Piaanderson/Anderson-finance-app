@@ -13,9 +13,8 @@ Last updated: 2026-09-19
 - Board:
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
-- Next action: obtain explicit approval to commit and push locally accepted
-  [#5 Complete Plaid Item lifecycle and recovery UX](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/5),
-  then verify its GitLab pipeline and GitHub mirror.
+- Next action: execute
+  [#6 Generalize the financial account and balance model](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/6).
 
 ## Product finish line
 
@@ -664,6 +663,19 @@ recovery controls'` — passed on desktop and mobile: 2 tests.
 - Every Vitest Plaid method is an in-process mock. The lifecycle browser test
   intercepts its local Item actions and never opens Link; no acceptance test
   sends a request to Plaid.
+- GitLab pipeline
+  [#13](https://gitlab.com/piaanderson-group/anderson-finance-app/-/pipelines/2864630128)
+  exposed a clock-dependent stale-lock fixture after the fixed test timestamp
+  fell behind the job's real `runAfter`. Replacing it with a future-relative
+  time passed five consecutive targeted runs and the complete 68-test suite.
+- GitLab pipeline
+  [#14](https://gitlab.com/piaanderson-group/anderson-finance-app/-/pipelines/2864631840)
+  passed commit `d75d0d3`, including schema validation, migrations, all 68
+  tests, typecheck, lint, formatting, production build, seed, and Chromium
+  browser tests.
+- GitLab's enabled server-side mirror completed without error, and GitHub
+  `main` resolved to mirrored commit
+  [`d75d0d3`](https://github.com/Piaanderson/Anderson-finance-app/commit/d75d0d373edbfd60e0a7b6021558136a668cefc6).
 
 Remaining risks:
 
@@ -677,8 +689,7 @@ Remaining risks:
 
 ## Next handoff
 
-After push approval, verify issue #5's GitLab pipeline and GitHub mirror, then
-begin
+Begin
 [#6 Generalize the financial account and balance model](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/6).
 Keep roadmap issue #1 and the full Currents goal open; the private v1
 application is not complete.
