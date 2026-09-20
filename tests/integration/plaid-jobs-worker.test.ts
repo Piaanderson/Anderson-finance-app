@@ -179,7 +179,7 @@ describe("Plaid sync job queue", () => {
   it("recovers a stale lock without losing its pagination checkpoint", async () => {
     const fixture = await createFixture();
     const job = await createPendingJob(fixture);
-    const now = new Date("2026-09-20T02:00:00.000Z");
+    const now = new Date(Date.now() + 60_000);
     await prisma.syncJob.update({
       where: { id: job.id },
       data: {
