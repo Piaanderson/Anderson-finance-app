@@ -14,7 +14,7 @@ Last updated: 2026-09-19
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
 - Next action: execute
-  [#3 Prove household isolation at every mutation boundary](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/3)
+  [#4 Harden Plaid webhook verification and sync jobs](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/4)
 
 ## Product finish line
 
@@ -504,6 +504,14 @@ test:integration && npm run format:check` — passed: generated route types,
 - `npm test && npm run build` — passed: 7 files/29 tests and the Next.js 16.3.5
   production build completed all 20 static-generation tasks.
 - `git diff --check` and edited-file IDE diagnostics — passed with no findings.
+- GitLab
+  [pipeline #9](https://gitlab.com/piaanderson-group/anderson-finance-app/-/pipelines/2864561539)
+  passed commit `09b998b` in 122 seconds, including PostgreSQL migrations,
+  all 29 Vitest tests without Plaid credentials or network calls, typecheck,
+  lint, formatting, production build, seed, and Chromium browser tests.
+- GitLab's enabled server-side mirror reported a successful update with no
+  error, and GitHub `main` resolved to mirrored commit
+  [`09b998b`](https://github.com/Piaanderson/Anderson-finance-app/commit/09b998b828ac20f04163c0f62502005a596b373a).
 
 Remaining risks:
 
@@ -512,12 +520,10 @@ Remaining risks:
   the client request. The test proves the required call is mocked and that
   rejection precedes every local write and sync enqueue. Every boundary that
   receives a local foreign resource ID rejects it before a Plaid call.
-- GitLab CI and the server-side GitHub mirror remain pending until explicit
-  approval is received to commit and push canonical `main`.
 
 ## Next handoff
 
-After explicit push approval, commit and push issue #3 only to canonical GitLab
-`main`, confirm its pipeline and server-side GitHub mirror, then close issue #3
-and begin issue #4. Keep roadmap issue #1 and the full Currents goal open; the
+Begin issue #4: harden Plaid webhook verification, synchronization pagination,
+job deduplication, retry/rerun behavior, interrupted-worker recovery, and
+transaction bounds. Keep roadmap issue #1 and the full Currents goal open; the
 private v1 application is not complete.
