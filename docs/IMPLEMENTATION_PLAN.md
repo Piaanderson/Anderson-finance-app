@@ -119,7 +119,7 @@ Goal: make the existing ingestion path safe to rely on before expanding UI.
 - Test valid and invalid webhook signatures, stale timestamps, and body hashes.
 - Test sync cursor pagination and added, modified, and removed transactions.
 - Test job deduplication, retry, rerun, and interrupted-worker recovery.
-- Add negative cross-household tests for every mutating finance endpoint.
+- [x] Add negative cross-household tests for every mutating finance endpoint.
 - Bound transaction sizes for large initial syncs.
 - Normalize Plaid errors into actionable Item states.
 - Add update mode for `LOGIN_REQUIRED`.
@@ -374,6 +374,18 @@ At the end of every context:
   assets/debts alongside Plaid.
 - 2026-09-19: repository plan plus GitLab backlog is the durable coordination
   model.
+- 2026-09-19: finance mutation isolation tests invoke the exported Next.js
+  Route Handler and Server Action boundaries against PostgreSQL fixtures; a
+  helper-only authorization assertion is not sufficient.
+- 2026-09-19: foreign identifiers continue to return 404 where the scoped
+  lookup intentionally prevents resource enumeration. The Plaid exchange
+  boundary returns 403 for a Plaid Item ID learned from Plaid because the
+  local owner cannot be determined before Plaid returns that ID.
+- 2026-09-19: the finance-boundary inventory guard covers mutation methods in
+  the Plaid, transfer, transaction, and budget API groups plus feature Server
+  Actions. The test proves an omitted route is reported. Plaid Link-token
+  creation is classified as non-mutating, the external webhook remains issue
+  #4 work, and passkey-only endpoints are outside household-finance scope.
 
 ## Verification log
 
@@ -453,8 +465,59 @@ Remaining risks:
   dependency audit is clean. Avoid `npm audit fix --force` because it proposes
   breaking upgrades.
 
+### Issue #3 household-isolation evidence — 2026-09-19
+
+Implementation:
+
+- Added unique, self-cleaning PostgreSQL fixtures for two users, two
+  households, and household-owned Plaid Items, accounts, transactions,
+  transfer matches, categories, budget months, and allocations. Cleanup
+  deletes only the two generated household and user IDs; it never truncates or
+  resets the database.
+- Exercised public-token exchange, manual Item sync, Item disconnect, transfer
+  tie/untie, category assignment, merchant-rule creation, budget allocation
+  updates, destination-account assignment, and category creation through the
+  actual exported Route Handler or Server Action.
+- Verified foreign identifiers return 404 without mutation for scoped resource
+  routes. Existing-Plaid-Item exchange returns 403 without upsert or sync-job
+  creation after the one mocked exchange needed to learn Plaid's Item ID.
+- Mocked the Plaid client module in-process. Foreign manual sync and disconnect
+  assert that neither mocked Plaid operation runs; no test has real Plaid
+  credentials or an external-network code path.
+- Added `test:unit` and `test:integration` commands. GitLab CI now applies
+  migrations before `npm test` against its PostgreSQL service and runs the
+  formatting check.
+- Added a durable boundary inventory in the integration suite. A synthetic
+  omitted-route test proves the guard reports a new unclassified mutation;
+  `docs/SECURITY.md` requires boundary-level negative coverage.
+
+Verification:
+
+- `docker compose up -d --wait && npm run db:deploy` — passed; PostgreSQL 17
+  was healthy and all three migrations were already applied.
+- `npx vitest run tests/integration/finance-household-isolation.test.ts` —
+  passed: 1 file and 13 tests.
+- `npm run typecheck && npm run lint && npm run test:unit && npm run
+test:integration && npm run format:check` — passed: generated route types,
+  zero lint findings, 6 unit files/16 unit tests, 1 integration file/13
+  integration tests, and all files formatted.
+- `npm test && npm run build` — passed: 7 files/29 tests and the Next.js 16.3.5
+  production build completed all 20 static-generation tasks.
+- `git diff --check` and edited-file IDE diagnostics — passed with no findings.
+
+Remaining risks:
+
+- Public-token exchange must call Plaid before it can compare an existing
+  Plaid Item's stable Plaid ID with local ownership; that ID is not present in
+  the client request. The test proves the required call is mocked and that
+  rejection precedes every local write and sync enqueue. Every boundary that
+  receives a local foreign resource ID rejects it before a Plaid call.
+- GitLab CI and the server-side GitHub mirror remain pending until explicit
+  approval is received to commit and push canonical `main`.
+
 ## Next handoff
 
-Begin issue #3. Add negative cross-household coverage at every finance mutation
-boundary before expanding Plaid behavior. Keep the roadmap issue open; the
+After explicit push approval, commit and push issue #3 only to canonical GitLab
+`main`, confirm its pipeline and server-side GitHub mirror, then close issue #3
+and begin issue #4. Keep roadmap issue #1 and the full Currents goal open; the
 private v1 application is not complete.

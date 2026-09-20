@@ -25,11 +25,12 @@ verify:
   script:
     - npm run db:generate
     - npx prisma validate
+    - npm run db:deploy
     - npm run typecheck
     - npm run lint
+    - npm run format:check
     - npm test
     - npm run build
-    - npm run db:deploy
     - npm run db:seed
     - npx playwright install --with-deps chromium
     - npm run test:e2e -- --project=chromium

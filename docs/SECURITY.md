@@ -41,6 +41,14 @@ choose a household ID. New endpoints must:
 3. reject resources whose stored household differs from the active household;
 4. have a negative test covering cross-household access.
 
+`tests/integration/finance-household-isolation.test.ts` exercises the real
+Route Handler and Server Action boundaries against two database households.
+Its coverage guard inventories finance mutation methods under the Plaid,
+transfer, transaction, and budget APIs plus feature Server Actions. A newly
+discovered boundary fails the suite until it is covered or is explicitly
+classified with a reason. Keep the guard and the boundary test together when
+adding a mutation; a helper-only ownership test is not sufficient.
+
 ## Plaid
 
 - Use Link tokens and exchange public tokens only on the server.
