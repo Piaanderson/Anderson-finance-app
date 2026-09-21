@@ -372,7 +372,7 @@ test("manual accounts expose accessible validation, valuation, linking, and arch
   }
 });
 
-test("movement ledger shows one expandable transfer with accessible two-leg detail", async ({
+test("transfer review ties and unties one movement accessibly", async ({
   page
 }, testInfo) => {
   const fixture = `movements-${testInfo.project.name}-${randomUUID()}`;
@@ -488,19 +488,106 @@ test("movement ledger shows one expandable transfer with accessible two-leg deta
         }
       ]
     });
-    await prisma.transferMatch.create({
-      data: {
-        id: `${fixture}-match`,
-        householdId,
-        outgoingTransactionId: outgoingId,
-        incomingTransactionId: incomingId
-      }
-    });
-
     await page.goto("/transactions");
     await expect(
       page.getByRole("heading", { level: 1, name: "Transactions" })
     ).toBeVisible();
+
+    const transferReview = page.locator('[data-review-order="transfers"]');
+    const categoryReview = page.locator('[data-review-order="categories"]');
+    await expect(transferReview).toBeVisible();
+    await expect(categoryReview).toBeVisible();
+    await expect(transferReview.getByText("1 to review")).toBeVisible();
+    const transferBox = await transferReview.boundingBox();
+    const categoryBox = await categoryReview.boundingBox();
+    expect((transferBox?.y ?? 0) < (categoryBox?.y ?? 0)).toBe(true);
+    await expect(
+      transferReview.getByRole("heading", {
+        level: 3,
+        name: "Unmatched-leg tray"
+      })
+    ).toBeVisible();
+    await expect(
+      transferReview.getByRole("heading", {
+        level: 3,
+        name: "Why this is suggested"
+      })
+    ).toBeVisible();
+    await expect(
+      transferReview.getByText("Exact 400.00 USD amount.")
+    ).toBeVisible();
+    await expect(
+      transferReview.getByText(
+        "Different accounts: Fixture checking → Fixture card."
+      )
+    ).toBeVisible();
+    await expect(
+      transferReview.getByText("Effective dates are 2 days apart.")
+    ).toBeVisible();
+
+    const candidateLegs = transferReview.locator(".suggestion-leg");
+    await expect(candidateLegs).toHaveCount(2);
+    const candidateOut = await candidateLegs.nth(0).boundingBox();
+    const candidateIn = await candidateLegs.nth(1).boundingBox();
+    if (testInfo.project.name === "mobile") {
+      expect((candidateIn?.y ?? 0) > (candidateOut?.y ?? 0)).toBe(true);
+    } else {
+      expect(
+        Math.abs((candidateIn?.y ?? 0) - (candidateOut?.y ?? 0))
+      ).toBeLessThan(8);
+    }
+
+    const skip = transferReview.getByRole("button", {
+      name: "Skip for now"
+    });
+    await skip.focus();
+    await page.keyboard.press("Space");
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: "Transfer suggestion skipped for now" })
+    ).toBeAttached();
+    await expect(transferReview).toHaveCount(0);
+    await expect(
+      categoryReview.getByRole("button", { name: "Review next" })
+    ).toBeFocused();
+    await page.reload();
+    await expect(transferReview).toBeVisible();
+
+    const inspect = transferReview.getByRole("button", {
+      name: "Inspect both candidate legs"
+    });
+    const candidateDetailId = await inspect.getAttribute("aria-controls");
+    expect(candidateDetailId).toBeTruthy();
+    await inspect.focus();
+    await page.keyboard.press("Space");
+    await expect(
+      transferReview.getByRole("button", {
+        name: "Hide both candidate legs"
+      })
+    ).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator(`#${candidateDetailId}`)).toContainText(
+      "ACH PAYMENT CARD 2222"
+    );
+    await expect(page.locator(`#${candidateDetailId}`)).toContainText(
+      "THANK YOU PAYMENT"
+    );
+
+    const tie = transferReview.getByRole("button", {
+      name: "Tie as one transfer"
+    });
+    const tieTarget = await tie.boundingBox();
+    expect(tieTarget?.height).toBeGreaterThanOrEqual(44);
+    await tie.focus();
+    await page.keyboard.press("Enter");
+    await expect(
+      page.getByRole("status").filter({ hasText: "were tied as one transfer" })
+    ).toBeAttached();
+    await expect(transferReview).toHaveCount(0);
+    await expect(
+      categoryReview.getByRole("button", { name: "Review next" })
+    ).toBeFocused();
+
     await expect(page.getByText("2 movements")).toBeVisible();
     await expect(
       page.getByRole("heading", { level: 3, name: "Card payment" })
@@ -513,7 +600,7 @@ test("movement ledger shows one expandable transfer with accessible two-leg deta
     ).toBeVisible();
     await expect(page.getByText("Pending", { exact: false })).toBeVisible();
 
-    const disclosure = page.locator(".movement-disclosure");
+    const disclosure = page.locator(".movement-ledger .movement-disclosure");
     await expect(disclosure).toHaveAccessibleName("View both transfer legs");
     await expect(disclosure).toHaveAttribute("aria-expanded", "false");
     const controlledId = await disclosure.getAttribute("aria-controls");
@@ -542,6 +629,7 @@ test("movement ledger shows one expandable transfer with accessible two-leg deta
     await expect(
       details.getByText(/Balance movement unavailable/)
     ).toBeVisible();
+    await expect(details.getByText("Wrong match?")).toBeVisible();
 
     const legs = details.locator(".transfer-leg");
     await expect(legs).toHaveCount(2);
@@ -554,6 +642,51 @@ test("movement ledger shows one expandable transfer with accessible two-leg deta
         8
       );
     }
+
+    const untie = details.getByRole("button", { name: "Untie" });
+    const untieTarget = await untie.boundingBox();
+    expect(untieTarget?.height).toBeGreaterThanOrEqual(44);
+    await untie.focus();
+    await page.keyboard.press("Space");
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: "Both unchanged source transactions are restored" })
+    ).toBeAttached();
+    await expect(page.getByText("3 movements")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 3, name: "Card payment" })
+    ).toHaveCount(1);
+    await expect(
+      page.getByRole("heading", { level: 3, name: "THANK YOU PAYMENT" })
+    ).toHaveCount(1);
+    await expect(
+      page.locator(`#movement-transaction-${outgoingId}`)
+    ).toBeFocused();
+    await expect(page.locator('[data-review-order="transfers"]')).toBeVisible();
+
+    const categoryId = `${fixture}-category`;
+    await prisma.category.create({
+      data: {
+        id: categoryId,
+        householdId,
+        name: "Fixture category",
+        section: "Needs"
+      }
+    });
+    await prisma.transaction.updateMany({
+      where: {
+        id: {
+          in: [outgoingId, incomingId, `${fixture}-coffee`]
+        }
+      },
+      data: { categoryId }
+    });
+    await page.reload();
+    await expect(page.locator('[data-review-order="transfers"]')).toBeVisible();
+    await expect(page.locator('[data-review-order="categories"]')).toHaveCount(
+      0
+    );
 
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])

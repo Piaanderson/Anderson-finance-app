@@ -25,11 +25,15 @@ function signedLegAmount(leg: MovementLeg) {
 export function TransferDetails({
   id,
   legs,
-  labelledBy
+  labelledBy,
+  untieBusy = false,
+  onUntie
 }: {
   id: string;
   legs: [MovementLeg, MovementLeg];
   labelledBy: string;
+  untieBusy?: boolean;
+  onUntie?: () => void;
 }) {
   return (
     <div
@@ -113,6 +117,22 @@ export function TransferDetails({
         Balance movement unavailable. Currents does not reconstruct a running
         balance from today&apos;s account balance or an unaligned snapshot.
       </p>
+      {onUntie ? (
+        <div className="untie-action">
+          <p>
+            <strong>Wrong match?</strong> Untie restores both unchanged source
+            transactions.
+          </p>
+          <button
+            className="button secondary"
+            type="button"
+            disabled={untieBusy}
+            onClick={onUntie}
+          >
+            {untieBusy ? "Untying…" : "Untie"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

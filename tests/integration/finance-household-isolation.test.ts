@@ -256,15 +256,17 @@ async function createFixtures() {
         name: "Transfer out A",
         merchantName: "Merchant A",
         amount: "125.00",
+        isoCurrencyCode: "USD",
         date: new Date("2026-09-08T12:00:00.000Z")
       },
       {
         id: ids.incomingA,
         householdId: ids.householdA,
-        accountId: ids.accountA,
+        accountId: ids.debtA,
         plaidTransactionId: `${fixtureKey}-incoming-plaid-a`,
         name: "Transfer in A",
         amount: "-125.00",
+        isoCurrencyCode: "USD",
         date: new Date("2026-09-09T12:00:00.000Z")
       },
       {

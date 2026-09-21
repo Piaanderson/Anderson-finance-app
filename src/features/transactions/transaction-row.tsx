@@ -27,7 +27,17 @@ function transferAmount(movement: HouseholdMovement) {
     .join(" → ");
 }
 
-export function TransactionRow({ movement }: { movement: HouseholdMovement }) {
+export function TransactionRow({
+  movement,
+  untieBusy = false,
+  onUntie
+}: {
+  movement: HouseholdMovement;
+  untieBusy?: boolean;
+  onUntie?: (
+    movement: Extract<HouseholdMovement, { kind: "TRANSFER" }>
+  ) => void;
+}) {
   const reactId = useId().replaceAll(":", "");
   const detailId = `movement-details-${reactId}`;
   const labelId = `movement-label-${reactId}`;
@@ -41,7 +51,16 @@ export function TransactionRow({ movement }: { movement: HouseholdMovement }) {
     .join(" → ");
 
   return (
-    <article className="movement-row" aria-labelledby={labelId}>
+    <article
+      className="movement-row"
+      id={
+        movement.kind === "TRANSACTION"
+          ? `movement-transaction-${movement.legs[0].transactionId}`
+          : `movement-transfer-${movement.matchId}`
+      }
+      tabIndex={-1}
+      aria-labelledby={labelId}
+    >
       <div className="movement-summary">
         <div className="movement-primary">
           <div>
@@ -95,6 +114,8 @@ export function TransactionRow({ movement }: { movement: HouseholdMovement }) {
           id={detailId}
           labelledBy={labelId}
           legs={movement.legs}
+          untieBusy={untieBusy}
+          onUntie={onUntie ? () => onUntie(movement) : undefined}
         />
       ) : null}
     </article>

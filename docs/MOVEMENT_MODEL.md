@@ -69,6 +69,65 @@ and spending is the sum of unmatched positive amounts. Pending transactions
 are included and labelled. Later category semantics may distinguish refunds or
 other inflows, but must continue to use this centralized movement arithmetic.
 
+## Transfer suggestions and confirmation
+
+Suggestions are deterministic, household-scoped review candidates over source
+transactions that are unmatched and not removed. A pair is eligible only when:
+
+- both source rows and both accounts belong to the authenticated household;
+- the legs use different accounts;
+- the outgoing Plaid amount is positive and the incoming Plaid amount is
+  negative;
+- their absolute amounts are exactly equal after parsing the database decimal
+  as integer minor units;
+- both rows have one known currency identity and those identities are exactly
+  equal. ISO, unofficial, and unknown identities are never mixed, and two
+  unknown identities are not treated as equal;
+- the absolute distance between effective dates is at most seven calendar days,
+  inclusive. Effective date means authorized date with posted-date fallback;
+  and
+- both rows are posted. A pair with either leg still pending is withheld until
+  both institutions provide stable posted transactions.
+
+The candidate builder indexes incoming legs by currency identity and absolute
+minor-unit amount before applying the date window. It does not perform an
+unbounded all-to-all comparison.
+
+Eligible candidates rank by effective-date distance first. Transfer-related
+wording in the normalized bank fields adds limited supporting weight, but
+wording can never make an otherwise ineligible pair eligible. Ties resolve by
+effective date and transaction ID so input or database order cannot change the
+result. When the two highest candidates are within ten score points, the
+suggestion is marked ambiguous and the user must choose an incoming leg after
+inspecting both sides.
+
+A suggestion is not a match. Every candidate carries a
+confirmation-required state, and only an explicit user action may create a
+`TransferMatch`. Skipping is session review state and does not change source
+transactions or create a persisted rejection.
+
+## Tie and untie invariants
+
+`POST /api/transfers` re-reads both household-owned source rows and applies the
+same eligibility policy inside the match transaction. It rejects removed,
+pending, already matched, same-account, wrong-sign, unequal-amount,
+incompatible-currency, and out-of-window legs. A foreign transaction ID remains
+a non-enumerating `404`. Unique database constraints arbitrate duplicate or
+concurrent confirmation, and the route translates that conflict to the stable
+`TRANSFER_MATCH_CONFLICT` `409` response.
+
+Creating a match inserts only `TransferMatch`; it does not update either
+`Transaction`. `DELETE /api/transfers/:matchId` is household-scoped and deletes
+only that match. Untie therefore restores the same two source rows, and the
+same eligible pair can be tied again after an untie. Tests compare the complete
+source rows before and after this cycle.
+
+If Plaid later removes one leg of an existing match, the remaining live leg is
+eligible for review rather than being trapped by the stale relationship. An
+explicit confirmation involving that live leg transactionally deletes the
+orphaned match before creating the replacement. The removed transaction stays
+unchanged and can never become a candidate.
+
 ## Bank fields and balance movement
 
 Synchronization requests Plaid's optional original description and persists

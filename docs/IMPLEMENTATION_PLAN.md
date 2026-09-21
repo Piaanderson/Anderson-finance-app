@@ -14,7 +14,7 @@ Last updated: 2026-09-21
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
 - Next action: execute
-  [#9 Build transfer suggestions and reversible transfer review](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/9).
+  [#10 Build category assignment and merchant-rule review](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/10).
 
 ## Product finish line
 
@@ -163,15 +163,16 @@ Goal: implement the approved Transactions 2a workflow.
 
 - [x] Build a household-scoped movement read model.
 - [x] Present a matched transfer once while retaining both source transactions.
-- [ ] Generate conservative transfer suggestions; never silently accept
+- [x] Generate conservative transfer suggestions; never silently accept
       ambiguity.
-- [ ] Build unmatched-leg, tie, and untie interactions.
+- [x] Build unmatched-leg, tie, and untie interactions.
 - [x] Store and show useful bank-provided description fields without raw
       payloads.
 - [x] Build expandable, structured transfer details.
-- [ ] Build the transfers-first/category-second review stack.
+- [x] Build the transfers-first/category-second review stack.
 - [ ] Build an accessible grouped category picker and merchant-rule option.
-- [ ] Add visible keyboard hints, focus management, and live announcements.
+- [x] Add focus management and live announcements; show visible hints if a
+      future review shortcut is added.
 
 Exit evidence:
 
@@ -435,6 +436,20 @@ At the end of every context:
   inactive accounts remain as honest history. Current balances and snapshots
   are not transaction-aligned, so the transfer UI reports balance movement as
   unavailable instead of reconstructing it.
+- 2026-09-21: transfer suggestions require posted, unmatched, non-removed legs
+  on distinct household accounts with opposite Plaid signs, exactly equal
+  integer minor-unit amounts, one identical known currency identity, and
+  effective dates within seven calendar days inclusive. Effective date is
+  authorized date with posted fallback.
+- 2026-09-21: date proximity ranks transfer candidates before limited
+  transfer-description evidence. A top-two score distance of ten or less is
+  explicitly ambiguous. Every suggestion requires confirmation; skip is
+  session-only review state and does not mutate financial records.
+- 2026-09-21: transfer confirmation revalidates the complete suggestion policy
+  inside a Read Committed transaction. Sign-specific unique constraints
+  arbitrate competing confirmations, and duplicate or racing writes return the
+  stable `TRANSFER_MATCH_CONFLICT` 409 response. An explicit replacement tie
+  may delete an orphaned match whose other source leg was removed.
 
 ## Verification log
 
@@ -934,9 +949,89 @@ Remaining risks:
   tie/untie review experience remain issue #9. Category review remains issue
   #10.
 
+### Issue #9 transfer-review evidence — 2026-09-21
+
+Implementation:
+
+- Added a pure deterministic suggestion policy and a household-scoped
+  data-access layer. Candidate construction indexes incoming legs by currency
+  identity and integer minor-unit amount before applying the inclusive
+  seven-calendar-day window; it never performs a naïve all-to-all comparison.
+- Suggestions exclude pending, removed, already matched, same-account,
+  wrong-sign, unequal-amount, incompatible-currency, unknown-currency, and
+  out-of-window pairs. Authorized date wins over posted date. Transfer wording
+  only supports ranking and never creates eligibility.
+- Ranked candidates carry plain amount, account, date-distance, and optional
+  description reasons. Similar top candidates are explicitly ambiguous, and
+  every candidate is confirmation-required. No code path creates a match from
+  suggestion generation.
+- Strengthened `POST /api/transfers` to apply the same policy in the database
+  transaction. Foreign IDs remain 404, policy failures are 422, and duplicate
+  or concurrent ties are stable 409 conflicts. A remaining live leg can be
+  reviewed again when its stale match points to a removed counterpart.
+- Tie and untie mutate only `TransferMatch`. Full source `Transaction` rows are
+  byte-for-byte equal before tie, after tie, and after untie in integration
+  coverage; retie succeeds.
+- Replaced the hardcoded transfer count with the approved 2a transfers-first
+  queue. The unmatched-leg tray, candidate reasons, ambiguity choices,
+  two-leg inspection, skip, confirm, one-row ledger result, and plain “Wrong
+  match? Untie” action are native, keyboard-operable controls.
+- Tie, skip, and untie move focus to the next meaningful control or restored
+  source movement. Queue and success updates use a polite live region;
+  blocking failures use `role="alert"`. Transfer and category panels hide
+  independently at zero, and desktop/mobile layouts retain 44px targets,
+  visible focus, text status, reduced motion, and WCAG 2.1 AA semantics.
+- Followed the bundled Next.js 16.3.5 Route Handler, server/client boundary,
+  and `router.refresh()` guidance. The authenticated Server Component reads
+  Prisma directly; the client leaf calls the existing POST/DELETE boundaries
+  and merges an optimistic view while the server payload refreshes.
+
+Verification:
+
+- Targeted suggestion policy — 1 file and 8 tests passed.
+- Targeted transfer and issue #3 mutation-boundary integration — 2 files and
+  31 tests passed.
+- Focused desktop/mobile transfer-review Playwright flow — 2 tests passed,
+  including transfer-first ordering, real counts, explanations, ambiguity-safe
+  confirmation, Space/Enter actions, focus, live announcements, tie, untie,
+  independent zero-queue hiding, responsive legs, 44px targets, and axe WCAG
+  2.1 AA scans.
+- `npm run test:unit` — 13 files and 67 tests passed.
+- `npm run test:integration` — 8 files and 62 tests passed.
+- `npm test` — 21 files and 129 tests passed.
+- `npm run typecheck`, `npm run lint`, `npx prisma validate`,
+  `npx prisma migrate status`, `npm run build`, `git diff --check`, and
+  edited-file IDE diagnostics passed. Prisma reports all seven migrations
+  applied.
+- `npm run test:e2e` passed against the existing local development server: 13
+  desktop/mobile tests passed and the mobile duplicate of the Chromium-only
+  passkey case was skipped as expected.
+- Browser fixtures record and reject every Plaid-host request; transfer unit
+  and integration suites do not import or call the Plaid client.
+- The exact repository-wide `npm run format:check` was run and reported only
+  the protected, unrelated untracked
+  `docs/MOBILE_RESPONSIVE_SKILL_FEEDBACK.md`. That file was not edited,
+  deleted, staged, or committed. A scoped Prettier check over every issue #9
+  file passed.
+
+Remaining risks:
+
+- Skipping a suggestion is intentionally session-only. A durable “not a pair”
+  decision would need a new household-owned model and product semantics; it is
+  not silently inferred from a skip.
+- Suggestions inspect all unmatched private-household history but bucket
+  candidates before comparison and cap the returned queue at 100. Database
+  pagination or a durable review horizon should be added if history grows
+  beyond private-v1 scale.
+- Existing manually created or pre-policy `TransferMatch` rows remain visible
+  as historical transfers until a user unties them. New and replacement ties
+  cannot bypass the current policy.
+- Category assignment and merchant-rule review remain issue #10; this slice
+  supplies only the ordered, independently hiding category queue panel.
+
 ## Next handoff
 
 Begin
-[#9 Build transfer suggestions and reversible transfer review](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/9).
+[#10 Build category assignment and merchant-rule review](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/10).
 Keep roadmap issue #1 and the full Currents goal open; the private v1
 application is not complete.

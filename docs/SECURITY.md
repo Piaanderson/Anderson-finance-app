@@ -64,6 +64,17 @@ foreign keys prevent a transfer match from joining legs across households.
 Two-household integration fixtures prove foreign transactions, accounts,
 matches, and expanded leg metadata do not cross the read boundary.
 
+Transfer suggestions use only unmatched, non-removed transactions and accounts
+from the authenticated household. Confirmation re-reads both legs inside the
+database transaction and applies the same account, sign, exact minor-unit
+amount, currency, date, posted-state, and existing-match checks as suggestion
+generation. Foreign IDs remain `404`; duplicate or concurrent confirmation is
+a stable `409`. Tie inserts only `TransferMatch`, and household-scoped untie
+deletes only that record, so neither operation rewrites source transactions.
+The issue #3 mutation-boundary suite continues to exercise the exported POST
+and DELETE Route Handlers directly, while the dedicated two-household transfer
+suite covers suggestions, policy failures, races, untie, and retie.
+
 ## Plaid
 
 - Use Link tokens and exchange public tokens only on the server.
