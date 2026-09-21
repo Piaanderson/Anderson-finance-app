@@ -14,7 +14,7 @@ Last updated: 2026-09-21
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
 - Next action: execute
-  [#8 Build the movement read model and transfer ledger](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/8).
+  [#9 Build transfer suggestions and reversible transfer review](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/9).
 
 ## Product finish line
 
@@ -161,15 +161,17 @@ Exit evidence:
 
 Goal: implement the approved Transactions 2a workflow.
 
-- Build a household-scoped movement read model.
-- Present a matched transfer once while retaining both source transactions.
-- Generate conservative transfer suggestions; never silently accept ambiguity.
-- Build unmatched-leg, tie, and untie interactions.
-- Store and show useful bank-provided description fields without raw payloads.
-- Build expandable, structured transfer details.
-- Build the transfers-first/category-second review stack.
-- Build an accessible grouped category picker and merchant-rule option.
-- Add visible keyboard hints, focus management, and live announcements.
+- [x] Build a household-scoped movement read model.
+- [x] Present a matched transfer once while retaining both source transactions.
+- [ ] Generate conservative transfer suggestions; never silently accept
+      ambiguity.
+- [ ] Build unmatched-leg, tie, and untie interactions.
+- [x] Store and show useful bank-provided description fields without raw
+      payloads.
+- [x] Build expandable, structured transfer details.
+- [ ] Build the transfers-first/category-second review stack.
+- [ ] Build an accessible grouped category picker and merchant-rule option.
+- [ ] Add visible keyboard hints, focus management, and live announcements.
 
 Exit evidence:
 
@@ -417,6 +419,22 @@ At the end of every context:
 - 2026-09-21: property and debt stay as separate account records. A
   household-scoped link enables derived equity only when all linked positions
   are known in one currency. Manual archive is soft and preserves snapshots.
+- 2026-09-21: movements remain a read-time abstraction rather than a second
+  ledger. Unmatched IDs derive from one transaction ID; transfer IDs derive
+  from the ordered outgoing and incoming source IDs, so tie never rewrites a
+  source leg and untie restores two independent movements.
+- 2026-09-21: the outgoing leg owns a transfer's canonical date and description
+  priority. Its authorized date wins over its posted date; description priority
+  is outgoing merchant, bank description, then Plaid name before the same
+  incoming fallbacks. Expanded detail retains every source value.
+- 2026-09-21: movement arithmetic uses fixed minor units and separates ISO,
+  unofficial, and unknown currency identities. Transfers contribute zero to
+  income, spending, and category spending even when their leg currencies or
+  values differ.
+- 2026-09-21: removed transaction rows do not appear. Valid transactions from
+  inactive accounts remain as honest history. Current balances and snapshots
+  are not transaction-aligned, so the transfer UI reports balance movement as
+  unavailable instead of reconstructing it.
 
 ## Verification log
 
@@ -847,9 +865,78 @@ Remaining risks:
 - Real institution balance timing still requires Trial/staging verification;
   local and CI Plaid calls are mocked by design.
 
+### Issue #8 household movement evidence — 2026-09-21
+
+Implementation:
+
+- Added a server-only household movement data-access layer over source
+  transactions and transfer matches. Deterministic movement identity, canonical
+  date/description selection, pending state, direction, ordering, category
+  history, removed-row behavior, and inactive-account history are documented in
+  `docs/MOVEMENT_MODEL.md`.
+- Matched transfers render once and retain both transaction IDs and both
+  accounts, amounts, authorized/posted dates, bank/Plaid descriptions,
+  merchants, memo/reason, references, payment channels, transaction codes, and
+  check numbers. Untie still returns the legs to independent rows.
+- Plaid sync now requests original descriptions and stores only normalized
+  fields. Raw responses are neither stored nor exposed. The additive migration
+  preserves existing rows and installs composite foreign keys that prevent a
+  cross-household transfer match.
+- Central fixed-point movement arithmetic now powers Home income/spending and
+  Budget category-spending status. Transfers are excluded, pending movements
+  remain explicit, and unlike ISO, unofficial, or unknown currencies stay in
+  separate totals.
+- The Transactions page follows approved direction 2a with one-row transfers,
+  a native button disclosure, explicit `aria-expanded`/`aria-controls`,
+  two-leg mobile detail, visible focus, 44px targets, text status, and existing
+  reduced-motion behavior. Balance movement is explicitly unavailable because
+  current positions and snapshots are not transaction-aligned.
+- Added unique two-household fixtures proving foreign transactions, accounts,
+  matches, and expanded metadata cannot be read or combined. Existing transfer
+  Route Handlers are unchanged, so the issue #3 mutation inventory did not add
+  a boundary; its integration suite now also proves tie/untie/retie
+  reversibility against the movement read.
+
+Verification:
+
+- Targeted movement, Plaid normalization, migration, household-read, and
+  mutation-boundary run — 4 files and 36 tests passed.
+- Focused movement Playwright run — desktop and mobile passed, including
+  one-row counting, Enter-key expansion, focus, names/states, 44px target,
+  responsive two-leg layout, WCAG 2.1 AA axe scans, and zero observed
+  Plaid-host requests.
+- `npm run test:unit` — 12 files and 59 tests passed.
+- `npm run test:integration` — 7 files and 51 tests passed.
+- `npm test` — 19 files and 110 tests passed.
+- `npm run typecheck`, `npm run lint`, `npm run format:check`,
+  `npx prisma validate`, `npx prisma migrate status`, `npm run build`,
+  `git diff --check`, and edited-file IDE diagnostics passed. Prisma reports
+  all seven migrations applied.
+- `npm run test:e2e` — 13 desktop/mobile tests passed and the mobile duplicate
+  of the Chromium-only passkey case was skipped as expected.
+- Acceptance coverage is network-free: Plaid synchronization tests replace the
+  client with in-process mocks, and movement browser coverage records and
+  rejects any Plaid-host request.
+
+Remaining risks:
+
+- The private-household read currently constructs owned history before applying
+  query and the 100-row UI limit. This keeps both transfer legs correct for
+  search and date selection, but database-level movement pagination should be
+  added if household history grows beyond private-v1 scale.
+- Existing transactions have no bank description/payment metadata until Plaid
+  sends them in a later added or modified update; the migration does not
+  fabricate those values.
+- Income remains the documented sign-based unmatched inflow total. Refund and
+  category-specific income semantics belong to category/budget work in issues
+  #10–#11.
+- Suggestions, automatic candidate ranking, and the complete transfers-first
+  tie/untie review experience remain issue #9. Category review remains issue
+  #10.
+
 ## Next handoff
 
 Begin
-[#8 Build the movement read model and transfer ledger](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/8).
+[#9 Build transfer suggestions and reversible transfer review](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/9).
 Keep roadmap issue #1 and the full Currents goal open; the private v1
 application is not complete.

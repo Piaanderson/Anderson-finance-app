@@ -1,37 +1,102 @@
-import { signedUsd } from "@/lib/money";
+"use client";
+
+import { useId, useState } from "react";
+import { formatMovementAmount } from "@/lib/money";
+import type { HouseholdMovement } from "./movements";
 import { TransferDetails } from "./transfer-details";
 
-type TransactionRowProps = {
-  name: string;
-  account: string;
-  category: string;
-  date: string;
-  amount: number;
-  pending?: boolean;
-  transferLegs?: Array<{ account: string; amount: number; date: string }>;
-};
+function movementDate(value: string) {
+  return new Date(value).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC"
+  });
+}
 
-export function TransactionRow({
-  name,
-  account,
-  category,
-  date,
-  amount,
-  pending,
-  transferLegs
-}: TransactionRowProps) {
+function transactionAmount(movement: HouseholdMovement) {
+  const amount = movement.amounts[0];
+  const formatted = formatMovementAmount(amount.value, amount.currency);
+  if (movement.direction === "OUTFLOW") return `−${formatted}`;
+  if (movement.direction === "INFLOW") return `+${formatted}`;
+  return formatted;
+}
+
+function transferAmount(movement: HouseholdMovement) {
+  return movement.amounts
+    .map((amount) => formatMovementAmount(amount.value, amount.currency))
+    .join(" → ");
+}
+
+export function TransactionRow({ movement }: { movement: HouseholdMovement }) {
+  const reactId = useId().replaceAll(":", "");
+  const detailId = `movement-details-${reactId}`;
+  const labelId = `movement-label-${reactId}`;
+  const [expanded, setExpanded] = useState(false);
+  const transfer = movement.kind === "TRANSFER";
+  const accounts = movement.legs
+    .map(
+      (leg) =>
+        `${leg.account.name}${leg.account.mask ? ` · ${leg.account.mask}` : ""}`
+    )
+    .join(" → ");
+
   return (
-    <article className="transaction-row">
-      <div>
-        <strong>{name}</strong>
-        <div className="muted">
-          {account} · {date}
-          {pending ? " · Pending" : ""}
+    <article className="movement-row" aria-labelledby={labelId}>
+      <div className="movement-summary">
+        <div className="movement-primary">
+          <div>
+            <h3 id={labelId}>{movement.description}</h3>
+            <p className="muted">
+              {accounts} · {movementDate(movement.canonicalDate)}
+              {movement.pending ? " · Pending" : ""}
+            </p>
+          </div>
+          <div className="movement-amount">
+            <strong>
+              {transfer
+                ? transferAmount(movement)
+                : transactionAmount(movement)}
+            </strong>
+            <span className="muted">
+              {transfer
+                ? "Internal transfer · counted once"
+                : movement.direction === "OUTFLOW"
+                  ? "Money out"
+                  : movement.direction === "INFLOW"
+                    ? "Money in"
+                    : "No balance change"}
+            </span>
+          </div>
         </div>
-        {transferLegs ? <TransferDetails legs={transferLegs} /> : null}
+        <div className="movement-secondary">
+          <span className="movement-category">
+            {transfer
+              ? "Transfer"
+              : (movement.category?.name ??
+                movement.legs[0].transactionCode ??
+                "Uncategorized")}
+          </span>
+          {transfer ? (
+            <button
+              className="movement-disclosure"
+              type="button"
+              aria-expanded={expanded}
+              aria-controls={detailId}
+              onClick={() => setExpanded((value) => !value)}
+            >
+              {expanded ? "Hide both transfer legs" : "View both transfer legs"}
+              <span aria-hidden="true">{expanded ? "−" : "+"}</span>
+            </button>
+          ) : null}
+        </div>
       </div>
-      <span className="muted">{category}</span>
-      <strong className="row-amount">{signedUsd(amount)}</strong>
+      {transfer && expanded ? (
+        <TransferDetails
+          id={detailId}
+          labelledBy={labelId}
+          legs={movement.legs}
+        />
+      ) : null}
     </article>
   );
 }

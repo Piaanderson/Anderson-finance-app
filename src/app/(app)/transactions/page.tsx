@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/page-header";
 import { ReviewCard } from "@/features/transactions/review-card";
 import { TransactionRow } from "@/features/transactions/transaction-row";
-import { prisma } from "@/server/db";
+import { getHouseholdMovements } from "@/features/transactions/movement-data";
 import { requireHousehold } from "@/server/households";
 
 export const metadata: Metadata = { title: "Transactions" };
@@ -14,39 +14,13 @@ export default async function TransactionsPage({
 }) {
   const owner = await requireHousehold();
   const { query = "" } = await searchParams;
-  const transactions = await prisma.transaction.findMany({
-    where: {
-      householdId: owner.householdId,
-      removedAt: null,
-      incomingTransfer: { is: null },
-      ...(query
-        ? {
-            OR: [
-              { name: { contains: query, mode: "insensitive" as const } },
-              {
-                merchantName: {
-                  contains: query,
-                  mode: "insensitive" as const
-                }
-              }
-            ]
-          }
-        : {})
-    },
-    include: {
-      account: true,
-      category: true,
-      outgoingTransfer: {
-        include: {
-          incomingTransaction: { include: { account: true } }
-        }
-      }
-    },
-    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-    take: 100
+  const movements = await getHouseholdMovements({
+    householdId: owner.householdId,
+    query,
+    limit: 100
   });
-  const uncategorized = transactions.filter(
-    (transaction) => !transaction.categoryId
+  const uncategorized = movements.filter(
+    (movement) => movement.kind === "TRANSACTION" && movement.category === null
   ).length;
 
   return (
@@ -84,62 +58,18 @@ export default async function TransactionsPage({
             count={uncategorized}
           />
         </div>
-        <section className="card" aria-labelledby="ledger-title">
+        <section
+          className="card movement-ledger"
+          aria-labelledby="ledger-title"
+        >
           <div className="section-heading">
-            <h2 id="ledger-title">September ledger</h2>
-            <span className="muted">{transactions.length} movements</span>
+            <h2 id="ledger-title">Movement ledger</h2>
+            <span className="muted">{movements.length} movements</span>
           </div>
-          {transactions.length ? (
-            <div>
-              {transactions.map((transaction) => (
-                <TransactionRow
-                  key={transaction.id}
-                  name={transaction.merchantName ?? transaction.name}
-                  account={transaction.account.name}
-                  category={
-                    transaction.category?.name ??
-                    transaction.categoryPrimary ??
-                    "Uncategorized"
-                  }
-                  date={transaction.date.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    timeZone: "UTC"
-                  })}
-                  amount={transaction.amount.toNumber() * -1}
-                  pending={transaction.pending}
-                  transferLegs={
-                    transaction.outgoingTransfer
-                      ? [
-                          {
-                            account: transaction.account.name,
-                            amount: transaction.amount.toNumber() * -1,
-                            date: transaction.date.toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              timeZone: "UTC"
-                            })
-                          },
-                          {
-                            account:
-                              transaction.outgoingTransfer.incomingTransaction
-                                .account.name,
-                            amount:
-                              transaction.outgoingTransfer.incomingTransaction.amount.toNumber() *
-                              -1,
-                            date: transaction.outgoingTransfer.incomingTransaction.date.toLocaleDateString(
-                              "en-US",
-                              {
-                                month: "short",
-                                day: "numeric",
-                                timeZone: "UTC"
-                              }
-                            )
-                          }
-                        ]
-                      : undefined
-                  }
-                />
+          {movements.length ? (
+            <div className="movement-list">
+              {movements.map((movement) => (
+                <TransactionRow key={movement.id} movement={movement} />
               ))}
             </div>
           ) : (

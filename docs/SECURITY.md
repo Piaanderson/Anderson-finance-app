@@ -55,9 +55,20 @@ foreign account cannot receive a valuation or archive, a foreign snapshot
 cannot be changed through its account, and cross-household links cannot be
 created, read through the scoped Accounts query, or removed.
 
+Household movement reads follow the same boundary even though they add no
+mutation endpoint. `getHouseholdMovements` is server-only and requires the
+already-authenticated household ID; the Transactions, Budget, and Home pages
+derive it from `requireHousehold()`. Transactions, their accounts, transfer
+matches, and both transfer legs are independently scoped. Composite database
+foreign keys prevent a transfer match from joining legs across households.
+Two-household integration fixtures prove foreign transactions, accounts,
+matches, and expanded leg metadata do not cross the read boundary.
+
 ## Plaid
 
 - Use Link tokens and exchange public tokens only on the server.
+- Persist only normalized transaction fields needed by the product. Never
+  store, return, or log raw Plaid transaction payloads.
 - Verify every webhook's ES256 JWT, five-minute issue time, and SHA-256 body
   hash before processing it.
 - Webhooks enqueue idempotent work and do not perform long synchronization

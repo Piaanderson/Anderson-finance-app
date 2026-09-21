@@ -372,6 +372,204 @@ test("manual accounts expose accessible validation, valuation, linking, and arch
   }
 });
 
+test("movement ledger shows one expandable transfer with accessible two-leg detail", async ({
+  page
+}, testInfo) => {
+  const fixture = `movements-${testInfo.project.name}-${randomUUID()}`;
+  const email = `${fixture}@example.test`;
+  const plaidRequests: string[] = [];
+  let householdId: string | null = null;
+  let userId: string | null = null;
+
+  page.on("request", (request) => {
+    if (/plaid\.(com|net)/i.test(new URL(request.url()).hostname)) {
+      plaidRequests.push(request.url());
+    }
+  });
+
+  try {
+    await page.goto("/sign-in");
+    await page.getByLabel("Development email").fill(email);
+    await page
+      .getByRole("button", { name: "Local development sign-in" })
+      .click();
+    await expect(page).toHaveURL(/\/accounts$/);
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    const membership = await prisma.householdMember.findFirstOrThrow({
+      where: { userId: user.id }
+    });
+    userId = user.id;
+    householdId = membership.householdId;
+    const itemId = `${fixture}-item`;
+    const checkingId = `${fixture}-checking`;
+    const cardId = `${fixture}-card`;
+    const outgoingId = `${fixture}-outgoing`;
+    const incomingId = `${fixture}-incoming`;
+    await prisma.plaidItem.create({
+      data: {
+        id: itemId,
+        householdId,
+        linkedByUserId: userId,
+        plaidItemId: `${fixture}-plaid-item`,
+        accessTokenCiphertext: "fixture",
+        accessTokenIv: "fixture",
+        accessTokenTag: "fixture"
+      }
+    });
+    await prisma.financialAccount.createMany({
+      data: [
+        {
+          id: checkingId,
+          householdId,
+          plaidItemId: itemId,
+          plaidAccountId: `${fixture}-plaid-checking`,
+          source: "PLAID",
+          classification: "CASH",
+          name: "Fixture checking",
+          mask: "1111",
+          type: "depository"
+        },
+        {
+          id: cardId,
+          householdId,
+          plaidItemId: itemId,
+          plaidAccountId: `${fixture}-plaid-card`,
+          source: "PLAID",
+          classification: "DEBT",
+          name: "Fixture card",
+          mask: "2222",
+          type: "credit"
+        }
+      ]
+    });
+    await prisma.transaction.createMany({
+      data: [
+        {
+          id: outgoingId,
+          householdId,
+          accountId: checkingId,
+          plaidTransactionId: `${fixture}-plaid-outgoing`,
+          name: "ONLINE PAYMENT",
+          merchantName: "Card payment",
+          bankDescription: "ACH PAYMENT CARD 2222",
+          paymentMemo: "September payment",
+          referenceNumber: "REF-OUT",
+          paymentChannel: "online",
+          transactionCode: "transfer",
+          amount: "400.00",
+          isoCurrencyCode: "USD",
+          date: new Date("2026-09-09T00:00:00.000Z"),
+          authorizedDate: new Date("2026-09-08T00:00:00.000Z")
+        },
+        {
+          id: incomingId,
+          householdId,
+          accountId: cardId,
+          plaidTransactionId: `${fixture}-plaid-incoming`,
+          name: "PAYMENT RECEIVED",
+          bankDescription: "THANK YOU PAYMENT",
+          referenceNumber: "REF-IN",
+          amount: "-400.00",
+          isoCurrencyCode: "USD",
+          date: new Date("2026-09-10T00:00:00.000Z")
+        },
+        {
+          id: `${fixture}-coffee`,
+          householdId,
+          accountId: checkingId,
+          plaidTransactionId: `${fixture}-plaid-coffee`,
+          name: "COFFEE SHOP 123",
+          merchantName: "Coffee shop",
+          amount: "6.50",
+          isoCurrencyCode: "USD",
+          date: new Date("2026-09-11T00:00:00.000Z"),
+          pending: true
+        }
+      ]
+    });
+    await prisma.transferMatch.create({
+      data: {
+        id: `${fixture}-match`,
+        householdId,
+        outgoingTransactionId: outgoingId,
+        incomingTransactionId: incomingId
+      }
+    });
+
+    await page.goto("/transactions");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Transactions" })
+    ).toBeVisible();
+    await expect(page.getByText("2 movements")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 3, name: "Card payment" })
+    ).toHaveCount(1);
+    await expect(
+      page.getByRole("heading", { level: 3, name: "Coffee shop" })
+    ).toHaveCount(1);
+    await expect(
+      page.getByText("Internal transfer · counted once")
+    ).toBeVisible();
+    await expect(page.getByText("Pending", { exact: false })).toBeVisible();
+
+    const disclosure = page.locator(".movement-disclosure");
+    await expect(disclosure).toHaveAccessibleName("View both transfer legs");
+    await expect(disclosure).toHaveAttribute("aria-expanded", "false");
+    const controlledId = await disclosure.getAttribute("aria-controls");
+    expect(controlledId).toBeTruthy();
+    await disclosure.focus();
+    await expect(disclosure).toBeFocused();
+    const target = await disclosure.boundingBox();
+    expect(target?.height).toBeGreaterThanOrEqual(44);
+    await expect
+      .poll(() =>
+        disclosure.evaluate((element) => getComputedStyle(element).outlineStyle)
+      )
+      .not.toBe("none");
+    await page.keyboard.press("Enter");
+    await expect(disclosure).toHaveAttribute("aria-expanded", "true");
+    await expect(disclosure).toHaveAccessibleName("Hide both transfer legs");
+    await expect(page.locator(`#${controlledId}`)).toBeVisible();
+    const details = page.getByRole("region", { name: "Card payment" });
+    await expect(details.getByText("Fixture checking · 1111")).toBeVisible();
+    await expect(details.getByText("Fixture card · 2222")).toBeVisible();
+    await expect(details.getByText("ACH PAYMENT CARD 2222")).toBeVisible();
+    await expect(details.getByText("THANK YOU PAYMENT")).toBeVisible();
+    await expect(details.getByText("September payment")).toBeVisible();
+    await expect(details.getByText("REF-OUT")).toBeVisible();
+    await expect(details.getByText("REF-IN")).toBeVisible();
+    await expect(
+      details.getByText(/Balance movement unavailable/)
+    ).toBeVisible();
+
+    const legs = details.locator(".transfer-leg");
+    await expect(legs).toHaveCount(2);
+    const firstLeg = await legs.nth(0).boundingBox();
+    const secondLeg = await legs.nth(1).boundingBox();
+    if (testInfo.project.name === "mobile") {
+      expect((secondLeg?.y ?? 0) > (firstLeg?.y ?? 0)).toBe(true);
+    } else {
+      expect(Math.abs((secondLeg?.y ?? 0) - (firstLeg?.y ?? 0))).toBeLessThan(
+        8
+      );
+    }
+
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(results.violations).toEqual([]);
+    expect(plaidRequests).toEqual([]);
+  } finally {
+    if (householdId) {
+      await prisma.household.deleteMany({ where: { id: householdId } });
+    }
+    if (userId) {
+      await prisma.user.deleteMany({ where: { id: userId } });
+    }
+  }
+});
+
 test("a local owner can add and use a passkey and recovery code", async ({
   page
 }, testInfo) => {

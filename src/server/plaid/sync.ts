@@ -179,9 +179,15 @@ async function applyTransaction(
     pendingTransactionId: transaction.pending_transaction_id,
     name: transaction.name,
     merchantName: transaction.merchant_name,
+    bankDescription: transaction.original_description ?? null,
+    paymentMemo: transaction.payment_meta?.reason ?? null,
+    referenceNumber: transaction.payment_meta?.reference_number ?? null,
+    paymentChannel: transaction.payment_channel ?? null,
+    transactionCode: transaction.transaction_code ?? null,
+    checkNumber: transaction.check_number ?? null,
     amount: transaction.amount,
-    isoCurrencyCode:
-      transaction.iso_currency_code ?? transaction.unofficial_currency_code,
+    isoCurrencyCode: transaction.iso_currency_code,
+    unofficialCurrencyCode: transaction.unofficial_currency_code,
     date: utcDate(transaction.date)!,
     authorizedDate: utcDate(transaction.authorized_date),
     pending: transaction.pending,
@@ -342,7 +348,8 @@ export async function syncPlaidItem(itemId: string, jobId: string) {
       const response = await plaid.transactionsSync({
         access_token: accessToken,
         cursor,
-        count: TRANSACTION_PAGE_SIZE
+        count: TRANSACTION_PAGE_SIZE,
+        options: { include_original_description: true }
       });
       const page = response.data;
       await commitPage({

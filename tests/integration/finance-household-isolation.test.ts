@@ -61,6 +61,7 @@ import {
   updateManualAccountAction
 } from "@/features/accounts/actions";
 import { createCategory } from "@/features/categories/actions";
+import { getHouseholdMovements } from "@/features/transactions/movement-data";
 import { prisma } from "@/server/db";
 
 const fixtureKey = `isolation-${randomUUID()}`;
@@ -510,6 +511,67 @@ describe("transfer mutation isolation", () => {
     await expect(
       prisma.transferMatch.findUnique({ where: { id: ids.transferB } })
     ).resolves.not.toBeNull();
+  });
+
+  it("keeps owned transfer tie and untie reversible at the real boundaries", async () => {
+    const tied = await tieTransfer(
+      jsonRequest("POST", {
+        outgoingTransactionId: ids.outgoingA,
+        incomingTransactionId: ids.incomingA
+      })
+    );
+    expect(tied.status).toBe(201);
+    const { id: matchId } = (await tied.json()) as { id: string };
+
+    const tiedMovements = await getHouseholdMovements({
+      householdId: ids.householdA
+    });
+    expect(
+      tiedMovements.filter((movement) =>
+        movement.legs.some((leg) =>
+          [ids.outgoingA, ids.incomingA].includes(leg.transactionId)
+        )
+      )
+    ).toEqual([
+      expect.objectContaining({
+        id: `transfer:${ids.outgoingA}:${ids.incomingA}`,
+        kind: "TRANSFER"
+      })
+    ]);
+
+    const untied = await untieTransfer(
+      new Request("http://currents.test/api/transfers", { method: "DELETE" }),
+      routeContext("matchId", matchId)
+    );
+    expect(untied.status).toBe(204);
+    const untiedMovements = await getHouseholdMovements({
+      householdId: ids.householdA
+    });
+    expect(
+      untiedMovements
+        .filter((movement) =>
+          movement.legs.some((leg) =>
+            [ids.outgoingA, ids.incomingA].includes(leg.transactionId)
+          )
+        )
+        .map((movement) => movement.id)
+        .sort()
+    ).toEqual(
+      [`transaction:${ids.outgoingA}`, `transaction:${ids.incomingA}`].sort()
+    );
+
+    const retied = await tieTransfer(
+      jsonRequest("POST", {
+        outgoingTransactionId: ids.outgoingA,
+        incomingTransactionId: ids.incomingA
+      })
+    );
+    expect(retied.status).toBe(201);
+    const { id: retiedId } = (await retied.json()) as { id: string };
+    await untieTransfer(
+      new Request("http://currents.test/api/transfers", { method: "DELETE" }),
+      routeContext("matchId", retiedId)
+    );
   });
 });
 

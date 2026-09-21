@@ -1,34 +1,22 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/page-header";
 import { getHouseholdPositionSummary } from "@/features/accounts/position-summary";
-import { prisma } from "@/server/db";
+import { getHouseholdCashFlow } from "@/features/transactions/movement-data";
 import { requireHousehold } from "@/server/households";
-import { formatCurrency, usd } from "@/lib/money";
+import { formatCurrency, formatMovementAmount } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Home" };
 
 export default async function DashboardPage() {
   const owner = await requireHousehold();
-  const [positionSummary, monthTransactions] = await Promise.all([
+  const [positionSummary, cashFlow] = await Promise.all([
     getHouseholdPositionSummary(owner.householdId),
-    prisma.transaction.findMany({
-      where: {
-        householdId: owner.householdId,
-        removedAt: null,
-        date: { gte: new Date("2026-09-01T00:00:00.000Z") }
-      }
+    getHouseholdCashFlow({
+      householdId: owner.householdId,
+      from: new Date("2026-09-01T00:00:00.000Z"),
+      to: new Date("2026-10-01T00:00:00.000Z")
     })
   ]);
-
-  const spending = monthTransactions
-    .filter((transaction) => transaction.amount.toNumber() > 0)
-    .reduce((sum, transaction) => sum + transaction.amount.toNumber(), 0);
-  const income = monthTransactions
-    .filter((transaction) => transaction.amount.toNumber() < 0)
-    .reduce(
-      (sum, transaction) => sum + Math.abs(transaction.amount.toNumber()),
-      0
-    );
 
   return (
     <>
@@ -59,15 +47,37 @@ export default async function DashboardPage() {
           </article>
           <article className="card">
             <span className="eyebrow">Income this month</span>
-            <strong className="card-value positive">
-              {usd.format(income)}
-            </strong>
-            <span className="muted">Deposits synced through today</span>
+            {cashFlow.length ? (
+              cashFlow.map((total) => (
+                <strong
+                  className="card-value positive"
+                  key={`${total.currency.kind}:${total.currency.code}`}
+                >
+                  {formatMovementAmount(total.income, total.currency)}
+                </strong>
+              ))
+            ) : (
+              <strong className="card-value">Unavailable</strong>
+            )}
+            <span className="muted">
+              Money in through today · transfers excluded
+            </span>
           </article>
           <article className="card">
             <span className="eyebrow">Spending this month</span>
-            <strong className="card-value">{usd.format(spending)}</strong>
-            <span className="muted">Pending transactions included</span>
+            {cashFlow.length ? (
+              cashFlow.map((total) => (
+                <strong
+                  className="card-value"
+                  key={`${total.currency.kind}:${total.currency.code}`}
+                >
+                  {formatMovementAmount(total.spending, total.currency)}
+                </strong>
+              ))
+            ) : (
+              <strong className="card-value">Unavailable</strong>
+            )}
+            <span className="muted">Pending included · transfers excluded</span>
           </article>
         </div>
         <section className="card">

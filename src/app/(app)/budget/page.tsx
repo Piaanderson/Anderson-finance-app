@@ -5,9 +5,11 @@ import {
   BudgetSection,
   type BudgetRow
 } from "@/features/budget/budget-section";
+import { getHouseholdMovements } from "@/features/transactions/movement-data";
+import { summarizeCategorySpending } from "@/features/transactions/movements";
 import { prisma } from "@/server/db";
 import { requireHousehold } from "@/server/households";
-import { usd } from "@/lib/money";
+import { formatMovementAmount, usd } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Budget" };
 
@@ -72,22 +74,30 @@ const demo: Record<string, BudgetRow[]> = {
 
 export default async function BudgetPage() {
   const owner = await requireHousehold();
-  const month = await prisma.budgetMonth.findUnique({
-    where: {
-      householdId_month: {
-        householdId: owner.householdId,
-        month: new Date("2026-09-01T00:00:00.000Z")
-      }
-    },
-    include: {
-      allocations: {
-        include: {
-          category: true,
-          destinationAccount: { select: { name: true, mask: true } }
+  const [month, movements] = await Promise.all([
+    prisma.budgetMonth.findUnique({
+      where: {
+        householdId_month: {
+          householdId: owner.householdId,
+          month: new Date("2026-09-01T00:00:00.000Z")
+        }
+      },
+      include: {
+        allocations: {
+          include: {
+            category: true,
+            destinationAccount: { select: { name: true, mask: true } }
+          }
         }
       }
-    }
-  });
+    }),
+    getHouseholdMovements({
+      householdId: owner.householdId,
+      from: new Date("2026-09-01T00:00:00.000Z"),
+      to: new Date("2026-10-01T00:00:00.000Z")
+    })
+  ]);
+  const categorySpending = summarizeCategorySpending(movements);
   const grouped = month
     ? Object.groupBy(
         month.allocations,
@@ -98,18 +108,30 @@ export default async function BudgetPage() {
     ? Object.fromEntries(
         Object.entries(grouped).map(([section, allocations]) => [
           section,
-          (allocations ?? []).map((allocation) => ({
-            name: allocation.category.name,
-            planned: allocation.planned.toNumber(),
-            destination: allocation.destinationAccount
-              ? `${allocation.destinationAccount.name}${
-                  allocation.destinationAccount.mask
-                    ? ` · ${allocation.destinationAccount.mask}`
-                    : ""
-                }`
-              : "No destination account",
-            status: "Not moved"
-          }))
+          (allocations ?? []).map((allocation) => {
+            const spent = categorySpending.filter(
+              (total) => total.categoryId === allocation.categoryId
+            );
+            return {
+              name: allocation.category.name,
+              planned: allocation.planned.toNumber(),
+              destination: allocation.destinationAccount
+                ? `${allocation.destinationAccount.name}${
+                    allocation.destinationAccount.mask
+                      ? ` · ${allocation.destinationAccount.mask}`
+                      : ""
+                  }`
+                : "No destination account",
+              status: spent.length
+                ? `${spent
+                    .map(
+                      (total) =>
+                        `${formatMovementAmount(total.spending, total.currency)} spent`
+                    )
+                    .join(" · ")} · transfers excluded`
+                : "No spending movements"
+            };
+          })
         ])
       )
     : demo;

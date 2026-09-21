@@ -296,30 +296,38 @@ model PropertyDebtLink {
 }
 
 model Transaction {
-  id                   String           @id @default(cuid())
-  householdId          String
-  accountId            String
-  plaidTransactionId   String           @unique
-  pendingTransactionId String?
-  name                 String
-  merchantName         String?
-  amount               Decimal          @db.Decimal(18, 2)
-  isoCurrencyCode      String?
-  date                 DateTime
-  authorizedDate       DateTime?
-  pending              Boolean          @default(false)
-  categoryPrimary      String?
-  categoryDetailed     String?
-  categoryId           String?
-  removedAt            DateTime?
-  household            Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  account              FinancialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  category             Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  outgoingTransfer     TransferMatch?   @relation("OutgoingTransfer")
-  incomingTransfer     TransferMatch?   @relation("IncomingTransfer")
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
+  id                     String           @id @default(cuid())
+  householdId            String
+  accountId              String
+  plaidTransactionId     String           @unique
+  pendingTransactionId   String?
+  name                   String
+  merchantName           String?
+  bankDescription        String?
+  paymentMemo            String?
+  referenceNumber        String?
+  paymentChannel         String?
+  transactionCode        String?
+  checkNumber            String?
+  amount                 Decimal          @db.Decimal(18, 2)
+  isoCurrencyCode        String?
+  unofficialCurrencyCode String?
+  date                   DateTime
+  authorizedDate         DateTime?
+  pending                Boolean          @default(false)
+  categoryPrimary        String?
+  categoryDetailed       String?
+  categoryId             String?
+  removedAt              DateTime?
+  household              Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  account                FinancialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category               Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  outgoingTransfer       TransferMatch?   @relation("OutgoingTransfer")
+  incomingTransfer       TransferMatch?   @relation("IncomingTransfer")
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
 
+  @@unique([id, householdId])
   @@index([householdId, date])
   @@index([accountId, date])
   @@index([pendingTransactionId])
@@ -392,10 +400,12 @@ model TransferMatch {
   outgoingTransactionId String      @unique
   incomingTransactionId String      @unique
   household             Household   @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  outgoingTransaction   Transaction @relation("OutgoingTransfer", fields: [outgoingTransactionId], references: [id], onDelete: Cascade)
-  incomingTransaction   Transaction @relation("IncomingTransfer", fields: [incomingTransactionId], references: [id], onDelete: Cascade)
+  outgoingTransaction   Transaction @relation("OutgoingTransfer", fields: [outgoingTransactionId, householdId], references: [id, householdId], onDelete: Cascade)
+  incomingTransaction   Transaction @relation("IncomingTransfer", fields: [incomingTransactionId, householdId], references: [id, householdId], onDelete: Cascade)
   createdAt             DateTime    @default(now())
 
+  @@unique([outgoingTransactionId, householdId])
+  @@unique([incomingTransactionId, householdId])
   @@index([householdId])
 }
 

@@ -59,13 +59,19 @@ function plaidTransaction({
   accountId,
   name,
   merchantName = null,
-  amount = 10
+  amount = 10,
+  bankDescription = null,
+  paymentMemo = null,
+  referenceNumber = null
 }: {
   transactionId: string;
   accountId: string;
   name: string;
   merchantName?: string | null;
   amount?: number;
+  bankDescription?: string | null;
+  paymentMemo?: string | null;
+  referenceNumber?: string | null;
 }) {
   return {
     transaction_id: transactionId,
@@ -73,6 +79,20 @@ function plaidTransaction({
     pending_transaction_id: null,
     name,
     merchant_name: merchantName,
+    original_description: bankDescription,
+    payment_meta: {
+      reference_number: referenceNumber,
+      ppd_id: null,
+      payee: null,
+      by_order_of: null,
+      payer: null,
+      payment_method: "ACH",
+      payment_processor: null,
+      reason: paymentMemo
+    },
+    payment_channel: "online",
+    transaction_code: "transfer",
+    check_number: null,
     amount,
     iso_currency_code: "USD",
     unofficial_currency_code: null,
@@ -317,7 +337,10 @@ describe("Plaid transaction synchronization", () => {
               transactionId: addedId,
               accountId: fixture.plaidAccountId,
               name: "New transaction",
-              amount: 12.34
+              amount: 12.34,
+              bankDescription: "BANK RAW DESCRIPTION",
+              paymentMemo: "Invoice 42",
+              referenceNumber: "REF-42"
             })
           ],
           modified: [
@@ -368,12 +391,14 @@ describe("Plaid transaction synchronization", () => {
       {
         access_token: "fixture-access-token",
         cursor: "cursor-0",
-        count: 100
+        count: 100,
+        options: { include_original_description: true }
       },
       {
         access_token: "fixture-access-token",
         cursor: "cursor-1",
-        count: 100
+        count: 100,
+        options: { include_original_description: true }
       }
     ]);
     await expect(
@@ -389,6 +414,19 @@ describe("Plaid transaction synchronization", () => {
     });
     expect(updatedAccount.currentBalance?.toString()).toBe("123.45");
     expect(updatedAccount.availableBalance?.toString()).toBe("98.76");
+    await expect(
+      prisma.transaction.findUniqueOrThrow({
+        where: { plaidTransactionId: addedId }
+      })
+    ).resolves.toMatchObject({
+      bankDescription: "BANK RAW DESCRIPTION",
+      paymentMemo: "Invoice 42",
+      referenceNumber: "REF-42",
+      paymentChannel: "online",
+      transactionCode: "transfer",
+      isoCurrencyCode: "USD",
+      unofficialCurrencyCode: null
+    });
     await expect(
       prisma.accountPositionSnapshot.count({
         where: { householdId: fixture.householdId, source: "PLAID_SYNC" }
@@ -580,7 +618,8 @@ describe("Plaid transaction synchronization", () => {
     expect(mocks.transactionsSync).toHaveBeenCalledWith({
       access_token: "fixture-access-token",
       cursor: "cursor-1",
-      count: 100
+      count: 100,
+      options: { include_original_description: true }
     });
     await expect(
       prisma.transaction.count({ where: { plaidTransactionId: addedId } })

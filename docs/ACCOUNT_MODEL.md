@@ -49,7 +49,9 @@ availability meaning (for example, available cash or remaining credit) and is
 never included in net-worth arithmetic.
 
 Transaction `amount` keeps Plaid's separate transaction convention and is not
-changed by this account-position rule.
+changed by this account-position rule: positive is money out and negative is
+money in. Transfer counting, canonical dates/descriptions, and currency-aware
+cash-flow arithmetic are defined in `docs/MOVEMENT_MODEL.md`.
 
 ## Currency policy
 
