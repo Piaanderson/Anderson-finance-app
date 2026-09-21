@@ -33,6 +33,11 @@ enum FinancialAccountClassification {
   UNCLASSIFIED
 }
 
+enum PositionSnapshotSource {
+  PLAID_SYNC
+  MANUAL
+}
+
 enum SyncReason {
   INITIAL
   WEBHOOK
@@ -244,15 +249,50 @@ model FinancialAccount {
   availableBalance   Decimal?                       @db.Decimal(18, 2)
   isoCurrencyCode    String?
   isActive           Boolean                        @default(true)
+  archivedAt         DateTime?
   household          Household                      @relation(fields: [householdId], references: [id], onDelete: Cascade)
   plaidItem          PlaidItem?                     @relation(fields: [plaidItemId], references: [id], onDelete: Cascade)
   transactions       Transaction[]
   budgetDestinations BudgetAllocation[]             @relation("BudgetDestination")
+  positionSnapshots  AccountPositionSnapshot[]
+  propertyLinks      PropertyDebtLink[]             @relation("PropertyAccount")
+  debtLinks          PropertyDebtLink[]             @relation("DebtAccount")
   createdAt          DateTime                       @default(now())
   updatedAt          DateTime                       @updatedAt
 
+  @@unique([id, householdId])
   @@index([householdId, classification])
   @@index([plaidItemId])
+}
+
+model AccountPositionSnapshot {
+  id              String                 @id @default(cuid())
+  householdId     String
+  accountId       String
+  signedBalance   Decimal?               @db.Decimal(18, 2)
+  isoCurrencyCode String?
+  effectiveAt     DateTime
+  observedAt      DateTime               @default(now())
+  source          PositionSnapshotSource
+  dedupeKey       String                 @unique
+  account         FinancialAccount       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([householdId, effectiveAt])
+  @@index([accountId, effectiveAt, observedAt])
+}
+
+model PropertyDebtLink {
+  id                String           @id @default(cuid())
+  householdId       String
+  propertyAccountId String
+  debtAccountId     String
+  propertyAccount   FinancialAccount @relation("PropertyAccount", fields: [propertyAccountId], references: [id], onDelete: Cascade)
+  debtAccount       FinancialAccount @relation("DebtAccount", fields: [debtAccountId], references: [id], onDelete: Cascade)
+  createdAt         DateTime         @default(now())
+
+  @@unique([propertyAccountId, debtAccountId])
+  @@index([householdId])
+  @@index([debtAccountId])
 }
 
 model Transaction {

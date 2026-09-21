@@ -53,6 +53,13 @@ import {
 import { PUT as categorizeTransaction } from "@/app/api/transactions/[transactionId]/category/route";
 import { DELETE as untieTransfer } from "@/app/api/transfers/[matchId]/route";
 import { POST as tieTransfer } from "@/app/api/transfers/route";
+import {
+  archiveManualAccountAction,
+  createManualAccountAction,
+  linkPropertyDebtAction,
+  unlinkPropertyDebtAction,
+  updateManualAccountAction
+} from "@/features/accounts/actions";
 import { createCategory } from "@/features/categories/actions";
 import { prisma } from "@/server/db";
 
@@ -68,6 +75,12 @@ const ids = {
   plaidItemB: `${fixtureKey}-plaid-b`,
   accountA: `${fixtureKey}-account-a`,
   accountB: `${fixtureKey}-account-b`,
+  propertyA: `${fixtureKey}-property-a`,
+  propertyB: `${fixtureKey}-property-b`,
+  debtA: `${fixtureKey}-debt-a`,
+  debtB: `${fixtureKey}-debt-b`,
+  snapshotB: `${fixtureKey}-snapshot-b`,
+  propertyLinkB: `${fixtureKey}-property-link-b`,
   outgoingA: `${fixtureKey}-outgoing-a`,
   incomingA: `${fixtureKey}-incoming-a`,
   outgoingB: `${fixtureKey}-outgoing-b`,
@@ -91,6 +104,14 @@ function jsonRequest(method: string, body: Record<string, unknown>) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body)
   });
+}
+
+function manualAccountForm(values: Record<string, string>) {
+  const formData = new FormData();
+  for (const [key, value] of Object.entries(values)) {
+    formData.set(key, value);
+  }
+  return formData;
 }
 
 async function createFixtures() {
@@ -165,8 +186,64 @@ async function createFixtures() {
         classification: "CASH",
         name: "Household B checking",
         type: "depository"
+      },
+      {
+        id: ids.propertyA,
+        householdId: ids.householdA,
+        source: "MANUAL",
+        classification: "PROPERTY",
+        name: "Household A home",
+        currentBalance: "300000.00",
+        isoCurrencyCode: "USD"
+      },
+      {
+        id: ids.debtA,
+        householdId: ids.householdA,
+        source: "MANUAL",
+        classification: "DEBT",
+        name: "Household A mortgage",
+        currentBalance: "-200000.00",
+        isoCurrencyCode: "USD"
+      },
+      {
+        id: ids.propertyB,
+        householdId: ids.householdB,
+        source: "MANUAL",
+        classification: "PROPERTY",
+        name: "Household B home",
+        currentBalance: "400000.00",
+        isoCurrencyCode: "USD"
+      },
+      {
+        id: ids.debtB,
+        householdId: ids.householdB,
+        source: "MANUAL",
+        classification: "DEBT",
+        name: "Household B mortgage",
+        currentBalance: "-250000.00",
+        isoCurrencyCode: "USD"
       }
     ]
+  });
+  await prisma.accountPositionSnapshot.create({
+    data: {
+      id: ids.snapshotB,
+      householdId: ids.householdB,
+      accountId: ids.debtB,
+      signedBalance: "-250000.00",
+      isoCurrencyCode: "USD",
+      effectiveAt: new Date("2026-09-12T12:00:00.000Z"),
+      source: "MANUAL",
+      dedupeKey: `${fixtureKey}-snapshot-dedupe-b`
+    }
+  });
+  await prisma.propertyDebtLink.create({
+    data: {
+      id: ids.propertyLinkB,
+      householdId: ids.householdB,
+      propertyAccountId: ids.propertyB,
+      debtAccountId: ids.debtB
+    }
   });
   await prisma.transaction.createMany({
     data: [
@@ -521,6 +598,150 @@ describe("budget mutation isolation", () => {
 });
 
 describe("finance Server Action isolation", () => {
+  it("creates a manual account and snapshot only in the authenticated household", async () => {
+    const name = `Manual cash ${fixtureKey.slice(-12)}`;
+    const result = await createManualAccountAction(
+      {},
+      manualAccountForm({
+        name,
+        classification: "CASH",
+        entryBalance: "125.50",
+        isoCurrencyCode: "USD",
+        effectiveDate: "2026-09-12",
+        householdId: ids.householdB
+      })
+    );
+
+    expect(result).toEqual({ success: `${name} was added.` });
+    const account = await prisma.financialAccount.findFirstOrThrow({
+      where: { name }
+    });
+    expect(account.householdId).toBe(ids.householdA);
+    await expect(
+      prisma.accountPositionSnapshot.findFirstOrThrow({
+        where: { accountId: account.id }
+      })
+    ).resolves.toMatchObject({ householdId: ids.householdA });
+  });
+
+  it("rejects invalid currency and negative user-facing debt entry", async () => {
+    const invalidCurrency = await createManualAccountAction(
+      {},
+      manualAccountForm({
+        name: "Invalid currency",
+        classification: "CASH",
+        entryBalance: "10",
+        isoCurrencyCode: "ZZZ",
+        effectiveDate: "2026-09-12"
+      })
+    );
+    expect(invalidCurrency).toMatchObject({
+      error: "Check the highlighted fields.",
+      fieldErrors: {
+        isoCurrencyCode: "Use a recognized ISO currency code."
+      }
+    });
+
+    const negativeDebt = await createManualAccountAction(
+      {},
+      manualAccountForm({
+        name: "Invalid debt",
+        classification: "DEBT",
+        entryBalance: "-10",
+        isoCurrencyCode: "USD",
+        effectiveDate: "2026-09-12"
+      })
+    );
+    expect(negativeDebt).toMatchObject({
+      error: "Check the highlighted fields.",
+      fieldErrors: {
+        entryBalance: "Enter the amount owed as a positive number."
+      }
+    });
+  });
+
+  it("does not update or append a valuation to a foreign manual account", async () => {
+    const before = await prisma.financialAccount.findUniqueOrThrow({
+      where: { id: ids.debtB }
+    });
+    const result = await updateManualAccountAction(
+      {},
+      manualAccountForm({
+        accountId: ids.debtB,
+        name: "Stolen mortgage",
+        classification: "DEBT",
+        entryBalance: "1",
+        isoCurrencyCode: "USD",
+        effectiveDate: "2026-09-13"
+      })
+    );
+
+    expect(result).toEqual({ error: "Manual account not found." });
+    await expect(
+      prisma.financialAccount.findUniqueOrThrow({ where: { id: ids.debtB } })
+    ).resolves.toEqual(before);
+    expect(
+      await prisma.accountPositionSnapshot.count({
+        where: { accountId: ids.debtB }
+      })
+    ).toBe(1);
+  });
+
+  it("does not archive a foreign manual account or its snapshots", async () => {
+    const result = await archiveManualAccountAction(
+      {},
+      manualAccountForm({ accountId: ids.debtB })
+    );
+
+    expect(result).toEqual({ error: "Manual account not found." });
+    await expect(
+      prisma.financialAccount.findUniqueOrThrow({ where: { id: ids.debtB } })
+    ).resolves.toMatchObject({ isActive: true, archivedAt: null });
+    await expect(
+      prisma.accountPositionSnapshot.findUnique({
+        where: { id: ids.snapshotB }
+      })
+    ).resolves.not.toBeNull();
+  });
+
+  it("does not create a cross-household property and debt link", async () => {
+    const result = await linkPropertyDebtAction(
+      {},
+      manualAccountForm({
+        propertyAccountId: ids.propertyA,
+        debtAccountId: ids.debtB
+      })
+    );
+
+    expect(result).toEqual({
+      error: "Choose an active property and debt from this household."
+    });
+    await expect(
+      prisma.propertyDebtLink.findFirst({
+        where: {
+          propertyAccountId: ids.propertyA,
+          debtAccountId: ids.debtB
+        }
+      })
+    ).resolves.toBeNull();
+  });
+
+  it("does not reveal or unlink a foreign property and debt relationship", async () => {
+    const result = await unlinkPropertyDebtAction(
+      {},
+      manualAccountForm({ linkId: ids.propertyLinkB })
+    );
+
+    expect(result).toEqual({
+      error: "Property and debt link not found."
+    });
+    await expect(
+      prisma.propertyDebtLink.findUnique({
+        where: { id: ids.propertyLinkB }
+      })
+    ).resolves.not.toBeNull();
+  });
+
   it("creates a category only in the authenticated household and ignores a spoofed household", async () => {
     const formData = new FormData();
     const categoryName = `Action category ${fixtureKey.slice(-12)}`;
@@ -547,6 +768,11 @@ const coveredBoundaries = new Set([
   "DELETE src/app/api/transfers/[matchId]/route.ts",
   "PUT src/app/api/transactions/[transactionId]/category/route.ts",
   "PUT src/app/api/budget/allocations/[allocationId]/route.ts",
+  "ACTION src/features/accounts/actions.ts#archiveManualAccountAction",
+  "ACTION src/features/accounts/actions.ts#createManualAccountAction",
+  "ACTION src/features/accounts/actions.ts#linkPropertyDebtAction",
+  "ACTION src/features/accounts/actions.ts#unlinkPropertyDebtAction",
+  "ACTION src/features/accounts/actions.ts#updateManualAccountAction",
   "ACTION src/features/categories/actions.ts#createCategory"
 ]);
 

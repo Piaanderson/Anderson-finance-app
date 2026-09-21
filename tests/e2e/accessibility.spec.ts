@@ -198,6 +198,180 @@ test("account recovery controls are labelled, keyboard-operable, and announced",
   }
 });
 
+test("manual accounts expose accessible validation, valuation, linking, and archive flows", async ({
+  page
+}, testInfo) => {
+  const fixture = `manual-accounts-${testInfo.project.name}-${randomUUID()}`;
+  const email = `${fixture}@example.test`;
+  const plaidRequests: string[] = [];
+  let householdId: string | null = null;
+  let userId: string | null = null;
+
+  page.on("request", (request) => {
+    if (/plaid\.(com|net)/i.test(new URL(request.url()).hostname)) {
+      plaidRequests.push(request.url());
+    }
+  });
+
+  try {
+    await page.goto("/sign-in");
+    await page.getByLabel("Development email").fill(email);
+    await page
+      .getByRole("button", { name: "Local development sign-in" })
+      .click();
+    await expect(page).toHaveURL(/\/accounts$/);
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    const membership = await prisma.householdMember.findFirstOrThrow({
+      where: { userId: user.id }
+    });
+    userId = user.id;
+    householdId = membership.householdId;
+
+    const createForm = page
+      .getByRole("heading", { level: 3, name: "Account details" })
+      .locator("..");
+    await createForm.getByLabel("Account name").fill("X");
+    await createForm.getByLabel("Account type").selectOption("DEBT");
+    await createForm.getByLabel("Amount owed").fill("-10");
+    await createForm.getByLabel("Currency").fill("ZZZ");
+    await createForm
+      .getByRole("button", { name: "Add manual account" })
+      .click();
+    await expect(createForm.getByRole("alert")).toContainText(
+      "Check the highlighted fields."
+    );
+    await expect(createForm.getByLabel("Account name")).toHaveAttribute(
+      "aria-invalid",
+      "true"
+    );
+    await expect(createForm.getByLabel("Amount owed")).toHaveAttribute(
+      "aria-invalid",
+      "true"
+    );
+    await expect(createForm.getByLabel("Currency")).toHaveAttribute(
+      "aria-invalid",
+      "true"
+    );
+    await expect(createForm.getByLabel("Account type")).toHaveValue("DEBT");
+
+    await createForm.getByLabel("Account name").fill("Manual mortgage");
+    await createForm.getByLabel("Amount owed").fill("250000");
+    await createForm.getByLabel("Currency").fill("USD");
+    const submit = createForm.getByRole("button", {
+      name: "Add manual account"
+    });
+    await submit.focus();
+    await expect(submit).toBeFocused();
+    const size = await submit.boundingBox();
+    expect(size?.height).toBeGreaterThanOrEqual(44);
+    await page.keyboard.press("Enter");
+    await expect(createForm.getByRole("status")).toContainText(
+      "Manual mortgage was added."
+    );
+    await expect(
+      page
+        .getByRole("heading", { level: 3, name: "Manual mortgage" })
+        .locator("..")
+        .getByText("−$250,000.00")
+    ).toBeVisible();
+
+    await createForm.getByLabel("Account name").fill("Primary home");
+    await createForm.getByLabel("Account type").selectOption("PROPERTY");
+    await createForm.getByLabel("Current value").fill("400000");
+    await createForm
+      .getByRole("button", { name: "Add manual account" })
+      .click();
+    await expect(createForm.getByRole("status")).toContainText(
+      "Primary home was added."
+    );
+
+    await page
+      .getByLabel("Property", { exact: true })
+      .selectOption({ label: "Primary home" });
+    await page
+      .getByLabel("Related debt", { exact: true })
+      .selectOption({ label: "Manual mortgage" });
+    await page.getByRole("button", { name: "Link property and debt" }).click();
+    await expect(
+      page.getByRole("status").filter({ hasText: "Property and debt linked." })
+    ).toBeVisible();
+    await expect(page.getByText("Derived equity:")).toBeVisible();
+    await expect(
+      page.locator(".property-pair").getByText("$150,000.00")
+    ).toBeVisible();
+
+    const mortgageHeading = page.getByRole("heading", {
+      level: 3,
+      name: "Manual mortgage"
+    });
+    const mortgageCard = mortgageHeading.locator("..");
+    const disclosure = mortgageCard.getByText("Edit or archive");
+    await disclosure.focus();
+    await page.keyboard.press("Enter");
+    await expect(disclosure).toBeFocused();
+    const editForm = mortgageCard
+      .getByRole("heading", { name: "Edit Manual mortgage" })
+      .locator("..");
+    await editForm.getByLabel("Account name").fill("Updated mortgage");
+    await editForm.getByLabel("Amount owed").fill("240000");
+    await editForm.getByRole("button", { name: "Save account" }).click();
+    await expect(
+      page
+        .getByRole("heading", { name: "Edit Updated mortgage" })
+        .locator("..")
+        .getByRole("status")
+    ).toContainText("Updated mortgage was updated.");
+    await expect(
+      page
+        .getByRole("heading", { level: 3, name: "Updated mortgage" })
+        .locator("..")
+        .getByText("−$240,000.00")
+    ).toBeVisible();
+
+    const updatedMortgageCard = page
+      .getByRole("heading", {
+        level: 3,
+        name: "Updated mortgage"
+      })
+      .locator("..");
+    const updatedDetails = updatedMortgageCard.locator("details");
+    if ((await updatedDetails.getAttribute("open")) === null) {
+      await updatedMortgageCard.getByText("Edit or archive").click();
+    }
+    page.once("dialog", (dialog) => dialog.accept());
+    await updatedMortgageCard
+      .getByRole("button", { name: "Archive Updated mortgage" })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Updated mortgage" })
+    ).toHaveCount(0);
+
+    const archived = await prisma.financialAccount.findFirstOrThrow({
+      where: { householdId, name: "Updated mortgage" }
+    });
+    expect(archived.isActive).toBe(false);
+    expect(
+      await prisma.accountPositionSnapshot.count({
+        where: { accountId: archived.id }
+      })
+    ).toBeGreaterThanOrEqual(2);
+
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(results.violations).toEqual([]);
+    expect(plaidRequests).toEqual([]);
+  } finally {
+    if (householdId) {
+      await prisma.household.deleteMany({ where: { id: householdId } });
+    }
+    if (userId) {
+      await prisma.user.deleteMany({ where: { id: userId } });
+    }
+  }
+});
+
 test("a local owner can add and use a passkey and recovery code", async ({
   page
 }, testInfo) => {

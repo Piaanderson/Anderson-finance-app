@@ -1,6 +1,6 @@
 # Currents implementation plan
 
-Last updated: 2026-09-19
+Last updated: 2026-09-21
 
 ## Current status
 
@@ -14,7 +14,7 @@ Last updated: 2026-09-19
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
 - Next action: execute
-  [#7 Add manual accounts, property, and valuation history](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/7).
+  [#8 Build the movement read model and transfer ledger](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/8).
 
 ## Product finish line
 
@@ -143,9 +143,9 @@ Goal: support Plaid and manual financial positions through one honest model.
 - [x] Add account-source and financial-classification enums.
 - [x] Generalize financial accounts so manual records do not require Plaid IDs.
 - [x] Define and test one balance-sign convention.
-- [ ] Add account balance and manual valuation snapshots.
-- [ ] Add manual property, investment, cash, and debt CRUD.
-- [ ] Pair property with related debt without combining their source records.
+- [x] Add account balance and manual valuation snapshots.
+- [x] Add manual property, investment, cash, and debt CRUD.
+- [x] Pair property with related debt without combining their source records.
 - [x] Make budget destination accounts explicit relations.
 - [ ] Replace free-text category sections with an enum or validated domain type.
 - [x] Migrate and backfill existing data without breaking Plaid sync.
@@ -402,6 +402,21 @@ At the end of every context:
 - 2026-09-19: Plaid and worker failures are reduced to an allowlisted Plaid
   error code plus generic text before logging or persistence. Raw external
   messages and payloads are never logged or stored in `SyncJob.lastError`.
+- 2026-09-21: position history starts with a real Plaid synchronization or
+  manual valuation. The migration does not backfill snapshots because legacy
+  balance as-of timestamps are unknown. Exact retries deduplicate, unchanged
+  Plaid observations do not create noise, and a real value change always
+  appends an observation.
+- 2026-09-21: manual dates are date-only user input stored at noon UTC. A
+  backdated observation is retained while the account's current position
+  remains the latest effective observation, with ties resolved by observation
+  time.
+- 2026-09-21: active signed positions are centralized into currency-separated
+  household totals. Unknown balances or currencies make a total partial; no
+  implicit FX conversion or USD assumption is allowed.
+- 2026-09-21: property and debt stay as separate account records. A
+  household-scoped link enables derived equity only when all linked positions
+  are known in one currency. Manual archive is soft and preserves snapshots.
 
 ## Verification log
 
@@ -686,7 +701,8 @@ Remaining risks:
 - Disconnect preserves existing transactions for historical reporting while
   deactivating accounts. The generalized model now keeps their `PLAID` source
   identity but excludes inactive rows from current account and net-worth
-  reads. Issue #7 must add real snapshots before historical trends are shown.
+  reads. Issue #7 starts sourced snapshots; issue #13 still owns how a later
+  chart represents connection removal without implying an invented balance.
 
 ### Issue #6 financial account model evidence — 2026-09-19
 
@@ -754,17 +770,79 @@ Verification:
 
 Remaining risks:
 
-- Issue #7 still owns manual CRUD, property/debt pairing, and sourced valuation
-  snapshots. Historical net-worth charts must remain absent until those
-  snapshots exist.
+- Pre-issue-#7 account balances intentionally remain snapshotless because the
+  migration cannot know their true observation time. They enter history only
+  after a real sync or manual valuation.
 - A future Plaid provider type outside depository, investment, credit, and loan
   is stored as `UNCLASSIFIED` rather than guessed. Phase 5 account maintenance
   must provide a household-visible remediation path before such an account can
   be grouped.
 
+### Issue #7 manual accounts and valuations evidence — 2026-09-21
+
+Implementation:
+
+- Added append-safe `AccountPositionSnapshot` observations for both Plaid sync
+  and manual valuations. Current signed position and snapshot commit in one
+  transaction; exact retries and unchanged Plaid reads deduplicate while real
+  value changes append.
+- Added household-scoped manual Cash, Invested, Property, and Debt create,
+  read, edit, and soft-archive Server Actions. Manual accounts require a known
+  balance and recognized ISO currency, cannot be `UNCLASSIFIED`, and never
+  carry Plaid identifiers.
+- Debt forms say “Amount owed” and accept a positive number; the server stores
+  the signed negative position exactly once. Backdated valuations remain in
+  history without replacing a newer effective current value.
+- Added validated `PropertyDebtLink` records. Property and debt remain separate
+  sources, while Accounts shows a minimal same-currency derived equity view.
+- Centralized current household arithmetic for Accounts, the authenticated
+  shell, and Home. Active positions reconcile across Cash, Invested, Property,
+  and Debt; unlike currencies stay separate and missing data is explicit.
+- Added snapshot-observation queries for the later labelled eight-month view.
+  They return actual observations only and never synthesize missing months.
+- Extended the issue #3 mutation inventory with all five account Server
+  Actions and two-household negative tests for accounts, snapshots, and links.
+- Used the bundled Next.js 16.3.5 Forms, Server Actions, and `revalidatePath`
+  guidance. Every action authenticates independently, validates `FormData`,
+  and derives the household from membership.
+
+Verification:
+
+- Targeted account model/calculation tests — 3 files and 13 tests passed.
+- Targeted manual-account, migration, Plaid snapshot, and household-boundary
+  integration tests — 4 files and 33 tests passed.
+- Focused desktop/mobile Playwright manual-account flow — 2 tests passed,
+  including labels, associated server errors, keyboard focus, 44px target,
+  live announcements, linking, archive confirmation, axe WCAG 2.1 AA scans,
+  and an assertion of zero Plaid-host requests.
+- `npm run test:unit` — 11 files and 52 tests passed.
+- `npm run test:integration` — 6 files and 46 tests passed.
+- `npm test` — 17 files and 98 tests passed.
+- `npm run typecheck`, `npm run lint`, `npm run format:check`,
+  `npx prisma validate`, `npx prisma migrate status`, `npm run build`,
+  `git diff --check`, and edited-file IDE diagnostics — passed. Prisma reports
+  all six migrations applied.
+- `npm run test:e2e` — 11 desktop/mobile tests passed; the mobile duplicate of
+  the Chromium-only passkey test was skipped as expected.
+- Plaid acceptance paths remain network-free: Vitest replaces the client with
+  in-process mocks, and the browser flow records and rejects any Plaid-host
+  request.
+
+Remaining risks:
+
+- No pre-migration snapshot history is fabricated. Existing Plaid accounts
+  begin trend history on their next synchronization.
+- Exchange rates are intentionally out of scope. Multi-currency households
+  show separate totals until a future explicit FX policy is designed.
+- The complete grouped/expandable Accounts design and chart presentation remain
+  in issues #13 and #15. This slice includes only the maintenance forms and
+  minimal property/equity pairing required for an honest balance sheet.
+- Real institution balance timing still requires Trial/staging verification;
+  local and CI Plaid calls are mocked by design.
+
 ## Next handoff
 
 Begin
-[#7 Add manual accounts, property, and valuation history](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/7).
+[#8 Build the movement read model and transfer ledger](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/8).
 Keep roadmap issue #1 and the full Currents goal open; the private v1
 application is not complete.

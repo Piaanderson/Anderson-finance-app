@@ -56,7 +56,8 @@ describe("generalized financial accounts", () => {
           source: "MANUAL",
           classification: "CASH",
           name: "Cash",
-          currentBalance: "100.00"
+          currentBalance: "100.00",
+          isoCurrencyCode: "USD"
         },
         {
           id: `${fixture.key}-invested`,
@@ -64,7 +65,8 @@ describe("generalized financial accounts", () => {
           source: "MANUAL",
           classification: "INVESTED",
           name: "Invested",
-          currentBalance: "200.00"
+          currentBalance: "200.00",
+          isoCurrencyCode: "USD"
         },
         {
           id: `${fixture.key}-property`,
@@ -72,7 +74,8 @@ describe("generalized financial accounts", () => {
           source: "MANUAL",
           classification: "PROPERTY",
           name: "Property",
-          currentBalance: "300.00"
+          currentBalance: "300.00",
+          isoCurrencyCode: "USD"
         },
         {
           id: `${fixture.key}-debt`,
@@ -80,7 +83,8 @@ describe("generalized financial accounts", () => {
           source: "MANUAL",
           classification: "DEBT",
           name: "Debt",
-          currentBalance: "-150.00"
+          currentBalance: "-150.00",
+          isoCurrencyCode: "USD"
         }
       ]
     });
@@ -147,6 +151,19 @@ describe("generalized financial accounts", () => {
         }
       })
     ).rejects.toThrow();
+
+    await expect(
+      prisma.financialAccount.create({
+        data: {
+          householdId: fixture.householdId,
+          source: "MANUAL",
+          classification: "UNCLASSIFIED",
+          name: "Invalid unclassified manual account",
+          currentBalance: "10.00",
+          isoCurrencyCode: "USD"
+        }
+      })
+    ).rejects.toThrow();
   });
 
   it("links budget destinations explicitly and clears them when deleted", async () => {
@@ -157,7 +174,8 @@ describe("generalized financial accounts", () => {
         source: "MANUAL",
         classification: "CASH",
         name: "Savings destination",
-        currentBalance: "100.00"
+        currentBalance: "100.00",
+        isoCurrencyCode: "USD"
       }
     });
     const category = await prisma.category.create({
@@ -315,6 +333,126 @@ describe("financial account migration", () => {
           plaidAccountId: "provider-loan",
           type: "loan",
           currentBalance: "5.00"
+        }
+      ]);
+    } finally {
+      await client.query("ROLLBACK");
+      await client.end();
+    }
+  });
+
+  it("adds valuation history without fabricating snapshots or changing existing finance records", async () => {
+    const connectionString =
+      process.env.DATABASE_URL ??
+      "postgresql://postgres:postgres@127.0.0.1:5432/currents";
+    const client = new Client({ connectionString });
+    const schema = `migration_${randomUUID().replaceAll("-", "")}`;
+    const priorMigrations = [
+      "20260913170000_initial_foundation",
+      "20260913172343_product_features",
+      "20260916021500_passkey_authentication",
+      "20260920013000_plaid_sync_checkpoints",
+      "20260920023853_generalize_financial_accounts"
+    ];
+
+    await client.connect();
+    await client.query("BEGIN");
+    try {
+      await client.query(`CREATE SCHEMA "${schema}"`);
+      await client.query(`SET LOCAL search_path TO "${schema}"`);
+      for (const migration of priorMigrations) {
+        const sql = await readFile(
+          path.join(
+            process.cwd(),
+            "prisma",
+            "migrations",
+            migration,
+            "migration.sql"
+          ),
+          "utf8"
+        );
+        await client.query(sql);
+      }
+      await client.query(`
+        INSERT INTO "User" ("id", "email", "updatedAt")
+        VALUES ('user', 'migration@example.test', CURRENT_TIMESTAMP);
+        INSERT INTO "Household" ("id", "name", "updatedAt")
+        VALUES ('household', 'Migration household', CURRENT_TIMESTAMP);
+        INSERT INTO "PlaidItem" (
+          "id", "householdId", "linkedByUserId", "plaidItemId",
+          "accessTokenCiphertext", "accessTokenIv", "accessTokenTag", "updatedAt"
+        ) VALUES (
+          'item', 'household', 'user', 'provider-item',
+          'ciphertext', 'iv', 'tag', CURRENT_TIMESTAMP
+        );
+        INSERT INTO "FinancialAccount" (
+          "id", "householdId", "source", "classification", "plaidItemId",
+          "plaidAccountId", "name", "type", "currentBalance", "updatedAt"
+        ) VALUES (
+          'account', 'household', 'PLAID', 'CASH', 'item',
+          'provider-account', 'Checking', 'depository', 123.45, CURRENT_TIMESTAMP
+        );
+        INSERT INTO "Transaction" (
+          "id", "householdId", "accountId", "plaidTransactionId",
+          "name", "amount", "date", "updatedAt"
+        ) VALUES (
+          'transaction', 'household', 'account', 'provider-transaction',
+          'Existing transaction', 12.34, '2026-09-12', CURRENT_TIMESTAMP
+        );
+        INSERT INTO "Category" (
+          "id", "householdId", "name", "section", "updatedAt"
+        ) VALUES (
+          'category', 'household', 'Savings', 'Savings', CURRENT_TIMESTAMP
+        );
+        INSERT INTO "BudgetMonth" (
+          "id", "householdId", "month", "income", "updatedAt"
+        ) VALUES (
+          'month', 'household', '2026-09-01', 1000, CURRENT_TIMESTAMP
+        );
+        INSERT INTO "BudgetAllocation" (
+          "id", "budgetMonthId", "categoryId", "planned",
+          "destinationAccountId", "updatedAt"
+        ) VALUES (
+          'allocation', 'month', 'category', 100, 'account', CURRENT_TIMESTAMP
+        );
+      `);
+
+      const migrationSql = await readFile(
+        path.join(
+          process.cwd(),
+          "prisma",
+          "migrations",
+          "20260921210000_manual_accounts_and_snapshots",
+          "migration.sql"
+        ),
+        "utf8"
+      );
+      await client.query(migrationSql);
+
+      const result = await client.query<{
+        balance: string;
+        plaidAccountId: string;
+        transactionCount: string;
+        destinationAccountId: string;
+        snapshotCount: string;
+      }>(`
+        SELECT
+          a."currentBalance" AS balance,
+          a."plaidAccountId",
+          (SELECT COUNT(*) FROM "Transaction") AS "transactionCount",
+          b."destinationAccountId",
+          (SELECT COUNT(*) FROM "AccountPositionSnapshot") AS "snapshotCount"
+        FROM "FinancialAccount" a
+        JOIN "BudgetAllocation" b ON b."destinationAccountId" = a."id"
+        WHERE a."id" = 'account'
+      `);
+      expect(result.rows).toEqual([
+        {
+          balance: "123.45",
+          plaidAccountId: "provider-account",
+          transactionCount: "1",
+          destinationAccountId: "account",
+          snapshotCount: "0"
         }
       ]);
     } finally {

@@ -49,6 +49,12 @@ discovered boundary fails the suite until it is covered or is explicitly
 classified with a reason. Keep the guard and the boundary test together when
 adding a mutation; a helper-only ownership test is not sufficient.
 
+Issue #7 adds manual-account create, update, archive, property/debt link, and
+unlink Server Actions to that inventory. The two-household fixture proves a
+foreign account cannot receive a valuation or archive, a foreign snapshot
+cannot be changed through its account, and cross-household links cannot be
+created, read through the scoped Accounts query, or removed.
+
 ## Plaid
 
 - Use Link tokens and exchange public tokens only on the server.

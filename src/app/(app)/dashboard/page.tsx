@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/page-header";
+import { getHouseholdPositionSummary } from "@/features/accounts/position-summary";
 import { prisma } from "@/server/db";
 import { requireHousehold } from "@/server/households";
-import { signedUsd, usd } from "@/lib/money";
+import { formatCurrency, usd } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Home" };
 
 export default async function DashboardPage() {
   const owner = await requireHousehold();
-  const [accounts, monthTransactions] = await Promise.all([
-    prisma.financialAccount.findMany({
-      where: { householdId: owner.householdId, isActive: true }
-    }),
+  const [positionSummary, monthTransactions] = await Promise.all([
+    getHouseholdPositionSummary(owner.householdId),
     prisma.transaction.findMany({
       where: {
         householdId: owner.householdId,
@@ -21,10 +20,6 @@ export default async function DashboardPage() {
     })
   ]);
 
-  const netWorth = accounts.reduce(
-    (sum, account) => sum + (account.currentBalance?.toNumber() ?? 0),
-    0
-  );
   const spending = monthTransactions
     .filter((transaction) => transaction.amount.toNumber() > 0)
     .reduce((sum, transaction) => sum + transaction.amount.toNumber(), 0);
@@ -41,9 +36,26 @@ export default async function DashboardPage() {
       <div className="page-content">
         <div className="stat-grid">
           <article className="card">
-            <span className="eyebrow">Net worth</span>
-            <strong className="card-value">{signedUsd(netWorth)}</strong>
-            <span className="muted">{accounts.length} active accounts</span>
+            <span className="eyebrow">
+              {positionSummary.totals.length > 1
+                ? "Net worth by currency"
+                : "Net worth"}
+            </span>
+            {positionSummary.totals.length === 0 ? (
+              <strong className="card-value">Unavailable</strong>
+            ) : (
+              positionSummary.totals.map((total) => (
+                <strong className="card-value" key={total.currency}>
+                  {formatCurrency(total.amount, total.currency)}
+                </strong>
+              ))
+            )}
+            <span className="muted">
+              {positionSummary.accountCount} active accounts
+              {positionSummary.isComplete
+                ? ""
+                : " · partial because a balance or currency is missing"}
+            </span>
           </article>
           <article className="card">
             <span className="eyebrow">Income this month</span>

@@ -390,6 +390,11 @@ describe("Plaid transaction synchronization", () => {
     expect(updatedAccount.currentBalance?.toString()).toBe("123.45");
     expect(updatedAccount.availableBalance?.toString()).toBe("98.76");
     await expect(
+      prisma.accountPositionSnapshot.count({
+        where: { householdId: fixture.householdId, source: "PLAID_SYNC" }
+      })
+    ).resolves.toBe(2);
+    await expect(
       prisma.financialAccount.findUniqueOrThrow({
         where: { id: fixture.staleAccountId }
       })
@@ -471,6 +476,54 @@ describe("Plaid transaction synchronization", () => {
     });
     expect(account.currentBalance?.toString()).toBe("-400");
     expect(account.availableBalance?.toString()).toBe("600");
+    const snapshot = await prisma.accountPositionSnapshot.findFirstOrThrow({
+      where: { accountId: account.id }
+    });
+    expect(snapshot.signedBalance?.toString()).toBe("-400");
+    expect(snapshot.isoCurrencyCode).toBe("USD");
+  });
+
+  it("deduplicates repeated balances while preserving real Plaid value changes", async () => {
+    const fixture = await createFixture();
+    mocks.accountsGet.mockResolvedValue({
+      data: {
+        accounts: [plaidAccount(fixture.plaidAccountId, "Checking", 100, 90)]
+      }
+    });
+    mocks.transactionsSync.mockResolvedValue(
+      syncPage({ nextCursor: "cursor-1", hasMore: false })
+    );
+
+    await syncPlaidItem(fixture.itemId, fixture.jobId);
+    mocks.transactionsSync.mockResolvedValue(
+      syncPage({ nextCursor: "cursor-2", hasMore: false })
+    );
+    await syncPlaidItem(fixture.itemId, fixture.jobId);
+    expect(
+      await prisma.accountPositionSnapshot.count({
+        where: { accountId: fixture.accountId }
+      })
+    ).toBe(1);
+
+    mocks.accountsGet.mockResolvedValue({
+      data: {
+        accounts: [plaidAccount(fixture.plaidAccountId, "Checking", 125, 110)]
+      }
+    });
+    mocks.transactionsSync.mockResolvedValue(
+      syncPage({ nextCursor: "cursor-3", hasMore: false })
+    );
+    await syncPlaidItem(fixture.itemId, fixture.jobId);
+
+    const snapshots = await prisma.accountPositionSnapshot.findMany({
+      where: { accountId: fixture.accountId },
+      orderBy: { observedAt: "asc" }
+    });
+    expect(
+      snapshots
+        .map((row) => row.signedBalance?.toNumber())
+        .sort((left, right) => (left ?? 0) - (right ?? 0))
+    ).toEqual([100, 125]);
   });
 
   it("atomically checkpoints a committed page and safely resumes after interruption", async () => {

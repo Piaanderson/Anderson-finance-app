@@ -9,6 +9,7 @@ import {
   classificationForPlaidType,
   positionBalanceFromPlaid
 } from "@/features/accounts/account-model";
+import { writePositionSnapshot } from "@/features/accounts/position-snapshots";
 import { decryptSecret } from "@/server/secrets";
 import { plaid } from "./client";
 import { plaidErrorCode } from "./errors";
@@ -66,6 +67,7 @@ async function upsertAccounts(
   jobId: string
 ) {
   const activeIds = accounts.map((account) => account.account_id);
+  const observedAt = new Date();
   for (const accountChunk of chunks(accounts, ACCOUNT_CHUNK_SIZE)) {
     await prisma.$transaction(async (tx) => {
       await assertActiveClaim(tx, plaidItem, jobId);
@@ -83,6 +85,11 @@ async function upsertAccounts(
         }
         const type = String(account.type);
         const classification = classificationForPlaidType(type);
+        const currentBalance = positionBalanceFromPlaid(
+          classification,
+          account.balances.current
+        );
+        const isoCurrencyCode = account.balances.iso_currency_code ?? null;
         const data = {
           source: "PLAID" as const,
           classification,
@@ -91,23 +98,20 @@ async function upsertAccounts(
           mask: account.mask,
           type,
           subtype: account.subtype ? String(account.subtype) : null,
-          currentBalance: positionBalanceFromPlaid(
-            classification,
-            account.balances.current
-          ),
+          currentBalance,
           availableBalance: account.balances.available,
-          isoCurrencyCode:
-            account.balances.iso_currency_code ??
-            account.balances.unofficial_currency_code,
+          isoCurrencyCode,
           isActive: true
         };
+        let accountId: string;
         if (existing) {
           await tx.financialAccount.update({
             where: { id: existing.id },
             data
           });
+          accountId = existing.id;
         } else {
-          await tx.financialAccount.create({
+          const created = await tx.financialAccount.create({
             data: {
               householdId: plaidItem.householdId,
               plaidItemId: plaidItem.id,
@@ -115,7 +119,17 @@ async function upsertAccounts(
               ...data
             }
           });
+          accountId = created.id;
         }
+        await writePositionSnapshot(tx, {
+          householdId: plaidItem.householdId,
+          accountId,
+          signedBalance: currentBalance,
+          isoCurrencyCode,
+          effectiveAt: observedAt,
+          source: "PLAID_SYNC",
+          skipWhenUnchanged: true
+        });
       }
     });
   }

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signedUsd } from "@/lib/money";
+import type { HouseholdPositionSummary } from "@/features/accounts/position-summary";
+import { formatCurrency } from "@/lib/money";
 
 const links = [
   { href: "/dashboard", label: "Home" },
@@ -13,8 +14,13 @@ const links = [
   { href: "/settings/security", label: "Security" }
 ] as const;
 
-export function AppSidebar({ netWorth }: { netWorth: number }) {
+export function AppSidebar({
+  positionSummary
+}: {
+  positionSummary: HouseholdPositionSummary;
+}) {
   const pathname = usePathname();
+  const hasMultipleCurrencies = positionSummary.totals.length > 1;
 
   return (
     <aside className="sidebar">
@@ -38,9 +44,23 @@ export function AppSidebar({ netWorth }: { netWorth: number }) {
         </ul>
       </nav>
       <div className="net-worth">
-        <span className="eyebrow">Net worth</span>
-        <strong>{signedUsd(netWorth)}</strong>
-        <span className="muted">Across connected accounts</span>
+        <span className="eyebrow">
+          {hasMultipleCurrencies ? "Net worth by currency" : "Net worth"}
+        </span>
+        {positionSummary.totals.length === 0 ? (
+          <strong>Unavailable</strong>
+        ) : (
+          positionSummary.totals.map((total) => (
+            <strong key={total.currency}>
+              {formatCurrency(total.amount, total.currency)}
+            </strong>
+          ))
+        )}
+        <span className="muted">
+          {positionSummary.isComplete
+            ? `${positionSummary.accountCount} active accounts`
+            : "Partial — a balance or currency is missing"}
+        </span>
       </div>
     </aside>
   );

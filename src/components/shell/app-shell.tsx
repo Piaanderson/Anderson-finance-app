@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
+import type { HouseholdPositionSummary } from "@/features/accounts/position-summary";
 import { AppSidebar } from "./app-sidebar";
 
 export function AppShell({
   children,
-  netWorth
+  positionSummary
 }: {
   children: ReactNode;
-  netWorth: number;
+  positionSummary: HouseholdPositionSummary;
 }) {
   return (
     <>
@@ -14,7 +15,7 @@ export function AppShell({
         Skip to main content
       </a>
       <div className="app-shell">
-        <AppSidebar netWorth={netWorth} />
+        <AppSidebar positionSummary={positionSummary} />
         <div className="app-main">
           <div className="mobile-brand">
             <strong>Currents</strong>
