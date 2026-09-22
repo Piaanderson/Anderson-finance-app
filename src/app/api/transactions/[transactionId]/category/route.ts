@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { merchantRuleKey } from "@/features/categories/merchant-rule";
 import { prisma } from "@/server/db";
 import { requireApiHousehold } from "@/server/households";
 
@@ -16,17 +17,33 @@ export async function PUT(
   if (!owner) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const parsed = categoryRequest.safeParse(await request.json());
+  const parsed = categoryRequest.safeParse(
+    await request.json().catch(() => null)
+  );
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid category" }, { status: 400 });
   }
   const { transactionId } = await params;
   const [transaction, category] = await Promise.all([
     prisma.transaction.findFirst({
-      where: { id: transactionId, householdId: owner.householdId }
+      where: {
+        id: transactionId,
+        householdId: owner.householdId,
+        removedAt: null,
+        account: { householdId: owner.householdId }
+      },
+      select: {
+        id: true,
+        name: true,
+        merchantName: true
+      }
     }),
     prisma.category.findFirst({
-      where: { id: parsed.data.categoryId, householdId: owner.householdId }
+      where: {
+        id: parsed.data.categoryId,
+        householdId: owner.householdId,
+        archivedAt: null
+      }
     })
   ]);
   if (!transaction || !category) {
@@ -34,29 +51,40 @@ export async function PUT(
   }
 
   await prisma.$transaction(async (tx) => {
+    const ruleKey = merchantRuleKey(transaction);
     await tx.transaction.update({
       where: { id: transaction.id },
       data: { categoryId: category.id }
     });
     if (parsed.data.createRule) {
-      const merchantKey = (transaction.merchantName ?? transaction.name)
-        .trim()
-        .toLocaleLowerCase("en-US");
       await tx.merchantRule.upsert({
         where: {
           householdId_merchantKey: {
             householdId: owner.householdId,
-            merchantKey
+            merchantKey: ruleKey
           }
         },
         update: { categoryId: category.id },
         create: {
           householdId: owner.householdId,
           categoryId: category.id,
-          merchantKey
+          merchantKey: ruleKey
+        }
+      });
+    } else {
+      await tx.merchantRule.deleteMany({
+        where: {
+          householdId: owner.householdId,
+          merchantKey: ruleKey
         }
       });
     }
   });
-  return NextResponse.json({ categorized: true });
+  return NextResponse.json({
+    categorized: true,
+    rule: {
+      active: parsed.data.createRule,
+      merchantKey: merchantRuleKey(transaction)
+    }
+  });
 }

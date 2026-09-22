@@ -5,6 +5,7 @@ import {
   createCategory,
   type CategoryFormState
 } from "@/features/categories/actions";
+import { CATEGORY_SECTIONS } from "@/features/categories/category-domain";
 
 const initialState: CategoryFormState = {};
 
@@ -31,10 +32,9 @@ export function CategoryForm() {
       <div className="field">
         <label htmlFor="category-section">Budget section</label>
         <select className="input" id="category-section" name="section">
-          <option>Needs</option>
-          <option>Flex</option>
-          <option>Savings</option>
-          <option>Debt</option>
+          {CATEGORY_SECTIONS.map((section) => (
+            <option key={section}>{section}</option>
+          ))}
         </select>
       </div>
       {state.error ? (

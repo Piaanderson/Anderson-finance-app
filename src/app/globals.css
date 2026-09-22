@@ -433,6 +433,124 @@
   justify-content: flex-start;
 }
 
+.category-review-active {
+  gap: var(--space-4);
+}
+
+.category-review-transaction {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--color-neutral-800);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.category-review-transaction h3 {
+  margin-bottom: var(--space-1);
+  font-size: 1rem;
+}
+
+.category-combobox {
+  position: relative;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.category-combobox > label {
+  color: var(--color-neutral-300);
+  font-size: 0.875rem;
+}
+
+.category-listbox {
+  max-height: 18rem;
+  overflow-y: auto;
+  padding: var(--space-1) 0;
+  border: 1px solid var(--color-accent-700);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.category-option-group {
+  display: grid;
+}
+
+.category-group-label {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  color: var(--color-neutral-500);
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.category-option {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid transparent;
+  color: var(--color-neutral-200);
+  cursor: pointer;
+}
+
+.category-option[data-active] {
+  border-left-color: var(--color-accent);
+  background: var(--color-accent-900);
+}
+
+.category-option[aria-selected="true"] {
+  font-weight: 600;
+}
+
+.category-option[aria-selected="true"] > :last-child {
+  color: var(--color-accent-200);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.category-no-results,
+.category-selection {
+  padding: var(--space-3);
+}
+
+.category-selection {
+  padding: 0;
+  color: var(--color-accent-200);
+}
+
+.merchant-rule-choice {
+  min-height: 44px;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-neutral-700);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.merchant-rule-choice input {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: 0 0 auto;
+  margin-top: 0.2rem;
+  accent-color: var(--color-accent);
+}
+
+.merchant-rule-choice > span {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.merchant-rule-choice > span > span {
+  color: var(--color-neutral-500);
+  font-size: 0.8125rem;
+}
+
 .untie-action {
   padding-top: var(--space-3);
   border-top: 1px solid var(--color-neutral-800);
@@ -818,6 +936,10 @@
   .suggestion-legs,
   .transfer-candidate-details {
     grid-template-columns: 1fr;
+  }
+
+  .category-review-transaction {
+    flex-direction: column;
   }
 
   .suggestion-leg {

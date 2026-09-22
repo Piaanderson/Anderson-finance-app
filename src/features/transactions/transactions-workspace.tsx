@@ -3,12 +3,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type {
+  CategoryReviewChoice,
+  MerchantRuleReview
+} from "@/features/categories/category-data";
+import { merchantRuleKey } from "@/features/categories/merchant-rule";
+import type {
   HouseholdMovement,
   MovementLeg,
   TransactionMovement,
   TransferMovement
 } from "./movements";
-import { ReviewCard } from "./review-card";
+import { CategoryReview } from "./category-review";
 import { TransactionRow } from "./transaction-row";
 import { TransferReview } from "./transfer-review";
 import type {
@@ -23,7 +28,16 @@ function focusElement(target: string) {
   if (target === "review") {
     return (
       document.querySelector<HTMLElement>("[data-transfer-primary-action]") ??
+      document.querySelector<HTMLElement>(".category-combobox input") ??
       document.querySelector<HTMLElement>(".category-review-action") ??
+      document.getElementById("ledger-title")
+    );
+  }
+  if (target === "category-review") {
+    return (
+      document.querySelector<HTMLElement>(".category-combobox input") ??
+      document.querySelector<HTMLElement>("[data-category-primary-action]") ??
+      document.querySelector<HTMLElement>("[data-transfer-primary-action]") ??
       document.getElementById("ledger-title")
     );
   }
@@ -99,17 +113,19 @@ async function responseError(response: Response) {
   const payload = (await response.json().catch(() => null)) as {
     error?: string;
   } | null;
-  return payload?.error ?? "The transfer could not be updated.";
+  return payload?.error ?? "The update could not be completed.";
 }
 
 export function TransactionsWorkspace({
   movements,
   suggestions,
-  uncategorizedCount
+  categories,
+  rules
 }: {
   movements: HouseholdMovement[];
   suggestions: TransferSuggestion[];
-  uncategorizedCount: number;
+  categories: CategoryReviewChoice[];
+  rules: MerchantRuleReview[];
 }) {
   const router = useRouter();
   const [movementOverride, setMovementOverride] = useState<
@@ -119,8 +135,14 @@ export function TransactionsWorkspace({
   const [skippedSuggestionIds, setSkippedSuggestionIds] = useState<Set<string>>(
     new Set()
   );
+  const [skippedCategoryTransactionIds, setSkippedCategoryTransactionIds] =
+    useState<Set<string>>(new Set());
   const [locallyMatchedTransactionIds, setLocallyMatchedTransactionIds] =
     useState<Set<string>>(new Set());
+  const [rulesOverride, setRulesOverride] = useState<
+    MerchantRuleReview[] | null
+  >(null);
+  const [previousRules, setPreviousRules] = useState(rules);
   const [busy, setBusy] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const [error, setError] = useState("");
@@ -132,7 +154,12 @@ export function TransactionsWorkspace({
     setPreviousMovements(movements);
     setMovementOverride(null);
   }
+  if (rules !== previousRules) {
+    setPreviousRules(rules);
+    setRulesOverride(null);
+  }
   const displayMovements = movementOverride ?? movements;
+  const displayRules = rulesOverride ?? rules;
 
   useEffect(() => {
     const retainedAnnouncement = sessionStorage.getItem(
@@ -173,6 +200,16 @@ export function TransactionsWorkspace({
         }))
         .filter((suggestion) => suggestion.candidates.length > 0),
     [locallyMatchedTransactionIds, skippedSuggestionIds, suggestions]
+  );
+  const categoryQueue = useMemo(
+    () =>
+      displayMovements.filter(
+        (movement): movement is TransactionMovement =>
+          movement.kind === "TRANSACTION" &&
+          movement.category === null &&
+          !skippedCategoryTransactionIds.has(movement.legs[0].transactionId)
+      ),
+    [displayMovements, skippedCategoryTransactionIds]
   );
 
   useEffect(() => {
@@ -271,6 +308,90 @@ export function TransactionsWorkspace({
     moveFocus("review");
   }
 
+  async function assignCategory(
+    movement: TransactionMovement,
+    category: CategoryReviewChoice,
+    createRule: boolean
+  ) {
+    setBusy(true);
+    setError("");
+    const transactionId = movement.legs[0].transactionId;
+    const response = await fetch(
+      `/api/transactions/${transactionId}/category`,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          categoryId: category.id,
+          createRule
+        })
+      }
+    ).catch(() => null);
+    if (!response?.ok) {
+      setError(
+        response
+          ? await responseError(response)
+          : "The category could not be assigned. Check your connection and try again."
+      );
+      setBusy(false);
+      return;
+    }
+    setMovementOverride(
+      displayMovements.map((entry) =>
+        entry.kind === "TRANSACTION" &&
+        entry.legs[0].transactionId === transactionId
+          ? {
+              ...entry,
+              category: {
+                id: category.id,
+                name: category.name,
+                section: category.section,
+                archived: false
+              }
+            }
+          : entry
+      )
+    );
+    const ruleKey = merchantRuleKey({
+      merchantName: movement.legs[0].merchantName,
+      name: movement.legs[0].name
+    });
+    setRulesOverride((currentOverride) => {
+      const current = currentOverride ?? displayRules;
+      const withoutCurrent = current.filter(
+        (rule) => rule.merchantKey !== ruleKey
+      );
+      if (!createRule) return withoutCurrent;
+      return [
+        ...withoutCurrent,
+        {
+          id: `local:${ruleKey}`,
+          merchantKey: ruleKey,
+          category: { id: category.id, name: category.name }
+        }
+      ];
+    });
+    announce(
+      categoryQueue.length === 1
+        ? `Category assigned to ${category.name}. Category review complete.`
+        : `Category assigned to ${category.name}.`,
+      true
+    );
+    setBusy(false);
+    moveFocus("category-review", true);
+    window.setTimeout(() => router.refresh(), 1000);
+  }
+
+  function skipCategory() {
+    const current = categoryQueue[0];
+    if (!current) return;
+    setSkippedCategoryTransactionIds(
+      (skipped) => new Set([...skipped, current.legs[0].transactionId])
+    );
+    announce("Category review item skipped for now.");
+    moveFocus("category-review");
+  }
+
   async function untie(movement: TransferMovement) {
     setBusy(true);
     setError("");
@@ -323,23 +444,46 @@ export function TransactionsWorkspace({
           {error}
         </div>
       ) : null}
-      <div className="review-stack" aria-label="Transaction review queues">
-        {visibleSuggestions[0] ? (
-          <TransferReview
-            key={visibleSuggestions[0].id}
-            suggestion={visibleSuggestions[0]}
-            queueCount={visibleSuggestions.length}
-            busy={busy}
-            onTie={tie}
-            onSkip={skipSuggestion}
-          />
-        ) : null}
-        <ReviewCard
-          title="Categories to assign"
-          description="Confirm a category and optionally create a merchant rule."
-          count={uncategorizedCount}
-        />
-      </div>
+      {visibleSuggestions.length > 0 || categoryQueue.length > 0 ? (
+        <section
+          className="review-stack"
+          aria-label="Transaction review queues"
+        >
+          {visibleSuggestions[0] ? (
+            <TransferReview
+              key={visibleSuggestions[0].id}
+              suggestion={visibleSuggestions[0]}
+              queueCount={visibleSuggestions.length}
+              busy={busy}
+              onTie={tie}
+              onSkip={skipSuggestion}
+            />
+          ) : null}
+          {categoryQueue[0] ? (
+            <CategoryReview
+              key={categoryQueue[0].legs[0].transactionId}
+              movement={categoryQueue[0]}
+              categories={categories}
+              existingRule={
+                displayRules.find(
+                  (rule) =>
+                    rule.merchantKey ===
+                    merchantRuleKey({
+                      merchantName: categoryQueue[0].legs[0].merchantName,
+                      name: categoryQueue[0].legs[0].name
+                    })
+                ) ?? null
+              }
+              queueCount={categoryQueue.length}
+              busy={busy}
+              onAssign={(category, createRule) =>
+                assignCategory(categoryQueue[0], category, createRule)
+              }
+              onSkip={skipCategory}
+            />
+          ) : null}
+        </section>
+      ) : null}
       <section className="card movement-ledger" aria-labelledby="ledger-title">
         <div className="section-heading">
           <h2 id="ledger-title" tabIndex={-1}>

@@ -128,6 +128,34 @@ explicit confirmation involving that live leg transactionally deletes the
 orphaned match before creating the replacement. The removed transaction stays
 unchanged and can never become a candidate.
 
+## Category review and merchant rules
+
+The category queue contains unmatched transaction movements whose category is
+null. Transfer movements are never category-review items because internal
+movement does not count as spending. Removed transactions remain excluded by
+the movement read model. Skipping is session-only review state and does not
+change the source transaction.
+
+New assignments may use only active, household-owned categories in the
+validated product sections: Needs, Flex, Savings, and Debt. Choices sort by
+that section order, then category sort order, name, and ID. Invalid legacy
+sections and archived categories remain historical data but are not offered
+for new assignments.
+
+A merchant rule uses one exact normalized key: trimmed merchant name when
+present, otherwise the Plaid transaction name; Unicode NFKC normalization;
+collapsed whitespace; and locale-stable lowercase. The UI displays that key
+before confirmation. Checking the optional rule control upserts the one
+household rule for that key. Leaving an existing rule unchecked removes that
+exact rule. Both the transaction assignment and rule change commit in one
+database transaction.
+
+Plaid synchronization uses the same key function and applies rules only when
+their destination category is still active in the same household. A
+normalized exact match can set the category; no fuzzy or substring matching is
+performed. Manual transaction-only assignments survive later synchronization
+unless an explicit active merchant rule applies.
+
 ## Bank fields and balance movement
 
 Synchronization requests Plaid's optional original description and persists

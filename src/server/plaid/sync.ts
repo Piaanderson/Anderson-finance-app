@@ -10,6 +10,7 @@ import {
   positionBalanceFromPlaid
 } from "@/features/accounts/account-model";
 import { writePositionSnapshot } from "@/features/accounts/position-snapshots";
+import { merchantRuleKey } from "@/features/categories/merchant-rule";
 import { decryptSecret } from "@/server/secrets";
 import { plaid } from "./client";
 import { plaidErrorCode } from "./errors";
@@ -148,12 +149,6 @@ async function upsertAccounts(
   });
 }
 
-function merchantKey(transaction: PlaidTransaction) {
-  return (transaction.merchant_name ?? transaction.name)
-    .trim()
-    .toLocaleLowerCase("en-US");
-}
-
 async function applyTransaction(
   tx: Prisma.TransactionClient,
   item: { id: string; householdId: string },
@@ -172,7 +167,12 @@ async function applyTransaction(
   if (existing && existing.householdId !== item.householdId) {
     throw new Error("Plaid transaction ownership mismatch.");
   }
-  const ruleCategoryId = categoryByMerchant.get(merchantKey(transaction));
+  const ruleCategoryId = categoryByMerchant.get(
+    merchantRuleKey({
+      merchantName: transaction.merchant_name,
+      name: transaction.name
+    })
+  );
   const data = {
     householdId: item.householdId,
     accountId,
@@ -331,7 +331,13 @@ export async function syncPlaidItem(itemId: string, jobId: string) {
     accountByPlaidId.set(account.plaidAccountId, account.id);
   }
   const rules = await prisma.merchantRule.findMany({
-    where: { householdId: item.householdId },
+    where: {
+      householdId: item.householdId,
+      category: {
+        householdId: item.householdId,
+        archivedAt: null
+      }
+    },
     select: { merchantKey: true, categoryId: true }
   });
   const categoryByMerchant = new Map(

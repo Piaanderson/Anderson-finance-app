@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/page-header";
+import { getHouseholdCategoryReviewData } from "@/features/categories/category-data";
 import { getHouseholdMovements } from "@/features/transactions/movement-data";
 import { getHouseholdTransferSuggestions } from "@/features/transactions/transfer-suggestion-data";
 import { TransactionsWorkspace } from "@/features/transactions/transactions-workspace";
@@ -14,7 +15,7 @@ export default async function TransactionsPage({
 }) {
   const owner = await requireHousehold();
   const { query = "" } = await searchParams;
-  const [movements, suggestions] = await Promise.all([
+  const [movements, suggestions, categoryReview] = await Promise.all([
     getHouseholdMovements({
       householdId: owner.householdId,
       query,
@@ -23,11 +24,9 @@ export default async function TransactionsPage({
     getHouseholdTransferSuggestions({
       householdId: owner.householdId,
       limit: 100
-    })
+    }),
+    getHouseholdCategoryReviewData(owner.householdId)
   ]);
-  const uncategorized = movements.filter(
-    (movement) => movement.kind === "TRANSACTION" && movement.category === null
-  ).length;
 
   return (
     <>
@@ -55,7 +54,8 @@ export default async function TransactionsPage({
         <TransactionsWorkspace
           movements={movements}
           suggestions={suggestions}
-          uncategorizedCount={uncategorized}
+          categories={categoryReview.categories}
+          rules={categoryReview.rules}
         />
       </div>
     </>

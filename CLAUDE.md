@@ -18,6 +18,14 @@
 
 Built in `prototype/Transactions Directions.dc.html`. Turn 1 offered 1a–1c; **2a is the version to keep** and combines the four pieces Pia kept: 9. **Ledger with the unmatched-legs tie** (from 1a) — one row per movement, loose legs surfaced for tying. 10. **Expanded two-leg detail** (from 1a) — same pattern as the budget page's transfer row: both legs plus balance movement, and the bank's raw description/memo/ref shown verbatim. 11. **Review card, stacked transfers-first then categories** (from 1b) — keyboard-driven; both panels disappear when nothing is left to answer. 12. **Plain statement of a wrong auto-match** (from 1c) — untie splits it back into two honest single-account rows.
 
+## Confirmed keepers (Category review)
+
+13. **Grouped searchable picker** — Needs, Flex, Savings, and Debt stay in
+    product order. The combobox supports keyboard and touch assignment.
+14. **Merchant rules are explicit** — an exact normalized merchant key is
+    visible, optional, and editable during assignment; rules never rely on a
+    hidden fuzzy match.
+
 ## Page set (Pia)
 
 Home dashboard · Budget (done — `prototype/Finance App Directions.dc.html`) · Accounts · Transactions (done — `prototype/Transactions Directions.dc.html`) · Categories.

@@ -1,6 +1,7 @@
 import { prisma } from "../src/server/db";
+import type { CategorySection } from "../src/features/categories/category-domain";
 
-const groups = {
+const groups: Record<CategorySection, readonly string[]> = {
   Needs: [
     "Mortgage",
     "Electric",

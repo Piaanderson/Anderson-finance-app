@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/server/db";
 import { requireHousehold } from "@/server/households";
+import { categorySectionSchema } from "./category-domain";
 
 export type CategoryFormState = {
   error?: string;
@@ -12,7 +13,7 @@ export type CategoryFormState = {
 
 const categoryInput = z.object({
   name: z.string().trim().min(2, "Enter at least two characters.").max(60),
-  section: z.enum(["Needs", "Flex", "Savings", "Debt"])
+  section: categorySectionSchema
 });
 
 export async function createCategory(

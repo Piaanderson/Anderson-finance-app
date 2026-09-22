@@ -406,6 +406,7 @@ test("transfer review ties and unties one movement accessibly", async ({
     const cardId = `${fixture}-card`;
     const outgoingId = `${fixture}-outgoing`;
     const incomingId = `${fixture}-incoming`;
+    const categoryId = `${fixture}-category`;
     await prisma.plaidItem.create({
       data: {
         id: itemId,
@@ -442,6 +443,14 @@ test("transfer review ties and unties one movement accessibly", async ({
           type: "credit"
         }
       ]
+    });
+    await prisma.category.create({
+      data: {
+        id: categoryId,
+        householdId,
+        name: "Fixture category",
+        section: "Needs"
+      }
     });
     await prisma.transaction.createMany({
       data: [
@@ -549,7 +558,9 @@ test("transfer review ties and unties one movement accessibly", async ({
     ).toBeAttached();
     await expect(transferReview).toHaveCount(0);
     await expect(
-      categoryReview.getByRole("button", { name: "Review next" })
+      categoryReview.getByRole("combobox", {
+        name: "Search and choose a category"
+      })
     ).toBeFocused();
     await page.reload();
     await expect(transferReview).toBeVisible();
@@ -585,20 +596,31 @@ test("transfer review ties and unties one movement accessibly", async ({
     ).toBeAttached();
     await expect(transferReview).toHaveCount(0);
     await expect(
-      categoryReview.getByRole("button", { name: "Review next" })
+      categoryReview.getByRole("combobox", {
+        name: "Search and choose a category"
+      })
     ).toBeFocused();
 
     await expect(page.getByText("2 movements")).toBeVisible();
+    const movementLedger = page.locator(".movement-ledger");
     await expect(
-      page.getByRole("heading", { level: 3, name: "Card payment" })
+      movementLedger.getByRole("heading", {
+        level: 3,
+        name: "Card payment"
+      })
     ).toHaveCount(1);
     await expect(
-      page.getByRole("heading", { level: 3, name: "Coffee shop" })
+      movementLedger.getByRole("heading", {
+        level: 3,
+        name: "Coffee shop"
+      })
     ).toHaveCount(1);
     await expect(
       page.getByText("Internal transfer · counted once")
     ).toBeVisible();
-    await expect(page.getByText("Pending", { exact: false })).toBeVisible();
+    await expect(
+      movementLedger.getByText("Pending", { exact: false })
+    ).toBeVisible();
 
     const disclosure = page.locator(".movement-ledger .movement-disclosure");
     await expect(disclosure).toHaveAccessibleName("View both transfer legs");
@@ -655,25 +677,22 @@ test("transfer review ties and unties one movement accessibly", async ({
     ).toBeAttached();
     await expect(page.getByText("3 movements")).toBeVisible();
     await expect(
-      page.getByRole("heading", { level: 3, name: "Card payment" })
+      movementLedger.getByRole("heading", {
+        level: 3,
+        name: "Card payment"
+      })
     ).toHaveCount(1);
     await expect(
-      page.getByRole("heading", { level: 3, name: "THANK YOU PAYMENT" })
+      movementLedger.getByRole("heading", {
+        level: 3,
+        name: "THANK YOU PAYMENT"
+      })
     ).toHaveCount(1);
     await expect(
       page.locator(`#movement-transaction-${outgoingId}`)
     ).toBeFocused();
     await expect(page.locator('[data-review-order="transfers"]')).toBeVisible();
 
-    const categoryId = `${fixture}-category`;
-    await prisma.category.create({
-      data: {
-        id: categoryId,
-        householdId,
-        name: "Fixture category",
-        section: "Needs"
-      }
-    });
     await prisma.transaction.updateMany({
       where: {
         id: {
@@ -687,6 +706,262 @@ test("transfer review ties and unties one movement accessibly", async ({
     await expect(page.locator('[data-review-order="categories"]')).toHaveCount(
       0
     );
+
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(results.violations).toEqual([]);
+    expect(plaidRequests).toEqual([]);
+  } finally {
+    if (householdId) {
+      await prisma.household.deleteMany({ where: { id: householdId } });
+    }
+    if (userId) {
+      await prisma.user.deleteMany({ where: { id: userId } });
+    }
+  }
+});
+
+test("category review supports grouped keyboard assignment and optional merchant rules", async ({
+  page
+}, testInfo) => {
+  const fixture = `category-review-${testInfo.project.name}-${randomUUID()}`;
+  const email = `${fixture}@example.test`;
+  const plaidRequests: string[] = [];
+  let householdId: string | null = null;
+  let userId: string | null = null;
+
+  page.on("request", (request) => {
+    if (/plaid\.(com|net)/i.test(new URL(request.url()).hostname)) {
+      plaidRequests.push(request.url());
+    }
+  });
+
+  try {
+    await page.goto("/sign-in");
+    await page.getByLabel("Development email").fill(email);
+    await page
+      .getByRole("button", { name: "Local development sign-in" })
+      .click();
+    await expect(page).toHaveURL(/\/accounts$/);
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    const membership = await prisma.householdMember.findFirstOrThrow({
+      where: { userId: user.id }
+    });
+    userId = user.id;
+    householdId = membership.householdId;
+    const itemId = `${fixture}-item`;
+    const accountId = `${fixture}-account`;
+    const groceryId = `${fixture}-grocery`;
+    const coffeeId = `${fixture}-coffee`;
+    const utilitiesId = `${fixture}-utilities`;
+    const diningId = `${fixture}-dining`;
+    const vacationId = `${fixture}-vacation`;
+    const debtId = `${fixture}-debt`;
+
+    await prisma.plaidItem.create({
+      data: {
+        id: itemId,
+        householdId,
+        linkedByUserId: userId,
+        plaidItemId: `${fixture}-plaid-item`,
+        accessTokenCiphertext: "fixture",
+        accessTokenIv: "fixture",
+        accessTokenTag: "fixture"
+      }
+    });
+    await prisma.financialAccount.create({
+      data: {
+        id: accountId,
+        householdId,
+        plaidItemId: itemId,
+        plaidAccountId: `${fixture}-plaid-account`,
+        source: "PLAID",
+        classification: "CASH",
+        name: "Review checking",
+        type: "depository"
+      }
+    });
+    await prisma.category.createMany({
+      data: [
+        {
+          id: utilitiesId,
+          householdId,
+          name: "Utilities",
+          section: "Needs",
+          sortOrder: 1
+        },
+        {
+          id: diningId,
+          householdId,
+          name: "Dining",
+          section: "Flex",
+          sortOrder: 1
+        },
+        {
+          id: vacationId,
+          householdId,
+          name: "Vacation",
+          section: "Savings",
+          sortOrder: 1
+        },
+        {
+          id: debtId,
+          householdId,
+          name: "Card payment",
+          section: "Debt",
+          sortOrder: 1
+        }
+      ]
+    });
+    await prisma.transaction.createMany({
+      data: [
+        {
+          id: groceryId,
+          householdId,
+          accountId,
+          plaidTransactionId: `${fixture}-plaid-grocery`,
+          name: "HARRIS TEETER 123",
+          merchantName: "Harris Teeter",
+          amount: "45.00",
+          isoCurrencyCode: "USD",
+          date: new Date("2026-09-12T00:00:00.000Z")
+        },
+        {
+          id: coffeeId,
+          householdId,
+          accountId,
+          plaidTransactionId: `${fixture}-plaid-coffee`,
+          name: "COFFEE SHOP 456",
+          merchantName: "Coffee Shop",
+          amount: "5.00",
+          isoCurrencyCode: "USD",
+          date: new Date("2026-09-11T00:00:00.000Z")
+        }
+      ]
+    });
+    await prisma.merchantRule.create({
+      data: {
+        id: `${fixture}-existing-rule`,
+        householdId,
+        categoryId: utilitiesId,
+        merchantKey: "harris teeter"
+      }
+    });
+
+    await page.goto("/transactions");
+    const panel = page.locator('[data-review-order="categories"]');
+    await expect(panel).toBeVisible();
+    await expect(panel.getByText("2 to review")).toBeVisible();
+    const combobox = panel.getByRole("combobox", {
+      name: "Search and choose a category"
+    });
+    await expect(combobox).toHaveAttribute("aria-expanded", "true");
+    await expect(
+      panel.getByRole("listbox", {
+        name: "Categories grouped by budget section"
+      })
+    ).toBeVisible();
+    for (const section of ["Needs", "Flex", "Savings", "Debt"]) {
+      await expect(panel.getByRole("group", { name: section })).toBeVisible();
+    }
+    await expect(panel.getByText(/Existing rule: Utilities/)).toBeVisible();
+
+    await combobox.focus();
+    await combobox.fill("din");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect(panel.getByText("Selected: Dining · Flex")).toBeVisible();
+    const ruleCheckbox = panel.getByRole("checkbox", {
+      name: /Use this category for future exact merchant matches/
+    });
+    await expect(ruleCheckbox).toBeChecked();
+    await ruleCheckbox.uncheck();
+    const assign = panel.getByRole("button", { name: "Assign category" });
+    const target = await assign.boundingBox();
+    expect(target?.height).toBeGreaterThanOrEqual(44);
+    await assign.focus();
+    await page.keyboard.press("Enter");
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: "Category assigned to Dining" })
+    ).toBeAttached();
+    await expect(panel.getByText("1 to review")).toBeVisible();
+    await expect(
+      panel.getByRole("combobox", {
+        name: "Search and choose a category"
+      })
+    ).toBeFocused();
+    await expect(
+      page
+        .locator(`#movement-transaction-${groceryId}`)
+        .getByText("Dining", { exact: true })
+    ).toBeVisible();
+    await expect(
+      prisma.merchantRule.findUnique({
+        where: {
+          householdId_merchantKey: {
+            householdId,
+            merchantKey: "harris teeter"
+          }
+        }
+      })
+    ).resolves.toBeNull();
+
+    const nextCombobox = panel.getByRole("combobox", {
+      name: "Search and choose a category"
+    });
+    await page.keyboard.press("Escape");
+    await expect(nextCombobox).toHaveAttribute("aria-expanded", "false");
+    await nextCombobox.fill("vac");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect(panel.getByText("Selected: Vacation · Savings")).toBeVisible();
+    const nextRule = panel.getByRole("checkbox", {
+      name: /Use this category for future exact merchant matches/
+    });
+    await expect(nextRule).not.toBeChecked();
+    await nextRule.check();
+    await panel.getByRole("button", { name: "Assign category" }).focus();
+    await page.keyboard.press("Space");
+    await expect(
+      page.getByRole("status").filter({ hasText: "Category review complete" })
+    ).toBeAttached();
+    await expect(panel).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "Movement ledger" })
+    ).toBeFocused();
+
+    await expect(
+      prisma.transaction.findUniqueOrThrow({ where: { id: groceryId } })
+    ).resolves.toMatchObject({ categoryId: diningId });
+    await expect(
+      prisma.transaction.findUniqueOrThrow({ where: { id: coffeeId } })
+    ).resolves.toMatchObject({ categoryId: vacationId });
+    await expect(
+      prisma.merchantRule.findUnique({
+        where: {
+          householdId_merchantKey: {
+            householdId,
+            merchantKey: "coffee shop"
+          }
+        }
+      })
+    ).resolves.toMatchObject({ categoryId: vacationId });
+
+    await page.reload();
+    await expect(page.locator('[data-review-order="categories"]')).toHaveCount(
+      0
+    );
+    await expect(page.getByText("Dining", { exact: true })).toBeVisible();
+    await expect(page.getByText("Vacation", { exact: true })).toBeVisible();
+    const viewport = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      innerWidth: window.innerWidth
+    }));
+    expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.innerWidth);
 
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])

@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/page-header";
+import { CATEGORY_SECTIONS } from "@/features/categories/category-domain";
 import { CategoryForm } from "@/features/categories/category-form";
 import { prisma } from "@/server/db";
 import { requireHousehold } from "@/server/households";
 
 export const metadata: Metadata = { title: "Categories" };
-
-const sections = ["Needs", "Flex", "Savings", "Debt"];
 
 export default async function CategoriesPage() {
   const owner = await requireHousehold();
@@ -21,7 +20,7 @@ export default async function CategoriesPage() {
       <div className="page-content">
         <CategoryForm />
         <div className="stat-grid">
-          {sections.map((section) => {
+          {CATEGORY_SECTIONS.map((section) => {
             const rows = categories.filter(
               (category) => category.section === section
             );

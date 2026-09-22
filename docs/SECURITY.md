@@ -75,6 +75,17 @@ The issue #3 mutation-boundary suite continues to exercise the exported POST
 and DELETE Route Handlers directly, while the dedicated two-household transfer
 suite covers suggestions, policy failures, races, untie, and retie.
 
+Category review follows the same non-enumerating household boundary.
+`PUT /api/transactions/:transactionId/category` derives the household from the
+authenticated membership, requires both the live transaction and active
+category to belong to it, and returns `404` for foreign, removed, or archived
+resources. Assignment and the optional exact merchant-rule upsert or deletion
+commit atomically. Category-review reads include only active household
+categories and rules whose destination category remains active. Plaid sync
+also scopes those rules and destination categories to the Item household.
+Cross-household integration coverage exercises foreign transactions,
+categories, and merchant rules at the real Route Handler boundary.
+
 ## Plaid
 
 - Use Link tokens and exchange public tokens only on the server.

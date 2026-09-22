@@ -147,7 +147,7 @@ Goal: support Plaid and manual financial positions through one honest model.
 - [x] Add manual property, investment, cash, and debt CRUD.
 - [x] Pair property with related debt without combining their source records.
 - [x] Make budget destination accounts explicit relations.
-- [ ] Replace free-text category sections with an enum or validated domain type.
+- [x] Replace free-text category sections with an enum or validated domain type.
 - [x] Migrate and backfill existing data without breaking Plaid sync.
 
 Exit evidence:
@@ -170,7 +170,7 @@ Goal: implement the approved Transactions 2a workflow.
       payloads.
 - [x] Build expandable, structured transfer details.
 - [x] Build the transfers-first/category-second review stack.
-- [ ] Build an accessible grouped category picker and merchant-rule option.
+- [x] Build an accessible grouped category picker and merchant-rule option.
 - [x] Add focus management and live announcements; show visible hints if a
       future review shortcut is added.
 
@@ -1033,12 +1033,71 @@ Remaining risks:
 - Existing manually created or pre-policy `TransferMatch` rows remain visible
   as historical transfers until a user unties them. New and replacement ties
   cannot bypass the current policy.
-- Category assignment and merchant-rule review remain issue #10; this slice
-  supplies only the ordered, independently hiding category queue panel.
+- Category assignment and merchant-rule review are completed in issue #10.
+  Category maintenance beyond assignment remains in Phase 5.
+
+### Issue #10 category-review evidence — 2026-09-21
+
+Implementation:
+
+- Replaced category-section free text at write boundaries with one validated
+  Needs, Flex, Savings, and Debt domain shared by category creation, seed data,
+  page rendering, and review ordering. Invalid legacy sections remain stored
+  but are not offered for new assignments.
+- Added a household-scoped category-review data read that returns only active
+  categories and rules whose destination category remains active. Product
+  ordering is deterministic by section, category sort order, name, and ID.
+- Added the approved grouped searchable combobox/listbox to the second review
+  panel. Arrow keys, Home, End, Enter, Escape, touch selection, explicit
+  labels, selected state, and native assignment, skip, and rule controls are
+  supported.
+- Category assignment optimistically updates the ledger and queue count, then
+  reconciles from the Server Component. Focus moves to the next category
+  combobox or ledger, status changes use a polite live region, blocking errors
+  use `role="alert"`, and the category panel disappears and announces
+  completion at zero.
+- Defined one shared exact merchant-key policy: merchant name with transaction
+  name fallback, trim, Unicode NFKC normalization, whitespace collapse, and
+  locale-stable lowercase. The UI shows the key and any existing rule before
+  assignment.
+- Strengthened the category Route Handler so a live household transaction can
+  be assigned only to an active category in the same authenticated household.
+  Assignment and optional rule upsert or deletion commit atomically; foreign,
+  removed, and archived resources remain non-enumerating `404` responses.
+- Plaid synchronization now uses the same merchant-key function and ignores
+  rules whose destination category is archived. Existing manual categories
+  remain unchanged unless an explicit active exact-match rule applies.
+
+Verification:
+
+- Targeted category-domain, category-boundary, and household-isolation suites
+  — 3 files and 31 tests passed.
+- Focused transfer/category desktop and mobile Playwright flows — 4 tests
+  passed, including grouped keyboard behavior, touch-sized controls, rule
+  removal and persistence, optimistic ledger/count updates, focus, live
+  announcements, responsive overflow checks, no Plaid-host requests, and axe
+  WCAG 2.1 AA scans with zero violations.
+- `npm run test:e2e` — 15 desktop/mobile tests passed and the mobile duplicate
+  of the Chromium-only passkey case was skipped as expected.
+- `npm test` — 23 files and 140 tests passed.
+- `npm run typecheck`, `npm run lint`, `npm run format:check`,
+  `npx prisma validate`, `npx prisma migrate status`, `npm run build`, and
+  `git diff --check` passed. Prisma reports all seven migrations applied.
+
+Remaining risks:
+
+- Category skip is intentionally session-only. A durable ignored decision
+  needs a separate household-owned model and product semantics.
+- Rules deliberately use exact normalized merchant identity. Fuzzy or
+  substring matching is excluded because it could silently miscategorize
+  unrelated financial records.
+- Review is bounded by the current 100-movement private-v1 ledger read.
+  Database-level queue pagination or a durable review horizon should be added
+  if household history grows materially.
 
 ## Next handoff
 
 Begin
-[#10 Build category assignment and merchant-rule review](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/10).
+[#11 Build the real monthly budget engine](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/11).
 Keep roadmap issue #1 and the full Currents goal open; the private v1
 application is not complete.
