@@ -86,6 +86,17 @@ also scopes those rules and destination categories to the Item household.
 Cross-household integration coverage exercises foreign transactions,
 categories, and merchant rules at the real Route Handler boundary.
 
+Monthly budget reads scope the plan, allocations, categories, destinations,
+and movements to the authenticated household. The previous-month copy boundary
+accepts only canonical adjacent month keys, re-reads the source inside the
+database transaction, and creates the target under the authenticated
+household. It never accepts a household ID, never overwrites an existing
+month, omits archived categories, and clears destinations that are foreign,
+archived, or inactive. The unique household/month constraint resolves
+concurrent copy attempts with a stable conflict response. The mutation
+isolation guard and dedicated copy integration suite cover the real Route
+Handler.
+
 ## Plaid
 
 - Use Link tokens and exchange public tokens only on the server.

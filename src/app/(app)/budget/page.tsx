@@ -1,165 +1,152 @@
 import type { Metadata } from "next";
 import { AllocationBar } from "@/components/ui/allocation-bar";
 import { PageHeader } from "@/components/shell/page-header";
-import {
-  BudgetSection,
-  type BudgetRow
-} from "@/features/budget/budget-section";
-import { getHouseholdMovements } from "@/features/transactions/movement-data";
-import { summarizeCategorySpending } from "@/features/transactions/movements";
-import { prisma } from "@/server/db";
+import { getHouseholdBudgetView } from "@/features/budget/budget-data";
+import { parseBudgetMonthKey } from "@/features/budget/budget-domain";
+import { BudgetMonthControls } from "@/features/budget/budget-month-controls";
+import { BudgetSection } from "@/features/budget/budget-section";
+import { signedUsd, usd } from "@/lib/money";
 import { requireHousehold } from "@/server/households";
-import { formatMovementAmount, usd } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Budget" };
 
-const demo: Record<string, BudgetRow[]> = {
-  Debt: [
-    {
-      name: "Chase card",
-      planned: 400,
-      destination: "Chase · 4412",
-      status: "$400 moved"
-    },
-    {
-      name: "Capital One card",
-      planned: 250,
-      destination: "Capital One · 8830",
-      status: "$250 moved"
-    }
-  ],
-  Savings: [
-    {
-      name: "Vacation",
-      planned: 300,
-      destination: "CapOne · Vacation",
-      status: "$300 moved"
-    },
-    {
-      name: "HOA + birthdays",
-      planned: 175,
-      destination: "Savings",
-      status: "Due Sep 20"
-    }
-  ],
-  Needs: [
-    {
-      name: "Mortgage",
-      planned: 2180,
-      destination: "Rocket Mortgage",
-      status: "Paid Sep 1"
-    },
-    {
-      name: "Electric",
-      planned: 145,
-      destination: "Duke Energy",
-      status: "$138 paid"
-    }
-  ],
-  Flex: [
-    {
-      name: "Groceries",
-      planned: 720,
-      destination: "Any account",
-      status: "$512 spent"
-    },
-    {
-      name: "Dining",
-      planned: 260,
-      destination: "Any account",
-      status: "$318 spent · over"
-    }
-  ]
-};
+function defaultBudgetMonth(now: Date) {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+}
 
-export default async function BudgetPage() {
+export default async function BudgetPage({
+  searchParams
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
   const owner = await requireHousehold();
-  const [month, movements] = await Promise.all([
-    prisma.budgetMonth.findUnique({
-      where: {
-        householdId_month: {
-          householdId: owner.householdId,
-          month: new Date("2026-09-01T00:00:00.000Z")
-        }
-      },
-      include: {
-        allocations: {
-          include: {
-            category: true,
-            destinationAccount: { select: { name: true, mask: true } }
-          }
-        }
-      }
-    }),
-    getHouseholdMovements({
-      householdId: owner.householdId,
-      from: new Date("2026-09-01T00:00:00.000Z"),
-      to: new Date("2026-10-01T00:00:00.000Z")
-    })
-  ]);
-  const categorySpending = summarizeCategorySpending(movements);
-  const grouped = month
-    ? Object.groupBy(
-        month.allocations,
-        (allocation) => allocation.category.section
-      )
-    : null;
-  const sections = grouped
-    ? Object.fromEntries(
-        Object.entries(grouped).map(([section, allocations]) => [
-          section,
-          (allocations ?? []).map((allocation) => {
-            const spent = categorySpending.filter(
-              (total) => total.categoryId === allocation.categoryId
-            );
-            return {
-              name: allocation.category.name,
-              planned: allocation.planned.toNumber(),
-              destination: allocation.destinationAccount
-                ? `${allocation.destinationAccount.name}${
-                    allocation.destinationAccount.mask
-                      ? ` · ${allocation.destinationAccount.mask}`
-                      : ""
-                  }`
-                : "No destination account",
-              status: spent.length
-                ? `${spent
-                    .map(
-                      (total) =>
-                        `${formatMovementAmount(total.spending, total.currency)} spent`
-                    )
-                    .join(" · ")} · transfers excluded`
-                : "No spending movements"
-            };
-          })
-        ])
-      )
-    : demo;
-  const income = month?.income.toNumber() ?? 8240;
-  const segmentTotals = Object.entries(sections).map(([label, rows]) => ({
-    label,
-    amount: rows.reduce((sum, row) => sum + row.planned, 0)
-  }));
-  const planned = segmentTotals.reduce((sum, item) => sum + item.amount, 0);
+  const { month: monthQuery } = await searchParams;
+  const now = new Date();
+  const selectedMonth =
+    (monthQuery ? parseBudgetMonthKey(monthQuery) : null) ??
+    defaultBudgetMonth(now);
+  const budget = await getHouseholdBudgetView({
+    householdId: owner.householdId,
+    month: selectedMonth
+  });
+  const plan = budget.plan;
+  const calculation = plan?.calculation ?? null;
+  const segmentTotals =
+    calculation?.sections.map((section) => ({
+      label: section.section,
+      amount: Number(section.planned)
+    })) ?? [];
 
   return (
     <>
       <PageHeader
         title="Budget"
         actions={
-          <div>
-            <span className="eyebrow">Left to budget</span>
-            <div className="card-value positive">
-              {usd.format(income - planned)}
+          calculation ? (
+            <div>
+              <span className="eyebrow">Left to budget</span>
+              <div
+                className={
+                  Number(calculation.leftToBudget) < 0
+                    ? "card-value danger"
+                    : "card-value positive"
+                }
+              >
+                {signedUsd(Number(calculation.leftToBudget))}
+              </div>
             </div>
-          </div>
+          ) : null
         }
       />
       <div className="page-content">
-        <AllocationBar income={income} segments={segmentTotals} />
-        {Object.entries(sections).map(([title, rows]) => (
-          <BudgetSection key={title} title={title} rows={rows} />
-        ))}
+        <BudgetMonthControls
+          monthLabel={budget.monthLabel}
+          monthKey={budget.monthKey}
+          previousMonthKey={budget.previousMonthKey}
+          nextMonthKey={budget.nextMonthKey}
+          planExists={plan !== null}
+          previousPlanExists={budget.previousPlanExists}
+        />
+        {calculation && plan ? (
+          <>
+            <section className="card" aria-labelledby="budget-summary-title">
+              <div className="section-heading">
+                <h2 id="budget-summary-title" tabIndex={-1}>
+                  {budget.monthLabel} plan
+                </h2>
+                <span className="muted">
+                  Income {usd.format(Number(calculation.incomePlan))}
+                </span>
+              </div>
+              <p className="muted">
+                Received from unmatched USD inflows:{" "}
+                {usd.format(Number(calculation.observedIncome))}. The income
+                plan is the household&apos;s manual monthly adjustment.
+              </p>
+              <AllocationBar
+                income={Number(calculation.incomePlan)}
+                segments={segmentTotals}
+              />
+              <dl className="budget-calculation-totals">
+                {calculation.sections.map((section) => (
+                  <div key={section.section}>
+                    <dt>{section.section}</dt>
+                    <dd>
+                      {usd.format(Number(section.activity))}{" "}
+                      {section.activityLabel} ·{" "}
+                      {section.over !== "0.00"
+                        ? `${usd.format(Number(section.over))} over`
+                        : `${usd.format(Number(section.remaining))} ${section.remainingLabel}`}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              {calculation.unassignedSpending !== "0.00" ? (
+                <p className="review-warning">
+                  {usd.format(Number(calculation.unassignedSpending))} of
+                  spending still needs a category and is not included in a
+                  section.
+                </p>
+              ) : null}
+              {calculation.unallocatedCategorizedSpending !== "0.00" ? (
+                <p className="review-warning">
+                  {signedUsd(
+                    Number(calculation.unallocatedCategorizedSpending)
+                  )}{" "}
+                  belongs to categories without an allocation in this month.
+                </p>
+              ) : null}
+              {plan.excludedAllocationCount > 0 ? (
+                <p className="review-warning">
+                  {plan.excludedAllocationCount} legacy allocation{" "}
+                  {plan.excludedAllocationCount === 1 ? "is" : "are"} excluded
+                  because its category section is invalid.
+                </p>
+              ) : null}
+            </section>
+            {calculation.sections.map((section) => (
+              <BudgetSection
+                key={section.section}
+                calculation={section}
+                destinations={plan.destinations}
+              />
+            ))}
+          </>
+        ) : (
+          <section
+            className="card empty-state"
+            aria-labelledby="budget-summary-title"
+          >
+            <h2 id="budget-summary-title" tabIndex={-1}>
+              No plan for {budget.monthLabel}
+            </h2>
+            <p className="muted">
+              {budget.previousPlanExists
+                ? "Copy the previous month to create a new draft with the same income, allocations, and active destinations."
+                : "There is no previous monthly plan available to copy."}
+            </p>
+          </section>
+        )}
       </div>
     </>
   );

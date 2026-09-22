@@ -186,16 +186,18 @@ Exit evidence:
 
 Goal: implement the approved Budget 3a composite using household data.
 
-- Add dynamic month navigation and remove hardcoded scenario dates from logic.
-- Calculate income with a documented manual-adjustment path.
-- Add editable allocations with accessible validation.
-- Support copying the previous month into a new draft.
-- Implement the 2c header, allocation bar, “Where it goes,” and moved/due stats.
-- Implement paired planned-to-destination rows for every section.
-- Implement structured Flex rows with planned, spent, remaining, and over.
-- Exclude transfers from spending.
-- Connect savings and debt movements to destination accounts.
-- Show mortgage owed and home-value context in Needs.
+- [x] Add dynamic month navigation and remove hardcoded scenario dates from
+      logic.
+- [x] Calculate income with a documented manual-adjustment path.
+- [ ] Add editable allocations with accessible validation.
+- [x] Support copying the previous month into a new draft.
+- [ ] Implement the 2c header, allocation bar, “Where it goes,” and moved/due
+      stats.
+- [ ] Implement paired planned-to-destination rows for every section.
+- [ ] Implement structured Flex rows with planned, spent, remaining, and over.
+- [x] Exclude transfers from spending.
+- [x] Connect savings and debt movements to destination accounts.
+- [ ] Show mortgage owed and home-value context in Needs.
 
 Exit evidence:
 
@@ -1095,9 +1097,70 @@ Remaining risks:
   Database-level queue pagination or a durable review horizon should be added
   if household history grows materially.
 
+### Issue #11 monthly-budget foundation evidence — 2026-09-21
+
+Implementation:
+
+- Replaced the hardcoded September/demo fallback with canonical `YYYY-MM`
+  selection, UTC month boundaries, and native previous/next navigation. An
+  invalid or absent month falls back to the current month.
+- Added a pure fixed-point calculation domain. Income plans, allocations,
+  category activity, transfer movement, left-to-budget, section totals,
+  remaining, and over amounts use integer minor units rather than
+  floating-point arithmetic.
+- Documented and implemented the income policy: `BudgetMonth.income` remains
+  the household's manual monthly plan, while unmatched uncategorized USD
+  inflows show observed income. Uncategorized outflows and activity in
+  categories without allocations are surfaced instead of disappearing.
+- Needs and Flex use net categorized transaction activity, including
+  categorized inflows as refunds. Debt and Savings use the incoming leg of
+  matched USD transfers to explicit destination accounts. Transfers never
+  inflate spending.
+- Shared destination accounts consume one transfer pool in deterministic
+  budget order, so one movement cannot be counted in multiple rows or
+  sections.
+- Wired the calculation result into the existing budget surface so dynamic
+  month navigation, left-to-budget, allocation totals, and real moved/due
+  values can be verified without implementing issue #12's approved 2a/2c
+  visual treatment.
+- Added a household-scoped previous-month copy Route Handler. It copies only
+  into the immediately following absent month, preserves income and plans,
+  omits archived categories, clears inactive/archived/foreign destinations,
+  and returns stable missing-source and conflict responses. The database unique
+  constraint arbitrates concurrent copies.
+- Added `docs/BUDGET_MODEL.md` as the canonical calculation, currency,
+  destination, and copy policy.
+
+Verification:
+
+- Targeted calculation, copy-boundary, and household-isolation suites — 3
+  files and 30 tests passed.
+- Focused desktop/mobile monthly-budget Playwright flow — 2 tests passed,
+  including real income/spending/transfers, reconciled moved/due, dynamic
+  navigation, keyboard copy, focus, live announcement, persistence, 44px
+  targets, responsive overflow, no Plaid-host requests, and axe WCAG 2.1 AA
+  scans with zero violations.
+- Full desktop/mobile Playwright acceptance suite — 17 passed and 1
+  platform-gated passkey test skipped.
+- `npm test` — 25 files and 150 tests passed.
+- `npm run typecheck`, `npm run lint`, `npm run format:check`,
+  `npx prisma validate`, `npx prisma migrate status`, `npm run build`, and
+  `git diff --check` passed. Prisma reports all seven migrations applied.
+
+Remaining risks:
+
+- The budget plan is intentionally USD-only in private v1. Non-USD,
+  unofficial-currency, and unknown-currency movements stay visible in the
+  ledger but do not enter USD budget arithmetic.
+- Income and allocation editing, richer progress visuals, and mortgage
+  owed/home-value context remain issue #12. This slice establishes the
+  calculation and copy boundaries those controls will mutate.
+- Sharing one destination across categories is supported deterministically,
+  but the issue #12 editor should clearly warn when a destination is reused.
+
 ## Next handoff
 
 Begin
-[#11 Build the real monthly budget engine](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/11).
+[#12 Build the approved Budget 3a experience](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/12).
 Keep roadmap issue #1 and the full Currents goal open; the private v1
 application is not complete.

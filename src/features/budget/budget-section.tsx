@@ -1,39 +1,53 @@
-import { usd } from "@/lib/money";
-
-export type BudgetRow = {
-  name: string;
-  planned: number;
-  destination: string;
-  status: string;
-};
+import { signedUsd, usd } from "@/lib/money";
+import type { BudgetDestinationView } from "./budget-data";
+import type { BudgetSectionCalculation } from "./budget-domain";
 
 export function BudgetSection({
-  title,
-  rows
+  calculation,
+  destinations
 }: {
-  title: string;
-  rows: BudgetRow[];
+  calculation: BudgetSectionCalculation;
+  destinations: Record<string, BudgetDestinationView | null>;
 }) {
-  const total = rows.reduce((sum, row) => sum + row.planned, 0);
-  const headingId = `budget-${title.toLowerCase().replaceAll(" ", "-")}`;
+  const { section, rows } = calculation;
+  const headingId = `budget-${section.toLowerCase()}`;
   return (
     <section className="card" aria-labelledby={headingId}>
       <div className="section-heading">
-        <h2 id={headingId}>{title}</h2>
-        <strong>{usd.format(total)}</strong>
+        <h2 id={headingId}>{section}</h2>
+        <strong>{usd.format(Number(calculation.planned))}</strong>
       </div>
-      <div>
-        {rows.map((row) => (
-          <div className="budget-row" key={row.name}>
-            <div>
-              <strong>{row.name}</strong>
-              <div className="muted">{row.destination}</div>
-            </div>
-            <span className="muted">{row.status}</span>
-            <strong className="row-amount">{usd.format(row.planned)}</strong>
-          </div>
-        ))}
-      </div>
+      {rows.length ? (
+        <ul className="budget-rows">
+          {rows.map((row) => {
+            const destination = destinations[row.id];
+            return (
+              <li className="budget-row" key={row.id}>
+                <div>
+                  <strong>{row.categoryName}</strong>
+                  <div className="muted">
+                    {destination
+                      ? `${destination.name}${destination.mask ? ` · ${destination.mask}` : ""}${destination.active ? "" : " · inactive"}`
+                      : "No destination account"}
+                  </div>
+                </div>
+                <span className={row.over !== "0.00" ? "danger" : "muted"}>
+                  {signedUsd(Number(row.activity))} {calculation.activityLabel}{" "}
+                  ·{" "}
+                  {row.over !== "0.00"
+                    ? `${usd.format(Number(row.over))} over`
+                    : `${usd.format(Number(row.remaining))} ${calculation.remainingLabel}`}
+                </span>
+                <strong className="row-amount">
+                  {usd.format(Number(row.planned))}
+                </strong>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="muted">No allocations in this section.</p>
+      )}
     </section>
   );
 }

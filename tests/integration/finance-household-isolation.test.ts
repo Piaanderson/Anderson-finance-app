@@ -45,6 +45,7 @@ vi.mock("next/cache", () => ({
 }));
 
 import { PUT as updateAllocation } from "@/app/api/budget/allocations/[allocationId]/route";
+import { POST as copyBudgetMonth } from "@/app/api/budget/months/copy/route";
 import { POST as exchangePublicToken } from "@/app/api/plaid/exchange/route";
 import {
   DELETE as disconnectPlaidItem,
@@ -620,6 +621,30 @@ describe("transaction category mutation isolation", () => {
 });
 
 describe("budget mutation isolation", () => {
+  it("does not copy a foreign household budget month", async () => {
+    await prisma.budgetMonth.create({
+      data: {
+        id: `${fixtureKey}-foreign-august`,
+        householdId: ids.householdB,
+        month: new Date("2026-08-01T00:00:00.000Z"),
+        income: "9000.00"
+      }
+    });
+    const response = await copyBudgetMonth(
+      jsonRequest("POST", {
+        sourceMonth: "2026-08",
+        targetMonth: "2026-09"
+      })
+    );
+
+    expect(response.status).toBe(404);
+    await expect(
+      prisma.budgetMonth.findUniqueOrThrow({
+        where: { id: `${fixtureKey}-foreign-august` }
+      })
+    ).resolves.toMatchObject({ householdId: ids.householdB });
+  });
+
   it("does not update a foreign household allocation", async () => {
     const response = await updateAllocation(
       jsonRequest("PUT", {
@@ -832,6 +857,7 @@ const coveredBoundaries = new Set([
   "DELETE src/app/api/transfers/[matchId]/route.ts",
   "PUT src/app/api/transactions/[transactionId]/category/route.ts",
   "PUT src/app/api/budget/allocations/[allocationId]/route.ts",
+  "POST src/app/api/budget/months/copy/route.ts",
   "ACTION src/features/accounts/actions.ts#archiveManualAccountAction",
   "ACTION src/features/accounts/actions.ts#createManualAccountAction",
   "ACTION src/features/accounts/actions.ts#linkPropertyDebtAction",

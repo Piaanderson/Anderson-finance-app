@@ -244,24 +244,82 @@
   display: flex;
   gap: 2px;
   overflow: hidden;
+  border: 1px solid var(--color-neutral-800);
   border-radius: var(--radius-md);
+  background: var(--color-bg);
 }
 
-.allocation > span {
-  min-width: 2px;
+.allocation-segment {
+  min-width: 0;
 }
 
-.allocation > span:nth-child(1) {
+.allocation-segment[data-section="Debt"] {
   background: var(--color-accent-600);
 }
-.allocation > span:nth-child(2) {
+
+.allocation-segment[data-section="Savings"] {
   background: var(--color-accent-700);
 }
-.allocation > span:nth-child(3) {
+
+.allocation-segment[data-section="Needs"] {
   background: var(--color-neutral-700);
 }
-.allocation > span:nth-child(4) {
+
+.allocation-segment[data-section="Flex"] {
   background: var(--color-neutral-800);
+}
+
+.allocation-segment[data-section="Unallocated"] {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--color-bg),
+    var(--color-bg) 4px,
+    var(--color-neutral-800) 4px,
+    var(--color-neutral-800) 6px
+  );
+}
+
+.budget-month-controls {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-2);
+}
+
+.month-navigation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.month-navigation > span {
+  min-width: 9rem;
+  text-align: center;
+}
+
+.budget-calculation-totals {
+  gap: var(--space-2);
+  display: grid;
+  margin: 0;
+}
+
+.budget-calculation-totals > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.budget-calculation-totals dd {
+  margin: 0;
+  color: var(--color-neutral-300);
+  text-align: right;
+}
+
+.budget-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .budget-row,
@@ -900,6 +958,33 @@
   .connection-card-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .budget-month-controls {
+    width: 100%;
+    justify-items: stretch;
+  }
+
+  .month-navigation {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    justify-content: stretch;
+  }
+
+  .month-navigation > span {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    text-align: left;
+  }
+
+  .budget-calculation-totals > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .budget-calculation-totals dd {
+    text-align: left;
   }
 
   .budget-row,

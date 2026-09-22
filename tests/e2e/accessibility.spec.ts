@@ -978,6 +978,308 @@ test("category review supports grouped keyboard assignment and optional merchant
   }
 });
 
+test("monthly budget reconciles real activity and copies the previous plan", async ({
+  page
+}, testInfo) => {
+  const fixture = `budget-${testInfo.project.name}-${randomUUID()}`;
+  const email = `${fixture}@example.test`;
+  const plaidRequests: string[] = [];
+  let householdId: string | null = null;
+  let userId: string | null = null;
+
+  page.on("request", (request) => {
+    if (/plaid\.(com|net)/i.test(new URL(request.url()).hostname)) {
+      plaidRequests.push(request.url());
+    }
+  });
+
+  try {
+    await page.goto("/sign-in");
+    await page.getByLabel("Development email").fill(email);
+    await page
+      .getByRole("button", { name: "Local development sign-in" })
+      .click();
+    await expect(page).toHaveURL(/\/accounts$/);
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    const membership = await prisma.householdMember.findFirstOrThrow({
+      where: { userId: user.id }
+    });
+    userId = user.id;
+    householdId = membership.householdId;
+    const checkingId = `${fixture}-checking`;
+    const cardId = `${fixture}-card`;
+    const savingsId = `${fixture}-savings`;
+    const needsId = `${fixture}-needs`;
+    const flexId = `${fixture}-flex`;
+    const debtId = `${fixture}-debt`;
+    const savingsCategoryId = `${fixture}-savings-category`;
+    const transferOutId = `${fixture}-transfer-out`;
+    const transferInId = `${fixture}-transfer-in`;
+    const savingsOutId = `${fixture}-savings-out`;
+    const savingsInId = `${fixture}-savings-in`;
+
+    await prisma.financialAccount.createMany({
+      data: [
+        {
+          id: checkingId,
+          householdId,
+          source: "MANUAL",
+          classification: "CASH",
+          name: "Budget checking",
+          currentBalance: "900.00",
+          isoCurrencyCode: "USD"
+        },
+        {
+          id: cardId,
+          householdId,
+          source: "MANUAL",
+          classification: "DEBT",
+          name: "Budget card",
+          mask: "4422",
+          currentBalance: "-750.00",
+          isoCurrencyCode: "USD"
+        },
+        {
+          id: savingsId,
+          householdId,
+          source: "MANUAL",
+          classification: "CASH",
+          name: "Vacation savings",
+          currentBalance: "500.00",
+          isoCurrencyCode: "USD"
+        }
+      ]
+    });
+    await prisma.category.createMany({
+      data: [
+        {
+          id: needsId,
+          householdId,
+          name: "Utilities",
+          section: "Needs"
+        },
+        {
+          id: flexId,
+          householdId,
+          name: "Dining",
+          section: "Flex"
+        },
+        {
+          id: savingsCategoryId,
+          householdId,
+          name: "Vacation",
+          section: "Savings"
+        },
+        {
+          id: debtId,
+          householdId,
+          name: "Card payment",
+          section: "Debt"
+        }
+      ]
+    });
+    await prisma.budgetMonth.create({
+      data: {
+        id: `${fixture}-september`,
+        householdId,
+        month: new Date("2026-09-01T00:00:00.000Z"),
+        income: "1000.00",
+        allocations: {
+          create: [
+            {
+              categoryId: debtId,
+              planned: "300.00",
+              destinationAccountId: cardId
+            },
+            {
+              categoryId: savingsCategoryId,
+              planned: "200.00",
+              destinationAccountId: savingsId
+            },
+            { categoryId: needsId, planned: "200.00" },
+            { categoryId: flexId, planned: "200.00" }
+          ]
+        }
+      }
+    });
+    await prisma.transaction.createMany({
+      data: [
+        {
+          id: `${fixture}-income`,
+          householdId,
+          accountId: checkingId,
+          plaidTransactionId: `${fixture}-plaid-income`,
+          name: "PAYROLL",
+          amount: "-1000.00",
+          isoCurrencyCode: "USD",
+          date: new Date("2026-09-02T00:00:00.000Z")
+        },
+        {
+          id: `${fixture}-needs-spend`,
+          householdId,
+          accountId: checkingId,
+          plaidTransactionId: `${fixture}-plaid-needs`,
+          name: "UTILITY",
+          amount: "100.00",
+          isoCurrencyCode: "USD",
+          categoryId: needsId,
+          date: new Date("2026-09-03T00:00:00.000Z")
+        },
+        {
+          id: `${fixture}-flex-spend`,
+          householdId,
+          accountId: checkingId,
+          plaidTransactionId: `${fixture}-plaid-flex`,
+          name: "DINING",
+          amount: "220.00",
+          isoCurrencyCode: "USD",
+          categoryId: flexId,
+          date: new Date("2026-09-04T00:00:00.000Z")
+        },
+        {
+          id: transferOutId,
+          householdId,
+          accountId: checkingId,
+          plaidTransactionId: `${fixture}-plaid-transfer-out`,
+          name: "CARD PAYMENT",
+          amount: "250.00",
+          isoCurrencyCode: "USD",
+          date: new Date("2026-09-05T00:00:00.000Z")
+        },
+        {
+          id: transferInId,
+          householdId,
+          accountId: cardId,
+          plaidTransactionId: `${fixture}-plaid-transfer-in`,
+          name: "PAYMENT RECEIVED",
+          amount: "-250.00",
+          isoCurrencyCode: "USD",
+          date: new Date("2026-09-06T00:00:00.000Z")
+        },
+        {
+          id: savingsOutId,
+          householdId,
+          accountId: checkingId,
+          plaidTransactionId: `${fixture}-plaid-savings-out`,
+          name: "SAVINGS TRANSFER",
+          amount: "100.00",
+          isoCurrencyCode: "USD",
+          date: new Date("2026-09-07T00:00:00.000Z")
+        },
+        {
+          id: savingsInId,
+          householdId,
+          accountId: savingsId,
+          plaidTransactionId: `${fixture}-plaid-savings-in`,
+          name: "SAVINGS DEPOSIT",
+          amount: "-100.00",
+          isoCurrencyCode: "USD",
+          date: new Date("2026-09-08T00:00:00.000Z")
+        }
+      ]
+    });
+    await prisma.transferMatch.createMany({
+      data: [
+        {
+          id: `${fixture}-card-match`,
+          householdId,
+          outgoingTransactionId: transferOutId,
+          incomingTransactionId: transferInId
+        },
+        {
+          id: `${fixture}-savings-match`,
+          householdId,
+          outgoingTransactionId: savingsOutId,
+          incomingTransactionId: savingsInId
+        }
+      ]
+    });
+
+    await page.goto("/budget?month=2026-09");
+    await expect(
+      page.getByRole("heading", {
+        level: 2,
+        name: "September 2026 plan"
+      })
+    ).toBeVisible();
+    await expect(
+      page.getByText("Received from unmatched USD inflows: $1,000.00")
+    ).toBeVisible();
+    await expect(
+      page.locator(".page-header").getByText("$100.00", { exact: true })
+    ).toBeVisible();
+    const totals = page.locator(".budget-calculation-totals");
+    await expect(totals.getByText("$250.00 moved · $50.00 due")).toBeVisible();
+    await expect(totals.getByText("$100.00 moved · $100.00 due")).toBeVisible();
+    await expect(totals.getByText("$100.00 paid · $100.00 due")).toBeVisible();
+    await expect(totals.getByText("$220.00 spent · $20.00 over")).toBeVisible();
+    await expect(
+      page.getByRole("img", { name: /Income plan 1000 dollars/ })
+    ).toBeVisible();
+
+    const nextMonth = page.getByRole("link", {
+      name: "Next month, October 2026"
+    });
+    expect((await nextMonth.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+    await nextMonth.focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/month=2026-10/);
+    await expect(
+      page.getByRole("heading", { name: "No plan for October 2026" })
+    ).toBeVisible();
+
+    const copy = page.getByRole("button", {
+      name: "Copy September 2026 plan"
+    });
+    expect((await copy.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+    await copy.focus();
+    await page.keyboard.press("Space");
+    await expect(
+      page.getByRole("status").filter({ hasText: "October 2026 budget copied" })
+    ).toBeAttached();
+    await expect(
+      page.getByRole("heading", {
+        level: 2,
+        name: "October 2026 plan"
+      })
+    ).toBeVisible();
+    await expect(page.locator("#budget-summary-title")).toBeFocused();
+    await expect(
+      prisma.budgetAllocation.count({
+        where: {
+          budgetMonth: {
+            householdId,
+            month: new Date("2026-10-01T00:00:00.000Z")
+          }
+        }
+      })
+    ).resolves.toBe(4);
+
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { name: "October 2026 plan" })
+    ).toBeVisible();
+    const viewport = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      innerWidth: window.innerWidth
+    }));
+    expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.innerWidth);
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(results.violations).toEqual([]);
+    expect(plaidRequests).toEqual([]);
+  } finally {
+    if (householdId) {
+      await prisma.household.deleteMany({ where: { id: householdId } });
+    }
+    if (userId) {
+      await prisma.user.deleteMany({ where: { id: userId } });
+    }
+  }
+});
+
 test("a local owner can add and use a passkey and recovery code", async ({
   page
 }, testInfo) => {

@@ -156,6 +156,17 @@ normalized exact match can set the category; no fuzzy or substring matching is
 performed. Manual transaction-only assignments survive later synchronization
 unless an explicit active merchant rule applies.
 
+## Budget consumption
+
+Monthly budgets consume this movement model rather than querying raw
+transactions independently. Transfer movements remain excluded from spending,
+but their incoming USD leg can satisfy a Savings or Debt allocation when its
+account is the allocation's explicit destination. Needs and Flex consume
+categorized transaction activity; categorized inflows offset that activity as
+refunds. Uncategorized inflows are observed income, and uncategorized outflows
+are surfaced as unassigned spending. Full formulas, currency policy, shared
+destination behavior, and copy invariants are in `docs/BUDGET_MODEL.md`.
+
 ## Bank fields and balance movement
 
 Synchronization requests Plaid's optional original description and persists
