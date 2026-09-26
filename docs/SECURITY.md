@@ -97,6 +97,16 @@ concurrent copy attempts with a stable conflict response. The mutation
 isolation guard and dedicated copy integration suite cover the real Route
 Handler.
 
+Budget editing uses the same boundary. `PUT /api/budget/months/:budgetMonthId`
+and `PUT /api/budget/allocations/:allocationId` derive the household from the
+authenticated membership and return `404` for a foreign record. Amounts cross
+the boundary as validated decimal strings so no client floating-point value is
+authoritative. Both routes require the record's prior `updatedAt` revision and
+return `BUDGET_EDIT_CONFLICT` with `409` when a concurrent edit wins.
+Allocation destinations must be active, unarchived USD accounts in the same
+household; foreign account IDs remain non-enumerating `404` responses. The
+two-household boundary suite exercises both edit routes directly.
+
 ## Plaid
 
 - Use Link tokens and exchange public tokens only on the server.

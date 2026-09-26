@@ -1010,6 +1010,8 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
     const checkingId = `${fixture}-checking`;
     const cardId = `${fixture}-card`;
     const savingsId = `${fixture}-savings`;
+    const propertyId = `${fixture}-property`;
+    const mortgageId = `${fixture}-mortgage`;
     const needsId = `${fixture}-needs`;
     const flexId = `${fixture}-flex`;
     const debtId = `${fixture}-debt`;
@@ -1048,15 +1050,41 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
           name: "Vacation savings",
           currentBalance: "500.00",
           isoCurrencyCode: "USD"
+        },
+        {
+          id: propertyId,
+          householdId,
+          source: "MANUAL",
+          classification: "PROPERTY",
+          name: "Budget home",
+          currentBalance: "412000.00",
+          isoCurrencyCode: "USD"
+        },
+        {
+          id: mortgageId,
+          householdId,
+          source: "MANUAL",
+          classification: "DEBT",
+          name: "Budget mortgage",
+          currentBalance: "-287400.00",
+          isoCurrencyCode: "USD"
         }
       ]
+    });
+    await prisma.propertyDebtLink.create({
+      data: {
+        id: `${fixture}-property-link`,
+        householdId,
+        propertyAccountId: propertyId,
+        debtAccountId: mortgageId
+      }
     });
     await prisma.category.createMany({
       data: [
         {
           id: needsId,
           householdId,
-          name: "Utilities",
+          name: "Mortgage",
           section: "Needs"
         },
         {
@@ -1097,8 +1125,16 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
               planned: "200.00",
               destinationAccountId: savingsId
             },
-            { categoryId: needsId, planned: "200.00" },
-            { categoryId: flexId, planned: "200.00" }
+            {
+              categoryId: needsId,
+              planned: "200.00",
+              destinationAccountId: mortgageId
+            },
+            {
+              categoryId: flexId,
+              planned: "200.00",
+              destinationAccountId: checkingId
+            }
           ]
         }
       }
@@ -1200,16 +1236,18 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
     await expect(
       page.getByRole("heading", {
         level: 2,
-        name: "September 2026 plan"
+        name: "September 2026"
       })
     ).toBeVisible();
     await expect(
-      page.getByText("Received from unmatched USD inflows: $1,000.00")
+      page
+        .locator(".budget-summary-heading")
+        .getByText(/observed income \$1,000\.00/i)
     ).toBeVisible();
     await expect(
-      page.locator(".page-header").getByText("$100.00", { exact: true })
+      page.locator(".budget-left").getByText("$100.00", { exact: true })
     ).toBeVisible();
-    const totals = page.locator(".budget-calculation-totals");
+    const totals = page.locator(".where-it-goes");
     await expect(totals.getByText("$250.00 moved · $50.00 due")).toBeVisible();
     await expect(totals.getByText("$100.00 moved · $100.00 due")).toBeVisible();
     await expect(totals.getByText("$100.00 paid · $100.00 due")).toBeVisible();
@@ -1217,6 +1255,122 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
     await expect(
       page.getByRole("img", { name: /Income plan 1000 dollars/ })
     ).toBeVisible();
+    const mortgageSection = page.getByRole("region", { name: "Needs" });
+    await expect(
+      mortgageSection.getByText("Mortgage owed −$287,400.00")
+    ).toBeVisible();
+    await expect(
+      mortgageSection.getByText("Budget home value $412,000.00")
+    ).toBeVisible();
+
+    const incomeInput = page.getByRole("textbox", {
+      name: "Income plan",
+      exact: true
+    });
+    await incomeInput.fill("1.001");
+    await page.getByRole("button", { name: "Save income" }).click();
+    await expect(
+      page.locator(".budget-income-form").getByRole("alert")
+    ).toContainText("no more than two decimal places");
+    await expect(incomeInput).toHaveAttribute("aria-invalid", "true");
+    await expect(incomeInput).toBeFocused();
+    await incomeInput.fill("1100.00");
+    await page.keyboard.press("Enter");
+    await expect(
+      page.getByRole("status").filter({ hasText: "Income plan saved" })
+    ).toBeAttached();
+    await expect(incomeInput).toBeFocused();
+    await expect(
+      page.locator(".budget-left").getByText("$200.00", { exact: true })
+    ).toBeVisible();
+
+    const flexSection = page.getByRole("region", { name: "Flex" });
+    const diningPlan = flexSection.getByLabel("Planned USD");
+    await diningPlan.fill("250.00");
+    await flexSection
+      .getByLabel("Destination account")
+      .selectOption({ label: "Budget card · 4422" });
+    await expect(
+      flexSection.getByText(/already used by another allocation/)
+    ).toBeVisible();
+    const saveDining = flexSection.getByRole("button", { name: "Save Dining" });
+    expect((await saveDining.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+    await saveDining.focus();
+    await page.keyboard.press("Enter");
+    await expect(
+      flexSection
+        .getByRole("status")
+        .filter({ hasText: "Dining allocation saved" })
+    ).toBeAttached();
+    await expect(saveDining).toBeFocused();
+    await expect(
+      flexSection.getByText("$220.00 spent", { exact: true })
+    ).toBeVisible();
+    await expect(
+      flexSection
+        .locator(".budget-paired-form")
+        .getByText("$30.00 left", { exact: true })
+    ).toBeVisible();
+    await expect(
+      page.locator(".budget-left").getByText("$150.00", { exact: true })
+    ).toBeVisible();
+    await expect(
+      prisma.budgetMonth.findUniqueOrThrow({
+        where: {
+          householdId_month: {
+            householdId,
+            month: new Date("2026-09-01T00:00:00.000Z")
+          }
+        }
+      })
+    ).resolves.toMatchObject({ income: expect.anything() });
+    const savedSeptember = await prisma.budgetMonth.findUniqueOrThrow({
+      where: {
+        householdId_month: {
+          householdId,
+          month: new Date("2026-09-01T00:00:00.000Z")
+        }
+      },
+      include: { allocations: true }
+    });
+    expect(savedSeptember.income.toFixed(2)).toBe("1100.00");
+    expect(
+      savedSeptember.allocations
+        .find((allocation) => allocation.categoryId === flexId)
+        ?.planned.toFixed(2)
+    ).toBe("250.00");
+    expect(
+      savedSeptember.allocations.find(
+        (allocation) => allocation.categoryId === flexId
+      )?.destinationAccountId
+    ).toBe(cardId);
+
+    const firstPairedForm = page.locator(".budget-paired-form").first();
+    const plannedCell = await firstPairedForm
+      .locator(".budget-plan-cell")
+      .boundingBox();
+    const destinationCell = await firstPairedForm
+      .locator(".budget-destination-cell")
+      .boundingBox();
+    if (testInfo.project.name === "mobile") {
+      expect((destinationCell?.y ?? 0) > (plannedCell?.y ?? 0)).toBe(true);
+    } else {
+      expect(
+        Math.abs((destinationCell?.y ?? 0) - (plannedCell?.y ?? 0))
+      ).toBeLessThan(16);
+    }
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await diningPlan.fill("251.00");
+    const reducedDurationSeconds = await flexSection
+      .locator(".budget-wire span")
+      .evaluate((element) => {
+        const duration = getComputedStyle(element).animationDuration;
+        return duration.endsWith("ms")
+          ? Number.parseFloat(duration) / 1000
+          : Number.parseFloat(duration);
+      });
+    expect(reducedDurationSeconds).toBeLessThanOrEqual(0.00001);
 
     const nextMonth = page.getByRole("link", {
       name: "Next month, October 2026"
@@ -1241,7 +1395,7 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
     await expect(
       page.getByRole("heading", {
         level: 2,
-        name: "October 2026 plan"
+        name: "October 2026"
       })
     ).toBeVisible();
     await expect(page.locator("#budget-summary-title")).toBeFocused();
@@ -1258,8 +1412,14 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
 
     await page.reload();
     await expect(
-      page.getByRole("heading", { name: "October 2026 plan" })
+      page.getByRole("heading", { name: "October 2026" })
     ).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: "Income plan", exact: true })
+    ).toHaveValue("1100.00");
+    await expect(
+      page.getByRole("region", { name: "Flex" }).getByLabel("Planned USD")
+    ).toHaveValue("250.00");
     const viewport = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
       innerWidth: window.innerWidth

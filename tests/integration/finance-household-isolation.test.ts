@@ -45,6 +45,7 @@ vi.mock("next/cache", () => ({
 }));
 
 import { PUT as updateAllocation } from "@/app/api/budget/allocations/[allocationId]/route";
+import { PUT as updateBudgetIncome } from "@/app/api/budget/months/[budgetMonthId]/route";
 import { POST as copyBudgetMonth } from "@/app/api/budget/months/copy/route";
 import { POST as exchangePublicToken } from "@/app/api/plaid/exchange/route";
 import {
@@ -646,10 +647,15 @@ describe("budget mutation isolation", () => {
   });
 
   it("does not update a foreign household allocation", async () => {
+    const foreignAllocation = await prisma.budgetAllocation.findUniqueOrThrow({
+      where: { id: ids.allocationB },
+      select: { updatedAt: true }
+    });
     const response = await updateAllocation(
       jsonRequest("PUT", {
-        planned: 999,
-        destinationAccountId: ids.accountA
+        planned: "999.00",
+        destinationAccountId: ids.accountA,
+        expectedUpdatedAt: foreignAllocation.updatedAt.toISOString()
       }),
       routeContext("allocationId", ids.allocationB)
     );
@@ -668,11 +674,36 @@ describe("budget mutation isolation", () => {
     expect(allocation.planned.toString()).toBe("600");
   });
 
+  it("does not update a foreign household income plan", async () => {
+    const foreignMonth = await prisma.budgetMonth.findUniqueOrThrow({
+      where: { id: ids.monthB },
+      select: { updatedAt: true }
+    });
+    const response = await updateBudgetIncome(
+      jsonRequest("PUT", {
+        income: "9999.99",
+        expectedUpdatedAt: foreignMonth.updatedAt.toISOString()
+      }),
+      routeContext("budgetMonthId", ids.monthB)
+    );
+
+    expect(response.status).toBe(404);
+    const month = await prisma.budgetMonth.findUniqueOrThrow({
+      where: { id: ids.monthB }
+    });
+    expect(month.income.toFixed(2)).toBe("8240.00");
+  });
+
   it("does not assign a foreign household destination account", async () => {
+    const ownAllocation = await prisma.budgetAllocation.findUniqueOrThrow({
+      where: { id: ids.allocationA },
+      select: { updatedAt: true }
+    });
     const response = await updateAllocation(
       jsonRequest("PUT", {
-        planned: 999,
-        destinationAccountId: ids.accountB
+        planned: "999.00",
+        destinationAccountId: ids.accountB,
+        expectedUpdatedAt: ownAllocation.updatedAt.toISOString()
       }),
       routeContext("allocationId", ids.allocationA)
     );
@@ -857,6 +888,7 @@ const coveredBoundaries = new Set([
   "DELETE src/app/api/transfers/[matchId]/route.ts",
   "PUT src/app/api/transactions/[transactionId]/category/route.ts",
   "PUT src/app/api/budget/allocations/[allocationId]/route.ts",
+  "PUT src/app/api/budget/months/[budgetMonthId]/route.ts",
   "POST src/app/api/budget/months/copy/route.ts",
   "ACTION src/features/accounts/actions.ts#archiveManualAccountAction",
   "ACTION src/features/accounts/actions.ts#createManualAccountAction",

@@ -5,7 +5,7 @@ Last updated: 2026-09-21
 ## Current status
 
 - Release target: secure, polished private-household v1
-- Current phase: Phase 1 — Plaid reliability and authorization
+- Current phase: Phase 4 — Real monthly budgeting
 - Roadmap issue:
   [#1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/1)
 - Milestone:
@@ -13,8 +13,9 @@ Last updated: 2026-09-21
 - Board:
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
-- Next action: execute
-  [#10 Build category assignment and merchant-rule review](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/10).
+- Next action: finish verification for
+  [#12 Build the approved Budget 3a experience](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/12),
+  then await explicit commit and push approval.
 
 ## Product finish line
 
@@ -189,15 +190,15 @@ Goal: implement the approved Budget 3a composite using household data.
 - [x] Add dynamic month navigation and remove hardcoded scenario dates from
       logic.
 - [x] Calculate income with a documented manual-adjustment path.
-- [ ] Add editable allocations with accessible validation.
+- [x] Add editable allocations with accessible validation.
 - [x] Support copying the previous month into a new draft.
-- [ ] Implement the 2c header, allocation bar, “Where it goes,” and moved/due
+- [x] Implement the 2c header, allocation bar, “Where it goes,” and moved/due
       stats.
-- [ ] Implement paired planned-to-destination rows for every section.
-- [ ] Implement structured Flex rows with planned, spent, remaining, and over.
+- [x] Implement paired planned-to-destination rows for every section.
+- [x] Implement structured Flex rows with planned, spent, remaining, and over.
 - [x] Exclude transfers from spending.
 - [x] Connect savings and debt movements to destination accounts.
-- [ ] Show mortgage owed and home-value context in Needs.
+- [x] Show mortgage owed and home-value context in Needs.
 
 Exit evidence:
 
@@ -1158,9 +1159,69 @@ Remaining risks:
 - Sharing one destination across categories is supported deterministically,
   but the issue #12 editor should clearly warn when a destination is reused.
 
+### Issue #12 Budget 3a experience evidence — 2026-09-25
+
+Implementation:
+
+- Replaced the foundation-only budget surface with the approved 3a composite:
+  the 2c month/income/pace/left-to-budget header, allocation bar beside “Where
+  it goes,” 2a planned-to-destination rows in every section, and structured
+  Flex progress with planned, spent, left, and over states.
+- Added household-scoped income and allocation editing. Amounts cross Route
+  Handler boundaries as decimal strings, normalize to exact minor units, and
+  persist through Prisma Decimal. The server rejects negative, oversized,
+  fractional-cent, malformed, inactive, archived, non-USD, and foreign values
+  without accepting a household ID.
+- Added optimistic revision checks for both edit boundaries. Stale
+  `updatedAt` values return stable `BUDGET_EDIT_CONFLICT` responses instead of
+  overwriting a concurrent edit.
+- Destination reuse is visible before save and returned by the server after
+  save. Reused accounts continue to consume one matched-transfer pool in
+  deterministic budget order, so movements are never duplicated.
+- Needs rows whose destination is a linked debt account show current amount
+  owed and linked home value. Any future position is explicitly labelled
+  “after remaining plan”; no transaction-aligned historical balance is
+  fabricated.
+- Forms use native labelled inputs, selects, and buttons; associated
+  `aria-invalid` errors, alert/status regions, keyboard submission, restored
+  focus, 44px controls, text status, responsive paired-row stacking, and
+  reduced-motion overrides. The production prototype remained unchanged.
+
+Verification:
+
+- Targeted budget calculation/editing and two-household boundary suites — 3
+  files and 34 tests passed.
+- Focused Budget desktop/mobile Playwright flow — 2 tests passed, including
+  exact edit persistence, invalid-field focus and announcement, destination
+  reuse, mortgage context, keyboard save and focus restoration, paired layout
+  behavior, responsive overflow, reduced motion, 44px targets, and axe WCAG
+  2.1 AA scans.
+- `npm test` — 25 files and 154 tests passed.
+- `npm run typecheck`, `npm run lint`, and `npm run format:check` passed.
+- `npx prisma validate` and `npx prisma migrate status` passed; all seven
+  migrations are applied and no issue #12 migration was required.
+- `npm run build` passed with Next.js 16.3.5.
+- `npm run test:e2e` — 17 desktop/mobile tests passed and the mobile duplicate
+  of the Chromium-only passkey case was skipped as expected.
+- `git diff --check` and edited-file IDE diagnostics passed with no findings.
+
+Remaining risks:
+
+- Budgets intentionally remain USD-only for private v1. Other currencies stay
+  visible in the movement ledger and are excluded from budget arithmetic and
+  destination choices.
+- Current account positions are not transaction-aligned historical balances.
+  The UI labels them as current and labels the simple remaining-plan
+  projection; it does not claim a sourced post-transaction balance.
+- Shared destinations are supported and clearly warned, but allocation
+  reordering remains category-maintenance work rather than an implicit budget
+  editor behavior.
+
 ## Next handoff
 
-Begin
-[#12 Build the approved Budget 3a experience](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/12).
-Keep roadmap issue #1 and the full Currents goal open; the private v1
-application is not complete.
+Issue
+[#12 Build the approved Budget 3a experience](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/12)
+is complete and verified locally. Await explicit approval before committing or
+pushing. Stop after issue #12; do not inspect or begin issue #13. Keep roadmap
+issue #1 and the full Currents goal open because the private v1 application is
+not complete.

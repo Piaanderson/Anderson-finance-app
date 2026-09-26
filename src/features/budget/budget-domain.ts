@@ -45,6 +45,8 @@ export type BudgetCalculation = {
   sections: BudgetSectionCalculation[];
 };
 
+const MAX_BUDGET_MINOR_UNITS = 1_000_000_000n;
+
 function minorUnits(value: string) {
   const match = /^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(value);
   if (!match) throw new Error(`Invalid fixed-point budget amount: ${value}`);
@@ -59,6 +61,14 @@ function decimalAmount(value: bigint) {
   return `${sign}${magnitude / 100n}.${(magnitude % 100n)
     .toString()
     .padStart(2, "0")}`;
+}
+
+export function normalizeBudgetAmount(value: string) {
+  const normalized = value.trim();
+  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return null;
+  const amount = minorUnits(normalized);
+  if (amount > MAX_BUDGET_MINOR_UNITS) return null;
+  return decimalAmount(amount);
 }
 
 function currencyIsUsd({

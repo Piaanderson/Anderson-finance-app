@@ -33,6 +33,27 @@ Currents v1 budgets are USD plans. Non-USD, unofficial-currency, and
 unknown-currency movements remain in the ledger but are excluded from USD
 budget arithmetic.
 
+## Editing and conflicts
+
+Income and allocation edits send decimal strings, not JavaScript numbers.
+Server validation accepts non-negative USD amounts through $10,000,000 with no
+more than two decimal places, normalizes them to two decimals, and persists the
+string through Prisma Decimal. The client never performs authoritative budget
+arithmetic.
+
+Every edit includes the record's `updatedAt` revision. The household-scoped
+update applies only when that revision still matches; a stale edit receives a
+stable `BUDGET_EDIT_CONFLICT` response and must reload before retrying. Income
+updates scope the `BudgetMonth` directly to the authenticated household.
+Allocation updates first scope the allocation through its household-owned
+month, then allow only an active, unarchived USD destination from that same
+household. Clients never send a household ID.
+
+A destination may be shared, but both the editor and successful mutation warn
+when another allocation already uses it. Sharing does not duplicate movement:
+the account's matched incoming transfer pool is still consumed once in stable
+budget order.
+
 ## Spending, refunds, and transfers
 
 Needs and Flex activity comes from categorized transaction movements:
@@ -59,6 +80,14 @@ For each row:
 The section totals are sums of the displayed rows, so the allocation bar,
 Where it goes summary, section headings, and row statuses reconcile to the same
 calculation.
+
+Every production row pairs its editable plan with an explicit destination
+selector and current account context. Flex additionally shows planned, spent,
+and left or over with a progress graphic. When a Needs destination is a linked
+debt account, the row shows the debt's amount owed and the linked property's
+current value. These are current account positions, not transaction-aligned
+historical balances; any projection is labelled as the result after the
+remaining plan.
 
 ## Copying the previous month
 

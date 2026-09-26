@@ -8,6 +8,7 @@ import type {
 import {
   budgetMonthKey,
   calculateBudget,
+  normalizeBudgetAmount,
   parseBudgetMonthKey,
   shiftBudgetMonth,
   type BudgetCalculationAllocation
@@ -349,5 +350,17 @@ describe("budget month identity", () => {
     expect(budgetMonthKey(shiftBudgetMonth(september!, 1))).toBe("2026-10");
     expect(parseBudgetMonthKey("2026-13")).toBeNull();
     expect(parseBudgetMonthKey("26-09")).toBeNull();
+  });
+});
+
+describe("budget edit amounts", () => {
+  it("normalizes exact USD minor units without floating-point arithmetic", () => {
+    expect(normalizeBudgetAmount(" 8240 ")).toBe("8240.00");
+    expect(normalizeBudgetAmount("0.1")).toBe("0.10");
+    expect(normalizeBudgetAmount("10000000.00")).toBe("10000000.00");
+    expect(normalizeBudgetAmount("-1")).toBeNull();
+    expect(normalizeBudgetAmount("1.001")).toBeNull();
+    expect(normalizeBudgetAmount("10000000.01")).toBeNull();
+    expect(normalizeBudgetAmount("1e3")).toBeNull();
   });
 });
