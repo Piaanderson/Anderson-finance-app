@@ -1299,6 +1299,6 @@ Remaining risks:
 
 Issue
 [#13 Complete grouped Accounts and net-worth experience](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/13)
-is complete and verified locally. Await explicit approval before committing or
-pushing. Keep roadmap issue #1 and the full Currents goal open because the
-private v1 application is not complete.
+is complete, verified, and pushed in commit `789e6c3`. Keep roadmap issue #1
+and the full Currents goal open because the private v1 application is not
+complete.
