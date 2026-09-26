@@ -34,9 +34,9 @@ describe("household position summary", () => {
       }
     ]);
 
-    expect(summary.totals).toEqual([{ currency: "USD", amount: 101250 }]);
+    expect(summary.totals).toEqual([{ currency: "USD", amount: "101250.00" }]);
     expect(summary.totalsByClassification.DEBT).toEqual([
-      { currency: "USD", amount: -205000 }
+      { currency: "USD", amount: "-205000.00" }
     ]);
     expect(summary.isComplete).toBe(true);
   });
@@ -67,8 +67,8 @@ describe("household position summary", () => {
     ]);
 
     expect(summary.totals).toEqual([
-      { currency: "CAD", amount: 100 },
-      { currency: "USD", amount: 100 }
+      { currency: "CAD", amount: "100.00" },
+      { currency: "USD", amount: "100.00" }
     ]);
     expect(summary.accountCount).toBe(2);
   });

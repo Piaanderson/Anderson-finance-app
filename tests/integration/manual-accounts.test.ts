@@ -112,8 +112,8 @@ describe("manual account valuations", () => {
 
     const summary = await getHouseholdPositionSummary(householdId);
     expect(summary.totals).toEqual([
-      { currency: "CAD", amount: 100 },
-      { currency: "USD", amount: 100 }
+      { currency: "CAD", amount: "100.00" },
+      { currency: "USD", amount: "100.00" }
     ]);
   });
 });
@@ -157,7 +157,7 @@ describe("property and debt relationships", () => {
     ).rejects.toThrow(ManualAccountError);
 
     const summary = await getHouseholdPositionSummary(householdA);
-    expect(summary.totals).toEqual([{ currency: "USD", amount: 150000 }]);
+    expect(summary.totals).toEqual([{ currency: "USD", amount: "150000.00" }]);
     await expect(unlinkPropertyDebt(householdB, link.id)).rejects.toThrow(
       ManualAccountError
     );

@@ -57,6 +57,7 @@ import { DELETE as untieTransfer } from "@/app/api/transfers/[matchId]/route";
 import { POST as tieTransfer } from "@/app/api/transfers/route";
 import {
   archiveManualAccountAction,
+  classifyPlaidAccountAction,
   createManualAccountAction,
   linkPropertyDebtAction,
   unlinkPropertyDebtAction,
@@ -78,6 +79,8 @@ const ids = {
   plaidItemB: `${fixtureKey}-plaid-b`,
   accountA: `${fixtureKey}-account-a`,
   accountB: `${fixtureKey}-account-b`,
+  unclassifiedA: `${fixtureKey}-unclassified-a`,
+  unclassifiedB: `${fixtureKey}-unclassified-b`,
   propertyA: `${fixtureKey}-property-a`,
   propertyB: `${fixtureKey}-property-b`,
   debtA: `${fixtureKey}-debt-a`,
@@ -189,6 +192,26 @@ async function createFixtures() {
         classification: "CASH",
         name: "Household B checking",
         type: "depository"
+      },
+      {
+        id: ids.unclassifiedA,
+        householdId: ids.householdA,
+        plaidItemId: ids.itemA,
+        plaidAccountId: `${fixtureKey}-unclassified-plaid-account-a`,
+        source: "PLAID",
+        classification: "UNCLASSIFIED",
+        name: "Household A unknown account",
+        type: "other"
+      },
+      {
+        id: ids.unclassifiedB,
+        householdId: ids.householdB,
+        plaidItemId: ids.itemB,
+        plaidAccountId: `${fixtureKey}-unclassified-plaid-account-b`,
+        source: "PLAID",
+        classification: "UNCLASSIFIED",
+        name: "Household B unknown account",
+        type: "other"
       },
       {
         id: ids.propertyA,
@@ -718,6 +741,40 @@ describe("budget mutation isolation", () => {
 });
 
 describe("finance Server Action isolation", () => {
+  it("persists an owned connected-account classification and rejects a foreign account", async () => {
+    const own = await classifyPlaidAccountAction(
+      {},
+      manualAccountForm({
+        accountId: ids.unclassifiedA,
+        classification: "INVESTED",
+        householdId: ids.householdB
+      })
+    );
+    const foreign = await classifyPlaidAccountAction(
+      {},
+      manualAccountForm({
+        accountId: ids.unclassifiedB,
+        classification: "DEBT"
+      })
+    );
+
+    expect(own).toEqual({
+      success:
+        "The connected account was classified. Updating account groups now."
+    });
+    expect(foreign).toEqual({ error: "Connected account not found." });
+    await expect(
+      prisma.financialAccount.findUniqueOrThrow({
+        where: { id: ids.unclassifiedA }
+      })
+    ).resolves.toMatchObject({ classification: "INVESTED" });
+    await expect(
+      prisma.financialAccount.findUniqueOrThrow({
+        where: { id: ids.unclassifiedB }
+      })
+    ).resolves.toMatchObject({ classification: "UNCLASSIFIED" });
+  });
+
   it("creates a manual account and snapshot only in the authenticated household", async () => {
     const name = `Manual cash ${fixtureKey.slice(-12)}`;
     const result = await createManualAccountAction(
@@ -744,7 +801,7 @@ describe("finance Server Action isolation", () => {
     ).resolves.toMatchObject({ householdId: ids.householdA });
   });
 
-  it("rejects invalid currency and negative user-facing debt entry", async () => {
+  it("rejects invalid currency, fractional cents, and negative user-facing debt entry", async () => {
     const invalidCurrency = await createManualAccountAction(
       {},
       manualAccountForm({
@@ -759,6 +816,24 @@ describe("finance Server Action isolation", () => {
       error: "Check the highlighted fields.",
       fieldErrors: {
         isoCurrencyCode: "Use a recognized ISO currency code."
+      }
+    });
+
+    const fractionalCents = await createManualAccountAction(
+      {},
+      manualAccountForm({
+        name: "Fractional cents",
+        classification: "CASH",
+        entryBalance: "1.001",
+        isoCurrencyCode: "USD",
+        effectiveDate: "2026-09-12"
+      })
+    );
+    expect(fractionalCents).toMatchObject({
+      error: "Check the highlighted fields.",
+      fieldErrors: {
+        entryBalance:
+          "Enter a valid balance with no more than two decimal places."
       }
     });
 
@@ -891,6 +966,7 @@ const coveredBoundaries = new Set([
   "PUT src/app/api/budget/months/[budgetMonthId]/route.ts",
   "POST src/app/api/budget/months/copy/route.ts",
   "ACTION src/features/accounts/actions.ts#archiveManualAccountAction",
+  "ACTION src/features/accounts/actions.ts#classifyPlaidAccountAction",
   "ACTION src/features/accounts/actions.ts#createManualAccountAction",
   "ACTION src/features/accounts/actions.ts#linkPropertyDebtAction",
   "ACTION src/features/accounts/actions.ts#unlinkPropertyDebtAction",

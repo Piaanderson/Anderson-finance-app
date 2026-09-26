@@ -75,7 +75,12 @@ async function upsertAccounts(
       for (const account of accountChunk) {
         const existing = await tx.financialAccount.findUnique({
           where: { plaidAccountId: account.account_id },
-          select: { id: true, householdId: true, plaidItemId: true }
+          select: {
+            id: true,
+            householdId: true,
+            plaidItemId: true,
+            classification: true
+          }
         });
         if (
           existing &&
@@ -93,7 +98,12 @@ async function upsertAccounts(
         const isoCurrencyCode = account.balances.iso_currency_code ?? null;
         const data = {
           source: "PLAID" as const,
-          classification,
+          classification:
+            classification === "UNCLASSIFIED" &&
+            existing &&
+            existing.classification !== "UNCLASSIFIED"
+              ? existing.classification
+              : classification,
           name: account.name,
           officialName: account.official_name,
           mask: account.mask,

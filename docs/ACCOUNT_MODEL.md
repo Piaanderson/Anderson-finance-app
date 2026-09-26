@@ -63,6 +63,33 @@ cash-flow arithmetic are defined in `docs/MOVEMENT_MODEL.md`.
 - A known balance with unknown currency, or an unknown balance, makes the
   summary explicitly partial instead of treating the value as zero.
 
+Account and net-worth arithmetic sums `Prisma.Decimal` values and serializes
+fixed two-decimal strings. Client floating-point values are never
+authoritative for a subtotal, net-worth total, equity value, or manual
+valuation write.
+
+## Accounts presentation and reconciliation
+
+The production Accounts read keeps the four product groups in this order:
+Cash, Invested, Property, and Debt. Each subtotal is the exact sum of active,
+known signed positions in that classification and currency. Property shows its
+full sourced value and Debt includes linked mortgages, so the four source
+subtotals add directly to net worth without replacing either record with
+equity.
+
+`UNCLASSIFIED` Plaid accounts appear in a separate review-needed section. A
+known signed position still contributes to net worth and is shown as an
+unclassified adjustment in the reconciliation proof; it is never hidden or
+forced into a four-group subtotal. The household can assign one of the four
+classifications. When Plaid continues to return an unknown provider type, a
+saved classification is retained on later syncs. A later recognized provider
+type remains authoritative.
+
+Missing balances and currencies make the affected subtotal and net worth
+partial. Unlike currencies produce separate subtotals and net-worth totals.
+The reconciliation proof is shown only when every active position has a known
+balance and ISO currency.
+
 ## Position snapshots
 
 `AccountPositionSnapshot` is the append-safe history of observed signed
@@ -87,6 +114,16 @@ positions for Plaid and manual accounts.
 - History queries return only actual observations in the requested period.
   They do not invent empty months or reconstruct unobserved balances.
 
+The “Net worth, last 8 months” view derives a point only at a real
+`AccountPositionSnapshot.effectiveAt` observation. It may carry forward an
+earlier real observation as the latest known position, but it does not create
+monthly points, interpolate, or reconstruct balances from transactions. A
+point is emitted only after every currently active account has a known
+single-currency observation. The chart requires at least two complete points
+in one currency; otherwise it explains why history is unavailable. This
+strict policy means newly observed, missing, and multi-currency positions
+delay the chart instead of producing a misleading trend.
+
 ## Archive policy
 
 Manual accounts are soft archived with `isActive = false` and `archivedAt`.
@@ -106,6 +143,11 @@ property's signed position plus the linked debts' signed positions, and is
 shown only when every included position has a balance in the same currency.
 The relationship never combines source balances, so equity reconciles to the
 same household net-worth arithmetic.
+
+The Accounts UI labels property value and current positions as sourced,
+equity as derived, provider availability as excluded from net worth, and
+projection as unavailable because Currents has no supported future-position
+model. No estimated value is presented as sourced.
 
 ## Budget destinations
 

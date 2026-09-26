@@ -5,7 +5,7 @@ Last updated: 2026-09-21
 ## Current status
 
 - Release target: secure, polished private-household v1
-- Current phase: Phase 4 — Real monthly budgeting
+- Current phase: Phase 5 — Accounts and Categories
 - Roadmap issue:
   [#1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/1)
 - Milestone:
@@ -13,9 +13,8 @@ Last updated: 2026-09-21
 - Board:
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
-- Next action: finish verification for
-  [#12 Build the approved Budget 3a experience](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/12),
-  then await explicit commit and push approval.
+- Next action: await explicit commit and push approval for
+  [#13 Complete grouped Accounts and net-worth experience](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/13).
 
 ## Product finish line
 
@@ -214,11 +213,11 @@ Goal: make balance-sheet and classification maintenance complete.
 
 Accounts:
 
-- Build grouped Cash, Invested, Property, and Debt views with subtotals.
-- Expand rows for connection status, activity, projection, and actions.
-- Add manual-account and valuation editing.
-- Pair property and mortgage in the equity presentation.
-- Show labelled snapshot-based net-worth history when enough data exists.
+- [x] Build grouped Cash, Invested, Property, and Debt views with subtotals.
+- [x] Expand rows for connection status, activity, projection, and actions.
+- [x] Add manual-account and valuation editing.
+- [x] Pair property and mortgage in the equity presentation.
+- [x] Show labelled snapshot-based net-worth history when enough data exists.
 
 Categories:
 
@@ -453,6 +452,18 @@ At the end of every context:
   arbitrate competing confirmations, and duplicate or racing writes return the
   stable `TRANSFER_MATCH_CONFLICT` 409 response. An explicit replacement tie
   may delete an orphaned match whose other source leg was removed.
+- 2026-09-26: Accounts subtotals and net worth use exact Decimal arithmetic
+  and retain one total per ISO currency. Property carries its full source value
+  and linked mortgages remain in Debt; derived equity is context, not a
+  replacement subtotal.
+- 2026-09-26: an unclassified Plaid position remains visible in net worth as a
+  review-needed adjustment. A household-scoped classification choice persists
+  when later Plaid syncs still report an unknown type; a recognized provider
+  type remains authoritative.
+- 2026-09-26: the eight-month net-worth view emits points only at real
+  `AccountPositionSnapshot` observation times after all currently active
+  accounts have known positions in one currency. It never creates monthly
+  points, interpolates, applies FX, or reconstructs history from transactions.
 
 ## Verification log
 
@@ -1217,11 +1228,77 @@ Remaining risks:
   reordering remains category-maintenance work rather than an implicit budget
   editor behavior.
 
+### Issue #13 Accounts-experience evidence — 2026-09-26
+
+Implementation:
+
+- Replaced the maintenance-first account grid with the approved balance-sheet
+  direction: Cash, Invested, Property, and Debt groups in product order, each
+  with an exact per-currency subtotal, followed by a visible equation that
+  reconciles source subtotals to household net worth.
+- Converted shared position totals to `Prisma.Decimal` arithmetic serialized
+  as fixed two-decimal strings. Manual valuation inputs now validate decimal
+  strings and reject fractional cents before writing; browser numbers are
+  never authoritative for account arithmetic.
+- Plaid and manual rows share one presentation while retaining source and
+  connection labels. Native disclosures expose connection state, latest real
+  observation, provider availability, recent activity, an honest unavailable
+  projection, and source-appropriate actions.
+- Kept property and debt in their own source groups. A property disclosure
+  presents linked signed debts and same-currency derived equity without moving
+  the mortgage out of the Debt subtotal.
+- Added the labelled “Net worth, last 8 months” view. It emits points only at
+  real snapshot observation times after every currently active account has a
+  known position in one currency; unavailable, incomplete, and multi-currency
+  histories explain the limitation instead of filling gaps or applying FX.
+- Added a household-scoped remediation form for Plaid accounts with unknown
+  provider types. The selected classification survives later unknown-type
+  syncs, while recognized provider types remain authoritative.
+- Integrated manual create, edit, dated valuation, archive, property/debt
+  linking, Plaid refresh/reconnect/disconnect, exact status announcements,
+  visible focus, 44px controls, responsive layouts, and reduced-motion
+  behavior without changing any prototype file.
+
+Verification:
+
+- Targeted account-domain, snapshot, sync, generalized-model, and
+  two-household boundary suites passed: 8 files and 50 tests before the final
+  repository-wide run.
+- `npm test` passed: 27 files and 163 tests.
+- Focused Accounts Playwright coverage passed on desktop and mobile: 2 tests
+  covering grouped arithmetic, native keyboard disclosures, source/status
+  detail, recent activity, available balance, property equity, classification
+  persistence, incomplete/multi-currency states, responsive overflow, reduced
+  motion, no Plaid-host requests, and axe WCAG 2.1 AA scans.
+- `npm run test:e2e` passed: 19 desktop/mobile tests, with the mobile duplicate
+  of the Chromium-only passkey case skipped as expected.
+- `npm run typecheck`, `npm run lint`, `npm run format:check`,
+  `npx prisma validate`, `npx prisma migrate status`, `npm run build`,
+  `git diff --check`, and edited-file IDE diagnostics passed. Prisma reports
+  all seven migrations applied and the Next.js 16.3.5 production build
+  generated all 21 static-generation tasks.
+- GitLab
+  [pipeline #26](https://gitlab.com/piaanderson-group/anderson-finance-app/-/pipelines/2885864417)
+  passed the starting commit `18e1512` in 155 seconds before issue #13 work
+  began.
+
+Remaining risks:
+
+- Historical trend comparability is intentionally limited to accounts active
+  today because inactive Plaid accounts do not carry a reliable deactivation
+  timestamp. Currents omits an unsupported trend rather than claiming a
+  historical household roster it cannot source.
+- Account projections remain unavailable. A future projection requires
+  explicit recurrence and timing semantics; current transactions and position
+  snapshots are not silently repurposed as a forecast.
+- Automated Plaid coverage uses in-process mocks, and browser coverage blocks
+  Plaid-host requests. Real institution balance timing and provider-specific
+  account types still require Trial/staging verification.
+
 ## Next handoff
 
 Issue
-[#12 Build the approved Budget 3a experience](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/12)
+[#13 Complete grouped Accounts and net-worth experience](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/13)
 is complete and verified locally. Await explicit approval before committing or
-pushing. Stop after issue #12; do not inspect or begin issue #13. Keep roadmap
-issue #1 and the full Currents goal open because the private v1 application is
-not complete.
+pushing. Keep roadmap issue #1 and the full Currents goal open because the
+private v1 application is not complete.

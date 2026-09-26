@@ -274,6 +274,7 @@ test("manual accounts expose accessible validation, valuation, linking, and arch
         .getByRole("heading", { level: 3, name: "Manual mortgage" })
         .locator("..")
         .getByText("−$250,000.00")
+        .first()
     ).toBeVisible();
 
     await createForm.getByLabel("Account name").fill("Primary home");
@@ -286,19 +287,28 @@ test("manual accounts expose accessible validation, valuation, linking, and arch
       "Primary home was added."
     );
 
-    await page
+    const propertyLink = page.getByRole("region", {
+      name: "Link property and related debt"
+    });
+    await propertyLink
       .getByLabel("Property", { exact: true })
       .selectOption({ label: "Primary home" });
-    await page
+    await propertyLink
       .getByLabel("Related debt", { exact: true })
       .selectOption({ label: "Manual mortgage" });
-    await page.getByRole("button", { name: "Link property and debt" }).click();
+    await propertyLink
+      .getByRole("button", { name: "Link property and debt" })
+      .click();
     await expect(
       page.getByRole("status").filter({ hasText: "Property and debt linked." })
     ).toBeVisible();
-    await expect(page.getByText("Derived equity:")).toBeVisible();
+    const propertyCard = page
+      .getByRole("heading", { level: 3, name: "Primary home" })
+      .locator("..");
+    await propertyCard.getByText("View account details").click();
+    await expect(propertyCard.getByText("Derived equity:")).toBeVisible();
     await expect(
-      page.locator(".property-pair").getByText("$150,000.00")
+      propertyCard.locator(".property-pair").getByText("$150,000.00")
     ).toBeVisible();
 
     const mortgageHeading = page.getByRole("heading", {
@@ -306,10 +316,13 @@ test("manual accounts expose accessible validation, valuation, linking, and arch
       name: "Manual mortgage"
     });
     const mortgageCard = mortgageHeading.locator("..");
+    const accountDisclosure = mortgageCard.getByText("View account details");
+    await accountDisclosure.focus();
+    await page.keyboard.press("Enter");
+    await expect(accountDisclosure).toBeFocused();
     const disclosure = mortgageCard.getByText("Edit or archive");
     await disclosure.focus();
     await page.keyboard.press("Enter");
-    await expect(disclosure).toBeFocused();
     const editForm = mortgageCard
       .getByRole("heading", { name: "Edit Manual mortgage" })
       .locator("..");
@@ -327,6 +340,7 @@ test("manual accounts expose accessible validation, valuation, linking, and arch
         .getByRole("heading", { level: 3, name: "Updated mortgage" })
         .locator("..")
         .getByText("−$240,000.00")
+        .first()
     ).toBeVisible();
 
     const updatedMortgageCard = page
@@ -335,8 +349,16 @@ test("manual accounts expose accessible validation, valuation, linking, and arch
         name: "Updated mortgage"
       })
       .locator("..");
-    const updatedDetails = updatedMortgageCard.locator("details");
+    const updatedDetails = updatedMortgageCard.locator(
+      "details.account-details"
+    );
     if ((await updatedDetails.getAttribute("open")) === null) {
+      await updatedMortgageCard.getByText("View account details").click();
+    }
+    const editDetails = updatedMortgageCard
+      .getByText("Edit or archive")
+      .locator("..");
+    if ((await editDetails.getAttribute("open")) === null) {
       await updatedMortgageCard.getByText("Edit or archive").click();
     }
     page.once("dialog", (dialog) => dialog.accept());

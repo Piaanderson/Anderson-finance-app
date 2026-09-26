@@ -1,4 +1,4 @@
-import type { FinancialAccountClassification } from "@prisma/client";
+import { Prisma, type FinancialAccountClassification } from "@prisma/client";
 import { prisma } from "@/server/db";
 import { writePositionSnapshot } from "./position-snapshots";
 
@@ -12,7 +12,7 @@ export const manualClassifications = [
 export type ManualAccountInput = {
   name: string;
   classification: (typeof manualClassifications)[number];
-  entryBalance: number;
+  entryBalance: Prisma.Decimal.Value;
   isoCurrencyCode: string;
   effectiveAt: Date;
 };
@@ -21,9 +21,12 @@ export class ManualAccountError extends Error {}
 
 export function normalizeManualPosition(
   classification: ManualAccountInput["classification"],
-  entryBalance: number
+  entryBalance: Prisma.Decimal.Value
 ) {
-  return classification === "DEBT" ? -Math.abs(entryBalance) : entryBalance;
+  const amount = new Prisma.Decimal(entryBalance);
+  return (classification === "DEBT" ? amount.abs().negated() : amount).toFixed(
+    2
+  );
 }
 
 export async function createManualAccount(
@@ -124,6 +127,26 @@ export async function archiveManualAccount(
   });
   if (result.count !== 1) {
     throw new ManualAccountError("Manual account not found.");
+  }
+}
+
+export async function classifyPlaidAccount(
+  householdId: string,
+  accountId: string,
+  classification: (typeof manualClassifications)[number]
+) {
+  const result = await prisma.financialAccount.updateMany({
+    where: {
+      id: accountId,
+      householdId,
+      source: "PLAID",
+      classification: "UNCLASSIFIED",
+      isActive: true
+    },
+    data: { classification }
+  });
+  if (result.count !== 1) {
+    throw new ManualAccountError("Connected account not found.");
   }
 }
 

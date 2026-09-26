@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { HouseholdPositionSummary } from "@/features/accounts/position-summary";
-import { formatCurrency } from "@/lib/money";
+import { formatDecimalCurrency } from "@/lib/money";
 
 const links = [
   { href: "/dashboard", label: "Home" },
@@ -52,7 +52,7 @@ export function AppSidebar({
         ) : (
           positionSummary.totals.map((total) => (
             <strong key={total.currency}>
-              {formatCurrency(total.amount, total.currency)}
+              {formatDecimalCurrency(total.amount, total.currency)}
             </strong>
           ))
         )}

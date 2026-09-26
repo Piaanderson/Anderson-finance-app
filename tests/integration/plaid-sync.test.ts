@@ -35,7 +35,7 @@ function plaidAccount(
   name: string,
   current: number,
   available: number | null = current,
-  type: "depository" | "investment" | "credit" | "loan" = "depository"
+  type: "depository" | "investment" | "credit" | "loan" | "other" = "depository"
 ) {
   return {
     account_id: accountId,
@@ -519,6 +519,41 @@ describe("Plaid transaction synchronization", () => {
     });
     expect(snapshot.signedBalance?.toString()).toBe("-400");
     expect(snapshot.isoCurrencyCode).toBe("USD");
+  });
+
+  it("preserves a user classification when Plaid still reports an unknown type", async () => {
+    const fixture = await createFixture();
+    await prisma.financialAccount.update({
+      where: { id: fixture.accountId },
+      data: { classification: "INVESTED", type: "other" }
+    });
+    mocks.accountsGet.mockResolvedValue({
+      data: {
+        accounts: [
+          plaidAccount(
+            fixture.plaidAccountId,
+            "Provider-specific investment",
+            125,
+            125,
+            "other"
+          )
+        ]
+      }
+    });
+    mocks.transactionsSync.mockResolvedValue(
+      syncPage({ nextCursor: "cursor-1", hasMore: false })
+    );
+
+    await syncPlaidItem(fixture.itemId, fixture.jobId);
+
+    await expect(
+      prisma.financialAccount.findUniqueOrThrow({
+        where: { id: fixture.accountId }
+      })
+    ).resolves.toMatchObject({
+      classification: "INVESTED",
+      type: "other"
+    });
   });
 
   it("deduplicates repeated balances while preserving real Plaid value changes", async () => {

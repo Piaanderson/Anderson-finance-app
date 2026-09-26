@@ -1,17 +1,17 @@
-import type { FinancialAccountClassification } from "@prisma/client";
+import { Prisma, type FinancialAccountClassification } from "@prisma/client";
 import { prisma } from "@/server/db";
 
 export type PositionInput = {
   id: string;
   classification: FinancialAccountClassification;
-  currentBalance: number | null;
+  currentBalance: Prisma.Decimal.Value | null;
   isoCurrencyCode: string | null;
   isActive: boolean;
 };
 
 export type CurrencyPositionTotal = {
   currency: string;
-  amount: number;
+  amount: string;
 };
 
 export type HouseholdPositionSummary = {
@@ -34,24 +34,33 @@ const classifications: FinancialAccountClassification[] = [
   "UNCLASSIFIED"
 ];
 
-function add(totals: Map<string, number>, currency: string, amount: number) {
-  totals.set(currency, (totals.get(currency) ?? 0) + amount);
+function add(
+  totals: Map<string, Prisma.Decimal>,
+  currency: string,
+  amount: Prisma.Decimal.Value
+) {
+  totals.set(
+    currency,
+    (totals.get(currency) ?? new Prisma.Decimal(0)).plus(amount)
+  );
 }
 
-function sortedTotals(totals: Map<string, number>): CurrencyPositionTotal[] {
+function sortedTotals(
+  totals: Map<string, Prisma.Decimal>
+): CurrencyPositionTotal[] {
   return [...totals.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
-    .map(([currency, amount]) => ({ currency, amount }));
+    .map(([currency, amount]) => ({ currency, amount: amount.toFixed(2) }));
 }
 
 export function summarizePositions(
   positions: PositionInput[]
 ): HouseholdPositionSummary {
   const active = positions.filter((position) => position.isActive);
-  const totals = new Map<string, number>();
+  const totals = new Map<string, Prisma.Decimal>();
   const classificationTotals = new Map<
     FinancialAccountClassification,
-    Map<string, number>
+    Map<string, Prisma.Decimal>
   >(classifications.map((classification) => [classification, new Map()]));
   const missingBalanceAccountIds: string[] = [];
   const missingCurrencyAccountIds: string[] = [];
@@ -102,10 +111,5 @@ export async function getHouseholdPositionSummary(householdId: string) {
     }
   });
 
-  return summarizePositions(
-    accounts.map((account) => ({
-      ...account,
-      currentBalance: account.currentBalance?.toNumber() ?? null
-    }))
-  );
+  return summarizePositions(accounts);
 }

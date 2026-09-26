@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireHousehold } from "@/server/households";
 import {
   archiveManualAccount,
+  classifyPlaidAccount,
   createManualAccount,
   linkPropertyDebt,
   ManualAccountError,
@@ -19,12 +21,20 @@ export type ManualAccountFormState = {
   fieldErrors?: Record<string, string>;
 };
 
-const amount = z.preprocess(
-  (value) => (value === "" ? undefined : value),
-  z.coerce
-    .number({ error: "Enter a balance." })
-    .finite("Enter a valid balance.")
-);
+const amount = z
+  .string({ error: "Enter a balance." })
+  .trim()
+  .min(1, "Enter a balance.")
+  .regex(
+    /^-?(?:\d+|\d*\.\d{1,2})$/,
+    "Enter a valid balance with no more than two decimal places."
+  )
+  .refine(
+    (value) =>
+      !/^-?(?:\d+|\d*\.\d{1,2})$/.test(value) ||
+      new Prisma.Decimal(value).abs().lte("9999999999999999.99"),
+    "Enter a smaller balance."
+  );
 
 const supportedCurrencies = new Set(Intl.supportedValuesOf("currency"));
 
@@ -55,7 +65,11 @@ const accountInput = z
       .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid effective date.")
   })
   .superRefine((value, context) => {
-    if (value.classification === "DEBT" && value.entryBalance < 0) {
+    if (
+      value.classification === "DEBT" &&
+      /^-?(?:\d+|\d*\.\d{1,2})$/.test(value.entryBalance) &&
+      new Prisma.Decimal(value.entryBalance).isNegative()
+    ) {
       context.addIssue({
         code: "custom",
         path: ["entryBalance"],
@@ -167,6 +181,39 @@ export async function archiveManualAccountAction(
     await archiveManualAccount(owner.householdId, accountId);
     refreshAccountReads();
     return { success: "The account was archived. Its history was preserved." };
+  } catch (error) {
+    if (error instanceof ManualAccountError) return { error: error.message };
+    throw error;
+  }
+}
+
+export async function classifyPlaidAccountAction(
+  _state: ManualAccountFormState,
+  formData: FormData
+): Promise<ManualAccountFormState> {
+  const parsed = z
+    .object({
+      accountId: z.string().min(1),
+      classification: z.enum(manualClassifications)
+    })
+    .safeParse({
+      accountId: formData.get("accountId"),
+      classification: formData.get("classification")
+    });
+  if (!parsed.success) {
+    return { error: "Choose an account group." };
+  }
+  const owner = await requireHousehold();
+  try {
+    await classifyPlaidAccount(
+      owner.householdId,
+      parsed.data.accountId,
+      parsed.data.classification
+    );
+    return {
+      success:
+        "The connected account was classified. Updating account groups now."
+    };
   } catch (error) {
     if (error instanceof ManualAccountError) return { error: error.message };
     throw error;

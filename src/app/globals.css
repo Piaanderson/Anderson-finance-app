@@ -1166,8 +1166,324 @@
   text-transform: uppercase;
 }
 
-.account-card {
+.accounts-balance-sheet {
+  gap: var(--space-4);
+}
+
+.balance-sheet-heading,
+.account-group-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.balance-sheet-heading > div,
+.account-group-heading > div:first-child {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.currency-totals {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-1);
+}
+
+.balance-sheet-heading .currency-totals {
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+}
+
+.account-subtotals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-neutral-800);
+  border-radius: var(--radius-md);
+  background: var(--color-neutral-800);
+}
+
+.account-subtotals > div {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-bg);
+}
+
+.account-subtotals dt,
+.account-subtotals dd {
+  margin: 0;
+}
+
+.account-subtotals dt {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-accent-300);
+  font-weight: 500;
+}
+
+.account-subtotals dt span {
+  color: var(--color-neutral-500);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.account-subtotals dd .currency-totals {
+  justify-items: start;
+}
+
+.reconciliation-proof,
+.account-warning {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-left: 2px solid var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 8%, transparent);
+}
+
+.account-warning {
+  border-left-color: var(--color-warning);
+}
+
+.net-worth-history {
+  gap: var(--space-4);
+}
+
+.net-worth-history figcaption,
+.history-caption,
+.history-unavailable {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.net-worth-chart {
+  width: 100%;
+  min-height: 12rem;
+  overflow: visible;
+}
+
+.net-worth-chart line {
+  stroke: var(--color-neutral-700);
+  stroke-width: 1;
+}
+
+.net-worth-chart polyline {
+  fill: none;
+  stroke: var(--color-accent-400);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+
+.history-data {
+  border-top: 1px solid var(--color-neutral-800);
+}
+
+.history-data summary,
+.account-actions summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--color-accent-200);
+  cursor: pointer;
+}
+
+.history-data ol {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) 0 0 1.5rem;
+}
+
+.history-data li {
+  padding-left: var(--space-2);
+}
+
+.history-data li > time {
+  display: inline-block;
+  min-width: 9rem;
+  color: var(--color-neutral-400);
+}
+
+.account-groups {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.account-group {
+  overflow: hidden;
+  border: 1px solid var(--color-neutral-800);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.account-group-heading {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-neutral-800);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-accent-900) 45%, var(--color-surface)),
+    var(--color-surface)
+  );
+}
+
+.account-group-total {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-1);
+  text-align: right;
+}
+
+.account-group-total > span {
+  color: var(--color-neutral-500);
+  font-size: 0.75rem;
+}
+
+.account-list {
+  display: grid;
+}
+
+.account-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(10rem, 1.15fr) minmax(12rem, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-4);
+  border-top: 1px solid var(--color-neutral-900);
+}
+
+.account-row:first-child {
+  border-top: 0;
+}
+
+.account-row-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--color-neutral-500);
+  font-size: 0.8125rem;
+}
+
+.account-row-meta
+  > span:not(.connection-state)
+  + span:not(.connection-state)::before {
+  content: "·";
+  margin-right: var(--space-2);
+  color: var(--color-neutral-700);
+}
+
+.connection-state.manual {
+  color: var(--color-neutral-300);
+}
+
+.account-row-value {
+  font-size: 1.1rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.account-details {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.account-details > summary {
+  width: fit-content;
+  margin-left: auto;
+  padding-inline: var(--space-2);
+}
+
+.account-details > summary::before,
+.history-data > summary::before,
+.account-actions > details > summary::before {
+  content: "＋";
+  margin-right: var(--space-2);
+}
+
+.account-details[open] > summary::before,
+.history-data[open] > summary::before,
+.account-actions > details[open] > summary::before {
+  content: "−";
+}
+
+.account-detail-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+}
+
+.account-detail-panel > section {
+  min-width: 0;
+  display: grid;
   align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-neutral-800);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.account-detail-panel > .property-pair,
+.account-detail-panel > .account-actions {
+  grid-column: 1 / -1;
+}
+
+.account-activity-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.account-activity-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-neutral-900);
+}
+
+.account-actions > details {
+  border-top: 1px solid var(--color-neutral-800);
+}
+
+.account-actions > details[open] {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.classification-form {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.classification-form > [role="alert"],
+.classification-form > [role="status"] {
+  grid-column: 1 / -1;
+}
+
+.account-group-empty {
+  padding: var(--space-4);
+}
+
+.account-review-needed {
+  border-color: var(--color-warning);
+}
+
+.account-review-needed > p {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-neutral-800);
 }
 
 .account-details {
@@ -1257,9 +1573,59 @@
   }
 
   .section-heading,
-  .connection-card-header {
+  .connection-card-header,
+  .balance-sheet-heading,
+  .account-group-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .currency-totals,
+  .account-group-total {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .account-subtotals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .account-row-meta {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .account-row-value {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .account-details {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  .account-detail-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-detail-panel > .property-pair,
+  .account-detail-panel > .account-actions {
+    grid-column: 1;
+  }
+
+  .account-activity-list li {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .classification-form {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .budget-month-controls {
@@ -1419,5 +1785,35 @@
   .property-debt-row {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 430px) {
+  .account-subtotals,
+  .account-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-row-value,
+  .account-row-meta,
+  .account-details {
+    grid-column: 1;
+  }
+
+  .account-row-value {
+    grid-row: 2;
+    text-align: left;
+  }
+
+  .account-row-meta {
+    grid-row: 3;
+  }
+
+  .account-details {
+    grid-row: 4;
+  }
+
+  .account-details > summary {
+    margin-left: 0;
   }
 }

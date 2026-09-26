@@ -17,6 +17,10 @@ export function formatCurrency(value: number, currency: string) {
     : formatter.format(value);
 }
 
+export function formatDecimalCurrency(value: string, currency: string) {
+  return formatCurrency(Number(value), currency);
+}
+
 export function formatMovementAmount(
   value: string,
   currency: {

@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { getHouseholdPositionSummary } from "@/features/accounts/position-summary";
 import { getHouseholdCashFlow } from "@/features/transactions/movement-data";
 import { requireHousehold } from "@/server/households";
-import { formatCurrency, formatMovementAmount } from "@/lib/money";
+import { formatDecimalCurrency, formatMovementAmount } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Home" };
 
@@ -34,7 +34,7 @@ export default async function DashboardPage() {
             ) : (
               positionSummary.totals.map((total) => (
                 <strong className="card-value" key={total.currency}>
-                  {formatCurrency(total.amount, total.currency)}
+                  {formatDecimalCurrency(total.amount, total.currency)}
                 </strong>
               ))
             )}

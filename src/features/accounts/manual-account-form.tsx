@@ -12,13 +12,14 @@ type ManualAccountAction = (
 type ManualAccountFormProps = {
   action: ManualAccountAction;
   heading: string;
+  headingLevel?: "h3" | "h4";
   submitLabel: string;
   today: string;
   account?: {
     id: string;
     name: string;
     classification: FinancialAccountClassification;
-    currentBalance: number | null;
+    currentBalance: string | null;
     currency: string | null;
   };
 };
@@ -33,6 +34,7 @@ const options = [
 export function ManualAccountForm({
   action,
   heading,
+  headingLevel = "h3",
   submitLabel,
   today,
   account
@@ -51,8 +53,9 @@ export function ManualAccountForm({
     account?.currentBalance === null || account?.currentBalance === undefined
       ? undefined
       : debt
-        ? Math.abs(account.currentBalance)
+        ? account.currentBalance.replace(/^-/, "")
         : account.currentBalance;
+  const Heading = headingLevel;
 
   return (
     <form
@@ -65,7 +68,7 @@ export function ManualAccountForm({
         startTransition(() => formAction(formData));
       }}
     >
-      <h3>{heading}</h3>
+      <Heading>{heading}</Heading>
       {account ? (
         <input type="hidden" name="accountId" value={account.id} />
       ) : null}

@@ -107,6 +107,23 @@ Allocation destinations must be active, unarchived USD accounts in the same
 household; foreign account IDs remain non-enumerating `404` responses. The
 two-household boundary suite exercises both edit routes directly.
 
+The complete Accounts read derives the household from `requireHousehold()` and
+scopes Plaid Items, active accounts, recent transactions, position snapshots,
+and property/debt links independently by `householdId`. Snapshot baselines and
+the eight-month window also require the related account to belong to the same
+household. The returned shape excludes Plaid account IDs, access-token
+material, and raw provider payloads.
+
+Connected accounts whose provider type is unknown can be assigned to a
+financial classification through `classifyPlaidAccountAction`. The action
+accepts only the local account ID and validated classification, authenticates
+again, and updates only an active `PLAID + UNCLASSIFIED` account in the
+authenticated household. A foreign or already classified account returns the
+same not-found result without mutation. The mutation inventory and
+two-household integration fixture exercise the exported Server Action; Plaid
+sync coverage proves an unknown provider type does not overwrite the saved
+classification.
+
 ## Plaid
 
 - Use Link tokens and exchange public tokens only on the server.
