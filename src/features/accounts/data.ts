@@ -1,3 +1,4 @@
+import "server-only";
 import { prisma } from "@/server/db";
 import {
   deriveNetWorthHistory,
@@ -5,6 +6,82 @@ import {
   eightMonthWindowStart
 } from "./accounts-experience";
 import { summarizePositions } from "./position-summary";
+
+async function readNetWorthHistory(
+  householdId: string,
+  activeAccountIds: string[],
+  windowStart: Date,
+  windowEnd: Date
+) {
+  const [historyBaselines, historyWindow] = await Promise.all([
+    prisma.accountPositionSnapshot.findMany({
+      where: {
+        householdId,
+        effectiveAt: { lt: windowStart },
+        accountId: { in: activeAccountIds },
+        account: { householdId, isActive: true }
+      },
+      distinct: ["accountId"],
+      orderBy: [
+        { accountId: "asc" },
+        { effectiveAt: "desc" },
+        { observedAt: "desc" }
+      ],
+      select: {
+        accountId: true,
+        signedBalance: true,
+        isoCurrencyCode: true,
+        effectiveAt: true,
+        observedAt: true
+      }
+    }),
+    prisma.accountPositionSnapshot.findMany({
+      where: {
+        householdId,
+        effectiveAt: { gte: windowStart, lte: windowEnd },
+        accountId: { in: activeAccountIds },
+        account: { householdId, isActive: true }
+      },
+      orderBy: [{ effectiveAt: "asc" }, { observedAt: "asc" }],
+      select: {
+        accountId: true,
+        signedBalance: true,
+        isoCurrencyCode: true,
+        effectiveAt: true,
+        observedAt: true
+      }
+    })
+  ]);
+
+  return deriveNetWorthHistory(
+    activeAccountIds,
+    [...historyBaselines, ...historyWindow],
+    windowStart,
+    windowEnd
+  );
+}
+
+export async function getHouseholdNetWorthHistory({
+  householdId,
+  windowStart,
+  windowEnd
+}: {
+  householdId: string;
+  windowStart: Date;
+  windowEnd: Date;
+}) {
+  const activeAccounts = await prisma.financialAccount.findMany({
+    where: { householdId, isActive: true },
+    select: { id: true },
+    orderBy: { id: "asc" }
+  });
+  return readNetWorthHistory(
+    householdId,
+    activeAccounts.map((account) => account.id),
+    windowStart,
+    windowEnd
+  );
+}
 
 export async function getAccountOverview(
   householdId: string,
@@ -125,43 +202,12 @@ export async function getAccountOverview(
   ]);
 
   const historyStart = eightMonthWindowStart(now);
-  const [historyBaselines, historyWindow] = await Promise.all([
-    prisma.accountPositionSnapshot.findMany({
-      where: {
-        householdId,
-        effectiveAt: { lt: historyStart },
-        account: { householdId, isActive: true }
-      },
-      distinct: ["accountId"],
-      orderBy: [
-        { accountId: "asc" },
-        { effectiveAt: "desc" },
-        { observedAt: "desc" }
-      ],
-      select: {
-        accountId: true,
-        signedBalance: true,
-        isoCurrencyCode: true,
-        effectiveAt: true,
-        observedAt: true
-      }
-    }),
-    prisma.accountPositionSnapshot.findMany({
-      where: {
-        householdId,
-        effectiveAt: { gte: historyStart, lte: now },
-        account: { householdId, isActive: true }
-      },
-      orderBy: [{ effectiveAt: "asc" }, { observedAt: "asc" }],
-      select: {
-        accountId: true,
-        signedBalance: true,
-        isoCurrencyCode: true,
-        effectiveAt: true,
-        observedAt: true
-      }
-    })
-  ]);
+  const netWorthHistory = await readNetWorthHistory(
+    householdId,
+    accounts.map((account) => account.id),
+    historyStart,
+    now
+  );
 
   const mappedAccounts = accounts.map((account) => ({
     id: account.id,
@@ -265,12 +311,7 @@ export async function getAccountOverview(
     accounts: mappedAccounts,
     positionSummary,
     propertyGroups,
-    netWorthHistory: deriveNetWorthHistory(
-      accounts.map((account) => account.id),
-      [...historyBaselines, ...historyWindow],
-      historyStart,
-      now
-    ),
+    netWorthHistory,
     historyWindow: { start: historyStart, end: now }
   };
 }

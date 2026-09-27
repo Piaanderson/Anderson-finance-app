@@ -6,15 +6,11 @@ type PageHeaderProps = {
   actions?: ReactNode;
 };
 
-export function PageHeader({
-  title,
-  kicker = "September 2026 · day 12 of 30 · income $8,240",
-  actions
-}: PageHeaderProps) {
+export function PageHeader({ title, kicker, actions }: PageHeaderProps) {
   return (
     <header className="page-header">
       <div className="page-header-copy">
-        <span className="eyebrow">{kicker}</span>
+        {kicker ? <span className="eyebrow">{kicker}</span> : null}
         <h1>{title}</h1>
       </div>
       {actions ? <div className="page-actions">{actions}</div> : null}

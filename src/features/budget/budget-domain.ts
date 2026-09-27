@@ -1,5 +1,6 @@
 import type { CategorySection } from "@/features/categories/category-domain";
 import type { HouseholdMovement } from "@/features/transactions/movements";
+import { monthKey, parseMonthKey, shiftMonth } from "@/lib/month";
 
 export const BUDGET_SECTION_ORDER = [
   "Debt",
@@ -191,14 +192,15 @@ export function calculateBudget({
   >();
 
   for (const allocation of sortedAllocations) {
-    if (
-      (allocation.section === "Debt" || allocation.section === "Savings") &&
-      allocation.destinationAccountId
-    ) {
-      const group =
-        allocationsByDestination.get(allocation.destinationAccountId) ?? [];
-      group.push(allocation);
-      allocationsByDestination.set(allocation.destinationAccountId, group);
+    if (allocation.section === "Debt" || allocation.section === "Savings") {
+      if (allocation.destinationAccountId) {
+        const group =
+          allocationsByDestination.get(allocation.destinationAccountId) ?? [];
+        group.push(allocation);
+        allocationsByDestination.set(allocation.destinationAccountId, group);
+      } else {
+        activityByAllocation.set(allocation.id, 0n);
+      }
     } else {
       activityByAllocation.set(
         allocation.id,
@@ -287,23 +289,13 @@ export function calculateBudget({
 }
 
 export function parseBudgetMonthKey(value: string) {
-  const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(value);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const monthIndex = Number(match[2]) - 1;
-  if (year < 1900 || year > 2200) return null;
-  return new Date(Date.UTC(year, monthIndex, 1));
+  return parseMonthKey(value);
 }
 
 export function budgetMonthKey(value: Date) {
-  return `${value.getUTCFullYear()}-${String(value.getUTCMonth() + 1).padStart(
-    2,
-    "0"
-  )}`;
+  return monthKey(value);
 }
 
 export function shiftBudgetMonth(value: Date, offset: number) {
-  return new Date(
-    Date.UTC(value.getUTCFullYear(), value.getUTCMonth() + offset, 1)
-  );
+  return shiftMonth(value, offset);
 }

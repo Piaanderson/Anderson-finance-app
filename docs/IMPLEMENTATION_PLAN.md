@@ -5,7 +5,7 @@ Last updated: 2026-09-27
 ## Current status
 
 - Release target: secure, polished private-household v1
-- Current phase: Phase 5 — Accounts and Categories
+- Current phase: Phase 6 — Home dashboard — complete
 - Roadmap issue:
   [#1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/1)
 - Milestone:
@@ -13,8 +13,9 @@ Last updated: 2026-09-27
 - Board:
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
-- Next action: await explicit commit and push approval for
-  [#14 Categories maintenance](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/14).
+- Next future handoff:
+  [#16](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/16).
+  It has not been started.
 
 ## Product finish line
 
@@ -207,7 +208,7 @@ Exit evidence:
 - moved/due uses real movements
 - month copy and edits survive reload
 
-## Phase 5 — Accounts and Categories
+## Phase 5 — Accounts and Categories — complete
 
 Goal: make balance-sheet and classification maintenance complete.
 
@@ -233,17 +234,17 @@ Exit evidence:
 - manual and Plaid accounts behave consistently
 - category maintenance preserves dependent records
 
-## Phase 6 — Home dashboard
+## Phase 6 — Home dashboard — complete
 
 Goal: provide a traceable summary using the integrated prototype and 4a-style
 direction as the baseline.
 
-- Show net worth and monthly change.
-- Show month pacing, income, spending, saving, and debt paydown.
-- Add an explicit comparison basis.
-- Add spending-by-category, recent movements, budget status, upcoming
-  obligations, and account rollup.
-- Use accessible charts with visible summaries and data fallbacks.
+- [x] Show net worth and monthly change.
+- [x] Show month pacing, income, spending, saving, and debt paydown.
+- [x] Add an explicit comparison basis.
+- [x] Add spending-by-category, recent movements, budget status, upcoming
+      obligations, and account rollup.
+- [x] Use accessible charts with visible summaries and data fallbacks.
 
 Exit evidence:
 
@@ -1366,10 +1367,90 @@ Remaining risks:
   logic; a future multi-writer service should add a database-normalized unique
   key before bypassing these boundaries.
 
+### Issue #15 traceable-Home evidence — 2026-09-27
+
+Implementation:
+
+- Added one household-scoped, server-only Home data layer that composes the
+  existing account-position, movement, snapshot, and Budget services. The page
+  derives the household from authenticated membership and accepts only a
+  validated `month=YYYY-MM` selection.
+- Centralized UTC month parsing, navigation, boundaries, and pace for Home and
+  Budget. A past month covers the complete month, the current month covers the
+  first day through the current UTC day, and a future month has no elapsed
+  period. Comparisons use the previous month with the same elapsed-day count,
+  capped to the number of days in that month, and state that basis in full.
+- Current net worth reuses centralized signed positions and keeps currencies
+  separate. Missing balances or currencies produce partial/unavailable
+  messages. Period change is the difference between the latest complete
+  recorded net-worth point in each compared period; absent points and currency
+  mismatches remain unavailable, and gaps are never synthesized.
+- Income and spending sum fixed-point movement amounts per currency. Matched
+  transfers contribute zero to both; pending movements remain included and are
+  labelled. Category totals use categorized outflows only and retain archived
+  category labels.
+- Savings movement and debt paydown use the Budget model's matched-transfer
+  semantics: only the incoming leg into an explicit active USD destination
+  contributes, and one transfer is counted once. An allocation without a
+  destination contributes zero and makes the Home result partial or
+  unavailable rather than allowing ordinary categorized activity to masquerade
+  as movement.
+- “Remaining this month” is the positive fixed-point Budget remainder
+  `max(planned − activity, 0)` for Needs, Savings, and Debt. It is explicitly a
+  remaining plan amount, not a due date, scheduled withdrawal, or prediction.
+- Added the complete 4a-style hierarchy: accessible month controls, comparison
+  basis, current net worth, the labelled “Net worth, last 8 months” figure with
+  a visible summary and data-list fallback, cash flow, category spending,
+  recent one-row movements with expandable transfer legs, Budget moved/due
+  status, remaining plan amounts, and Cash/Invested/Property/Debt rollups.
+  Empty and unavailable states remain explicit on every surface.
+- Added responsive Nocturne layouts, logical focus order, native links and
+  buttons, 44px targets, disclosure state, text equivalents for graphics,
+  reduced-motion behavior, and WCAG 2.1 AA scans. No prototype file or database
+  schema changed.
+
+Verification:
+
+- Targeted Home tests passed: 8 domain/unit tests and 1 comprehensive
+  integration test covering two-household isolation, more than 100 movements,
+  current/past/future months, pending and matched transfers, archived records,
+  no accounts/snapshots/transactions/Budget, incomplete positions, snapshot
+  gaps, and multiple currencies.
+- `npm run test:unit` passed: 17 files and 92 tests.
+- `npm run test:integration` passed: 13 files and 91 tests.
+- `npm test` passed: 30 files and 183 tests.
+- Focused Home Playwright coverage passed on desktop and mobile. It verifies
+  dynamic month navigation, real values and comparison labels, chart text and
+  data fallback, keyboard transfer disclosure, Budget and account summaries,
+  empty/unavailable states, visible focus, 44px targets, reduced motion,
+  responsive overflow at 375, 768, 1024, 1280, 1440, and 1920 CSS pixels, axe
+  WCAG 2.1 AA scans, and zero Plaid-host requests.
+- `npm run test:e2e` passed: 23 desktop/mobile tests; the mobile duplicate of
+  the Chromium-only passkey case was skipped as expected.
+- `npm run typecheck`, `npm run lint`, the issue-file Prettier check,
+  `npx prisma validate`, `npx prisma migrate status`, and `npm run build`
+  passed. Prisma reports all eight migrations applied, and the Next.js 16.3.5
+  production build generated all 21 static-generation tasks.
+- `git diff --check` and edited-file IDE diagnostics passed.
+
+Remaining risks:
+
+- Historical net-worth completeness remains intentionally limited to accounts
+  active today because inactive Plaid accounts have no reliable historical
+  deactivation timestamp. The dashboard reports missing comparison data rather
+  than inventing an account roster or filling snapshot gaps.
+- Budget plans and destination movement are USD-only in private v1. Other
+  currencies remain separate in positions, cash flow, categories, and the
+  ledger and are never silently converted.
+- Pending movements are included because that is the canonical movement
+  semantics, so selected-period totals can change when a bank posts, modifies,
+  or removes them; the dashboard labels their count.
+- “Remaining this month” has no scheduling claim. Supporting actual upcoming
+  due dates requires a future recurrence or obligation model.
+
 ## Next handoff
 
 Issue
-[#14 Categories maintenance](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/14)
-is complete and locally verified. Do not commit or push until explicit approval
-is given. Keep roadmap issue #1 and the full Currents goal open because the
-private v1 application is not complete.
+[#16](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/16)
+is the next future action and has not been started. Keep roadmap issue #1 and
+the full Currents goal open because the private v1 application is not complete.
