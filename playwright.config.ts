@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const port = process.env.PLAYWRIGHT_PORT ?? "3100";
-const baseURL = `http://localhost:${port}`;
+const baseURL = `http://127.0.0.1:${port}`;
+const passkeyOrigin = `http://localhost:${port}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -10,13 +11,13 @@ export default defineConfig({
     trace: "on-first-retry"
   },
   webServer: {
-    command: `npm run dev -- --port ${port}`,
+    command: `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
     url: `${baseURL}/sign-in`,
     reuseExistingServer: !process.env.CI,
     env: {
       AUTH_SECRET: "test-secret-that-is-not-used-in-production",
       AUTH_DEV_BYPASS: "true",
-      PASSKEY_ORIGIN: baseURL,
+      PASSKEY_ORIGIN: passkeyOrigin,
       PASSKEY_RP_ID: "localhost",
       PASSKEY_RP_NAME: "Currents",
       DATABASE_URL:

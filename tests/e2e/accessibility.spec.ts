@@ -892,6 +892,12 @@ test("category review supports grouped keyboard assignment and optional merchant
 
     await combobox.focus();
     await combobox.fill("din");
+    await expect(
+      panel.getByRole("option", { name: "Dining Flex" })
+    ).toBeVisible();
+    await expect(
+      panel.getByRole("option", { name: "Utilities Selected" })
+    ).toHaveCount(0);
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
     await expect(panel.getByText("Selected: Dining · Flex")).toBeVisible();
@@ -1462,59 +1468,371 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
   }
 });
 
+test("category maintenance preserves dependencies and supports accessible exact rules", async ({
+  page
+}, testInfo) => {
+  const fixture = `category-maintenance-${testInfo.project.name}-${randomUUID()}`;
+  const email = `${fixture}@example.test`;
+  let householdId: string | null = null;
+  let userId: string | null = null;
+
+  try {
+    await page.goto("/sign-in");
+    await page.getByLabel("Development email").fill(email);
+    await page
+      .getByRole("button", { name: "Local development sign-in" })
+      .click();
+    await expect(page).toHaveURL(/\/accounts$/);
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    const membership = await prisma.householdMember.findFirstOrThrow({
+      where: { userId: user.id }
+    });
+    userId = user.id;
+    householdId = membership.householdId;
+    const accountId = `${fixture}-account`;
+    const utilitiesId = `${fixture}-utilities`;
+    const diningId = `${fixture}-dining`;
+    const coffeeId = `${fixture}-coffee`;
+    const restaurantsId = `${fixture}-restaurants`;
+    const vacationId = `${fixture}-vacation`;
+    const cardId = `${fixture}-card`;
+    const transactionId = `${fixture}-transaction`;
+    const ruleId = `${fixture}-rule`;
+    const monthId = `${fixture}-month`;
+    await prisma.financialAccount.create({
+      data: {
+        id: accountId,
+        householdId,
+        source: "MANUAL",
+        classification: "CASH",
+        name: "Maintenance checking",
+        currentBalance: "1000.00",
+        isoCurrencyCode: "USD"
+      }
+    });
+    await prisma.category.createMany({
+      data: [
+        {
+          id: utilitiesId,
+          householdId,
+          name: "Utilities",
+          section: "Needs",
+          sortOrder: 0
+        },
+        {
+          id: diningId,
+          householdId,
+          name: "Dining",
+          section: "Flex",
+          sortOrder: 0
+        },
+        {
+          id: coffeeId,
+          householdId,
+          name: "Coffee",
+          section: "Flex",
+          sortOrder: 1
+        },
+        {
+          id: restaurantsId,
+          householdId,
+          name: "Restaurants",
+          section: "Flex",
+          sortOrder: 2
+        },
+        {
+          id: vacationId,
+          householdId,
+          name: "Vacation",
+          section: "Savings",
+          sortOrder: 0
+        },
+        {
+          id: cardId,
+          householdId,
+          name: "Card payment",
+          section: "Debt",
+          sortOrder: 0
+        }
+      ]
+    });
+    await prisma.transaction.create({
+      data: {
+        id: transactionId,
+        householdId,
+        accountId,
+        plaidTransactionId: `${fixture}-plaid-transaction`,
+        name: "DINING EXACT",
+        merchantName: "Dining Exact",
+        amount: "45.00",
+        isoCurrencyCode: "USD",
+        categoryId: diningId,
+        date: new Date("2026-09-12T00:00:00.000Z")
+      }
+    });
+    await prisma.merchantRule.create({
+      data: {
+        id: ruleId,
+        householdId,
+        categoryId: diningId,
+        merchantKey: "dining exact"
+      }
+    });
+    await prisma.budgetMonth.create({
+      data: {
+        id: monthId,
+        householdId,
+        month: new Date("2026-09-01T00:00:00.000Z"),
+        income: "1000.00",
+        allocations: {
+          create: {
+            categoryId: diningId,
+            planned: "100.00",
+            destinationAccountId: accountId
+          }
+        }
+      }
+    });
+
+    await page.goto("/categories");
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Categories" })
+    ).toBeVisible();
+    const groupHeadings = await page
+      .locator(".category-group-card > .section-heading h2")
+      .allTextContents();
+    expect(groupHeadings).toEqual(["Needs", "Flex", "Savings", "Debt"]);
+
+    const createForm = page.locator(".category-create-form");
+    const createName = createForm.getByLabel("Category name");
+    await createName.fill(" dining ");
+    await createForm.getByRole("button", { name: "Add category" }).click();
+    await expect(createForm.getByRole("alert")).toContainText(
+      "already uses that name"
+    );
+    await expect(createName).toBeFocused();
+
+    const utilitiesRow = page.locator(`[data-category-id="${utilitiesId}"]`);
+    await utilitiesRow.getByLabel("Category name").fill("Housing");
+    await utilitiesRow.getByRole("button", { name: "Save name" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(
+      page.getByRole("status").filter({ hasText: "Housing was renamed" })
+    ).toBeAttached();
+
+    let diningRow = page.locator(`[data-category-id="${diningId}"]`);
+    const moveDown = diningRow.getByRole("button", { name: "Move down" });
+    expect((await moveDown.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+    await moveDown.focus();
+    await page.keyboard.press("Space");
+    await expect(
+      page.getByRole("status").filter({ hasText: "Category moved down" })
+    ).toBeAttached();
+    const flexOrder = await page
+      .getByRole("region", { name: "Flex" })
+      .locator(".category-maintenance-row h3")
+      .allTextContents();
+    expect(flexOrder.indexOf("Dining")).toBeGreaterThan(0);
+
+    diningRow = page.locator(`[data-category-id="${diningId}"]`);
+    await diningRow.getByText("Archive or merge", { exact: true }).click();
+    page.once("dialog", (dialog) => dialog.accept());
+    await diningRow.getByRole("button", { name: "Archive category" }).click();
+    await expect(
+      page.getByRole("status").filter({
+        hasText: "Transactions and existing budget allocations were preserved"
+      })
+    ).toBeAttached();
+    await expect(
+      prisma.transaction.findUniqueOrThrow({ where: { id: transactionId } })
+    ).resolves.toMatchObject({ categoryId: diningId });
+    await expect(
+      prisma.budgetAllocation.findFirstOrThrow({
+        where: { budgetMonthId: monthId, categoryId: diningId }
+      })
+    ).resolves.toMatchObject({ categoryId: diningId });
+    await expect(
+      prisma.merchantRule.findUniqueOrThrow({ where: { id: ruleId } })
+    ).resolves.toMatchObject({ categoryId: diningId });
+
+    await page.goto("/budget?month=2026-09");
+    await expect(
+      page.getByText("Archived category · this existing allocation is retained")
+    ).toBeVisible();
+    await page.goto("/categories");
+    diningRow = page.locator(`[data-category-id="${diningId}"]`);
+    await diningRow.getByRole("button", { name: "Restore Dining" }).click();
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: "preserved merchant rules are active again" })
+    ).toBeAttached();
+
+    const coffeeRow = page.locator(`[data-category-id="${coffeeId}"]`);
+    await coffeeRow.getByText("Archive or merge", { exact: true }).click();
+    const mergePicker = coffeeRow.getByRole("combobox", {
+      name: "Merge into active category"
+    });
+    await mergePicker.focus();
+    await mergePicker.fill("restaurants");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect(
+      coffeeRow.getByText("Selected: Restaurants · Flex")
+    ).toBeVisible();
+    page.once("dialog", (dialog) => dialog.accept());
+    await coffeeRow.getByRole("button", { name: "Merge and archive" }).click();
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: "Coffee was merged into Restaurants" })
+    ).toBeAttached();
+    await expect(
+      prisma.category.findUniqueOrThrow({ where: { id: coffeeId } })
+    ).resolves.toMatchObject({ archivedAt: expect.any(Date) });
+
+    const newRuleForm = page.locator(".merchant-rule-form");
+    await newRuleForm
+      .getByLabel("Exact normalized merchant key")
+      .fill("  TARGET\u00a0  MERCHANT ");
+    const newRulePicker = newRuleForm.getByRole("combobox", {
+      name: "Search and choose a category"
+    });
+    await newRulePicker.focus();
+    await newRulePicker.fill("card");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect(
+      newRuleForm.getByText("Selected: Card payment · Debt")
+    ).toBeVisible();
+    await newRuleForm
+      .getByRole("button", { name: "Add merchant rule" })
+      .click();
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: "“target merchant” was added" })
+    ).toBeAttached();
+    await page.reload();
+    await expect(page.locator('input[value="target merchant"]')).toBeVisible();
+
+    const existingRule = await prisma.merchantRule.findUniqueOrThrow({
+      where: { id: ruleId }
+    });
+    await prisma.merchantRule.update({
+      where: { id: ruleId },
+      data: { categoryId: vacationId }
+    });
+    const staleRuleRow = page.locator(".merchant-rule-row").filter({
+      has: page.locator(`input[value="${existingRule.merchantKey}"]`)
+    });
+    await staleRuleRow.getByRole("button", { name: "Save rule" }).click();
+    await expect(staleRuleRow.getByRole("alert")).toContainText(
+      "changed in another session"
+    );
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const transitionSeconds = await page
+      .getByRole("button", { name: "Add merchant rule" })
+      .evaluate((element) => {
+        const duration = getComputedStyle(element).transitionDuration;
+        return duration.endsWith("ms")
+          ? Number.parseFloat(duration) / 1000
+          : Number.parseFloat(duration);
+      });
+    expect(transitionSeconds).toBeLessThanOrEqual(0.00001);
+    const viewport = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      innerWidth: window.innerWidth
+    }));
+    expect(viewport.scrollWidth).toBeLessThanOrEqual(viewport.innerWidth);
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(results.violations).toEqual([]);
+  } finally {
+    if (householdId) {
+      await prisma.household.deleteMany({ where: { id: householdId } });
+    }
+    if (userId) {
+      await prisma.user.deleteMany({ where: { id: userId } });
+    }
+  }
+});
+
 test("a local owner can add and use a passkey and recovery code", async ({
   page
 }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "Chromium CDP is required");
 
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send("WebAuthn.enable");
-  await cdp.send("WebAuthn.addVirtualAuthenticator", {
-    options: {
-      protocol: "ctap2",
-      transport: "internal",
-      hasResidentKey: true,
-      hasUserVerification: true,
-      isUserVerified: true,
-      automaticPresenceSimulation: true
+  const email = `passkey-${randomUUID()}@example.test`;
+  const passkeyOrigin = `http://localhost:${process.env.PLAYWRIGHT_PORT ?? "3100"}`;
+  let userId: string | null = null;
+  let householdId: string | null = null;
+  try {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("WebAuthn.enable");
+    await cdp.send("WebAuthn.addVirtualAuthenticator", {
+      options: {
+        protocol: "ctap2",
+        transport: "internal",
+        hasResidentKey: true,
+        hasUserVerification: true,
+        isUserVerified: true,
+        automaticPresenceSimulation: true
+      }
+    });
+
+    await page.goto(`${passkeyOrigin}/sign-in`);
+    await page.getByLabel("Development email").fill(email);
+    await page
+      .getByRole("button", { name: "Local development sign-in" })
+      .click();
+    await expect(page).toHaveURL(/\/accounts$/);
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    const membership = await prisma.householdMember.findFirstOrThrow({
+      where: { userId: user.id }
+    });
+    userId = user.id;
+    householdId = membership.householdId;
+    await page.getByRole("link", { name: "Security" }).click();
+
+    await page.getByLabel("New passkey name").fill("Playwright passkey");
+    await page.getByRole("button", { name: "Add passkey" }).click();
+    await expect(page.getByText("Passkey added.")).toBeVisible();
+
+    page.once("dialog", (dialog) => dialog.accept());
+    await page
+      .getByRole("button", { name: "Generate new recovery codes" })
+      .click();
+    const firstRecoveryCode = await page
+      .getByRole("list", { name: "New recovery codes" })
+      .getByRole("listitem")
+      .first()
+      .textContent();
+    expect(firstRecoveryCode).toBeTruthy();
+
+    await page.context().clearCookies();
+    await page.goto(`${passkeyOrigin}/sign-in`);
+    await page.getByRole("button", { name: "Sign in with a passkey" }).click();
+    await expect(page).toHaveURL(/\/accounts$/);
+
+    await page.context().clearCookies();
+    await page.goto(`${passkeyOrigin}/sign-in`);
+    await page.getByText("Use a recovery code").click();
+    await page
+      .getByLabel("One-time recovery code")
+      .fill(firstRecoveryCode?.trim() ?? "");
+    await page
+      .getByRole("button", { name: "Sign in with recovery code" })
+      .click();
+    await expect(page).toHaveURL(/\/settings\/security$/);
+  } finally {
+    if (householdId) {
+      await prisma.household.deleteMany({ where: { id: householdId } });
     }
-  });
-
-  await page.goto("/sign-in");
-  await page
-    .getByLabel("Development email")
-    .fill("passkey-owner@currents.local");
-  await page.getByRole("button", { name: "Local development sign-in" }).click();
-  await page.getByRole("link", { name: "Security" }).click();
-
-  await page.getByLabel("New passkey name").fill("Playwright passkey");
-  await page.getByRole("button", { name: "Add passkey" }).click();
-  await expect(page.getByText("Passkey added.")).toBeVisible();
-
-  page.once("dialog", (dialog) => dialog.accept());
-  await page
-    .getByRole("button", { name: "Generate new recovery codes" })
-    .click();
-  const firstRecoveryCode = await page
-    .getByRole("list", { name: "New recovery codes" })
-    .getByRole("listitem")
-    .first()
-    .textContent();
-  expect(firstRecoveryCode).toBeTruthy();
-
-  await page.context().clearCookies();
-  await page.goto("/sign-in");
-  await page.getByRole("button", { name: "Sign in with a passkey" }).click();
-  await expect(page).toHaveURL(/\/accounts$/);
-
-  await page.context().clearCookies();
-  await page.goto("/sign-in");
-  await page.getByText("Use a recovery code").click();
-  await page
-    .getByLabel("One-time recovery code")
-    .fill(firstRecoveryCode?.trim() ?? "");
-  await page
-    .getByRole("button", { name: "Sign in with recovery code" })
-    .click();
-  await expect(page).toHaveURL(/\/settings\/security$/);
+    if (userId) {
+      await prisma.user.deleteMany({ where: { id: userId } });
+    }
+  }
 });

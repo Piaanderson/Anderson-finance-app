@@ -1,48 +1,22 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/page-header";
-import { CATEGORY_SECTIONS } from "@/features/categories/category-domain";
-import { CategoryForm } from "@/features/categories/category-form";
-import { prisma } from "@/server/db";
+import { getHouseholdCategoryMaintenanceData } from "@/features/categories/category-data";
+import { CategoryMaintenanceWorkspace } from "@/features/categories/category-maintenance-workspace";
 import { requireHousehold } from "@/server/households";
 
 export const metadata: Metadata = { title: "Categories" };
 
 export default async function CategoriesPage() {
   const owner = await requireHousehold();
-  const categories = await prisma.category.findMany({
-    where: { householdId: owner.householdId, archivedAt: null },
-    orderBy: [{ section: "asc" }, { sortOrder: "asc" }, { name: "asc" }]
-  });
+  const maintenance = await getHouseholdCategoryMaintenanceData(
+    owner.householdId
+  );
 
   return (
     <>
       <PageHeader title="Categories" />
       <div className="page-content">
-        <CategoryForm />
-        <div className="stat-grid">
-          {CATEGORY_SECTIONS.map((section) => {
-            const rows = categories.filter(
-              (category) => category.section === section
-            );
-            return (
-              <section className="card" key={section}>
-                <div className="section-heading">
-                  <h2>{section}</h2>
-                  <span className="muted">{rows.length}</span>
-                </div>
-                {rows.length ? (
-                  <ul>
-                    {rows.map((category) => (
-                      <li key={category.id}>{category.name}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="muted">No categories in this section.</p>
-                )}
-              </section>
-            );
-          })}
-        </div>
+        <CategoryMaintenanceWorkspace {...maintenance} />
       </div>
     </>
   );

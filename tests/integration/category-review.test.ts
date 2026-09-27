@@ -15,6 +15,7 @@ vi.mock("@/server/households", () => ({
 
 import { PUT as categorizeTransaction } from "@/app/api/transactions/[transactionId]/category/route";
 import { getHouseholdCategoryReviewData } from "@/features/categories/category-data";
+import { merchantRuleKey } from "@/features/categories/merchant-rule";
 import { prisma } from "@/server/db";
 
 const key = `category-review-${randomUUID()}`;
@@ -37,16 +38,44 @@ const ids = {
   foreignTransaction: `${key}-foreign-transaction`
 };
 
-function request(
+async function request(
   transactionId: string,
   categoryId: string,
-  createRule: boolean
+  createRule: boolean,
+  merchantKeyOverride?: string
 ) {
+  const transaction = await prisma.transaction.findUnique({
+    where: { id: transactionId },
+    select: {
+      name: true,
+      merchantName: true,
+      updatedAt: true
+    }
+  });
+  const defaultKey = transaction ? merchantRuleKey(transaction) : "";
+  const existingRule = defaultKey
+    ? await prisma.merchantRule.findUnique({
+        where: {
+          householdId_merchantKey: {
+            householdId: ids.householdA,
+            merchantKey: defaultKey
+          }
+        },
+        select: { updatedAt: true }
+      })
+    : null;
   return categorizeTransaction(
     new Request("http://currents.test/api/transactions/category", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ categoryId, createRule })
+      body: JSON.stringify({
+        categoryId,
+        createRule,
+        merchantKey: merchantKeyOverride ?? defaultKey,
+        expectedTransactionRevision:
+          transaction?.updatedAt.toISOString() ?? "2026-09-12T00:00:00.000Z",
+        expectedRuleRevision: existingRule?.updatedAt.toISOString() ?? null
+      })
     }),
     { params: Promise.resolve({ transactionId }) }
   );
@@ -262,6 +291,7 @@ describe("household category review data", () => {
       {
         id: `${key}-active-rule`,
         merchantKey: "café market",
+        revision: expect.any(String),
         category: { id: ids.needs, name: "Utilities" }
       }
     ]);
@@ -308,6 +338,92 @@ describe("category assignment boundary", () => {
     });
     expect(rules).toHaveLength(1);
     expect(rules[0].categoryId).toBe(ids.flex);
+  });
+
+  it("edits the visible normalized rule key and rejects a conflicting exact key", async () => {
+    const edited = await request(
+      ids.transaction,
+      ids.needs,
+      true,
+      "  CAFÉ\u00a0 MARKET   EXPLICIT "
+    );
+    expect(edited.status).toBe(200);
+    await expect(edited.json()).resolves.toMatchObject({
+      rule: { active: true, merchantKey: "café market explicit" }
+    });
+    await expect(
+      prisma.merchantRule.findUnique({
+        where: {
+          householdId_merchantKey: {
+            householdId: ids.householdA,
+            merchantKey: "café market"
+          }
+        }
+      })
+    ).resolves.toBeNull();
+
+    await prisma.merchantRule.create({
+      data: {
+        householdId: ids.householdA,
+        categoryId: ids.flex,
+        merchantKey: "already claimed"
+      }
+    });
+    const conflict = await request(
+      ids.transaction,
+      ids.needs,
+      true,
+      "already claimed"
+    );
+    expect(conflict.status).toBe(409);
+    await expect(conflict.json()).resolves.toMatchObject({
+      code: "MERCHANT_RULE_CONFLICT"
+    });
+    await expect(
+      prisma.merchantRule.findUniqueOrThrow({
+        where: {
+          householdId_merchantKey: {
+            householdId: ids.householdA,
+            merchantKey: "already claimed"
+          }
+        }
+      })
+    ).resolves.toMatchObject({ categoryId: ids.flex });
+  });
+
+  it("rejects a stale transaction revision without a partial assignment", async () => {
+    const transaction = await prisma.transaction.findUniqueOrThrow({
+      where: { id: ids.transaction },
+      select: {
+        updatedAt: true,
+        categoryId: true
+      }
+    });
+    await prisma.transaction.update({
+      where: { id: ids.transaction },
+      data: { paymentMemo: "Concurrent update" }
+    });
+    const response = await categorizeTransaction(
+      new Request("http://currents.test/api/transactions/category", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          categoryId: ids.flex,
+          createRule: false,
+          merchantKey: "café market",
+          expectedTransactionRevision: transaction.updatedAt.toISOString(),
+          expectedRuleRevision: null
+        })
+      }),
+      { params: Promise.resolve({ transactionId: ids.transaction }) }
+    );
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "CATEGORY_ASSIGNMENT_CONFLICT"
+    });
+    await expect(
+      prisma.transaction.findUniqueOrThrow({ where: { id: ids.transaction } })
+    ).resolves.toMatchObject({ categoryId: transaction.categoryId });
   });
 
   it.each([

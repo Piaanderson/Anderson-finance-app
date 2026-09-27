@@ -302,6 +302,11 @@ function AllocationEditor({
       >
         <div className="budget-plan-cell">
           <strong>{row.categoryName}</strong>
+          {row.categoryArchived ? (
+            <span className="warning">
+              Archived category · this existing allocation is retained
+            </span>
+          ) : null}
           <label htmlFor={inputId}>Planned USD</label>
           <div className="budget-inline-edit">
             <span aria-hidden="true">$</span>

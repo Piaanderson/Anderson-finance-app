@@ -25,6 +25,11 @@ export function BudgetSection({
               <li className="budget-row" key={row.id}>
                 <div>
                   <strong>{row.categoryName}</strong>
+                  {row.categoryArchived ? (
+                    <div className="warning">
+                      Archived category · existing allocation retained
+                    </div>
+                  ) : null}
                   <div className="muted">
                     {destination
                       ? `${destination.name}${destination.mask ? ` · ${destination.mask}` : ""}${destination.active ? "" : " · inactive"}`

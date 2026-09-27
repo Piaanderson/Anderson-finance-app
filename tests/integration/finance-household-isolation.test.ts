@@ -63,7 +63,8 @@ import {
   unlinkPropertyDebtAction,
   updateManualAccountAction
 } from "@/features/accounts/actions";
-import { createCategory } from "@/features/categories/actions";
+import { maintainCategoryAction } from "@/features/categories/actions";
+import { getHouseholdCategoryMaintenanceData } from "@/features/categories/category-data";
 import { getHouseholdMovements } from "@/features/transactions/movement-data";
 import { prisma } from "@/server/db";
 
@@ -604,10 +605,17 @@ describe("transfer mutation isolation", () => {
 
 describe("transaction category mutation isolation", () => {
   it("does not categorize an owned transaction with a foreign category or create a rule", async () => {
+    const transaction = await prisma.transaction.findUniqueOrThrow({
+      where: { id: ids.outgoingA },
+      select: { updatedAt: true }
+    });
     const response = await categorizeTransaction(
       jsonRequest("PUT", {
         categoryId: ids.categoryB,
-        createRule: true
+        createRule: true,
+        merchantKey: "merchant a",
+        expectedTransactionRevision: transaction.updatedAt.toISOString(),
+        expectedRuleRevision: null
       }),
       routeContext("transactionId", ids.outgoingA)
     );
@@ -624,10 +632,17 @@ describe("transaction category mutation isolation", () => {
   });
 
   it("does not categorize a foreign transaction or create a merchant rule", async () => {
+    const transaction = await prisma.transaction.findUniqueOrThrow({
+      where: { id: ids.outgoingB },
+      select: { updatedAt: true }
+    });
     const response = await categorizeTransaction(
       jsonRequest("PUT", {
         categoryId: ids.categoryA,
-        createRule: true
+        createRule: true,
+        merchantKey: "merchant b",
+        expectedTransactionRevision: transaction.updatedAt.toISOString(),
+        expectedRuleRevision: null
       }),
       routeContext("transactionId", ids.outgoingB)
     );
@@ -940,13 +955,20 @@ describe("finance Server Action isolation", () => {
   it("creates a category only in the authenticated household and ignores a spoofed household", async () => {
     const formData = new FormData();
     const categoryName = `Action category ${fixtureKey.slice(-12)}`;
+    const maintenance = await getHouseholdCategoryMaintenanceData(
+      ids.householdA
+    );
+    formData.set("intent", "create");
     formData.set("name", categoryName);
     formData.set("section", "Flex");
+    formData.set("expectedListRevision", maintenance.listRevision);
     formData.set("householdId", ids.householdB);
 
-    const result = await createCategory({}, formData);
+    const result = await maintainCategoryAction({}, formData);
 
-    expect(result).toEqual({ success: `${categoryName} was added.` });
+    expect(result).toEqual({
+      success: `${categoryName} was added to Flex.`
+    });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/categories");
     const category = await prisma.category.findFirstOrThrow({
       where: { name: categoryName }
@@ -971,7 +993,7 @@ const coveredBoundaries = new Set([
   "ACTION src/features/accounts/actions.ts#linkPropertyDebtAction",
   "ACTION src/features/accounts/actions.ts#unlinkPropertyDebtAction",
   "ACTION src/features/accounts/actions.ts#updateManualAccountAction",
-  "ACTION src/features/categories/actions.ts#createCategory"
+  "ACTION src/features/categories/actions.ts#maintainCategoryAction"
 ]);
 
 const classifiedNonIsolationBoundaries = new Map([

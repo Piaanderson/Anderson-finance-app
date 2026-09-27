@@ -1,6 +1,6 @@
 # Currents implementation plan
 
-Last updated: 2026-09-21
+Last updated: 2026-09-27
 
 ## Current status
 
@@ -14,7 +14,7 @@ Last updated: 2026-09-21
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
 - Next action: await explicit commit and push approval for
-  [#13 Complete grouped Accounts and net-worth experience](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/13).
+  [#14 Categories maintenance](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/14).
 
 ## Product finish line
 
@@ -221,10 +221,11 @@ Accounts:
 
 Categories:
 
-- Rename, archive, restore, move, and reorder categories.
-- Provide keyboard controls for any pointer-based reordering.
-- Show and edit merchant rules.
-- Define safe behavior for allocations and transactions on archive or merge.
+- [x] Rename, archive, restore, move, and reorder categories.
+- [x] Provide keyboard controls for any pointer-based reordering.
+- [x] Show and edit merchant rules.
+- [x] Define safe behavior for allocations and transactions on archive or
+      merge.
 
 Exit evidence:
 
@@ -464,6 +465,17 @@ At the end of every context:
   `AccountPositionSnapshot` observation times after all currently active
   accounts have known positions in one currency. It never creates monthly
   points, interpolates, applies FX, or reconstructs history from transactions.
+- 2026-09-27: category archive is a soft state that preserves transaction,
+  budget-allocation, and merchant-rule references. Archived destinations pause
+  exact rules and remain visible in historical budgets; restore reactivates the
+  retained records.
+- 2026-09-27: category merge is an explicit Serializable reclassification. It
+  moves transaction and rule references, combines same-month Decimal plans,
+  and rejects conflicting destination accounts rather than selecting one
+  implicitly.
+- 2026-09-27: merchant automation remains household-scoped exact normalized-key
+  matching. Keys are visible and editable; duplicate, missing, stale, or
+  archived-destination states never fall back to fuzzy behavior.
 
 ## Verification log
 
@@ -1295,10 +1307,69 @@ Remaining risks:
   Plaid-host requests. Real institution balance timing and provider-specific
   account types still require Trial/staging verification.
 
+### Issue #14 Categories-maintenance evidence — 2026-09-27
+
+Implementation:
+
+- Added the complete household-scoped Categories workspace: create, rename,
+  move between Needs/Flex/Savings/Debt, keyboard reorder, soft archive,
+  restore, and explicit merge. Product grouping and category selection share
+  the approved searchable grouped picker.
+- Added Serializable revision checks for category-list, category, merchant-rule,
+  and transaction-assignment writes. Duplicate names, stale writes, foreign
+  identifiers, archived destinations, conflicting exact rules, missing merchant
+  keys, and persistence failures return explicit states. Transient PostgreSQL
+  serialization conflicts retry three times before becoming visible conflicts.
+- Archive preserves historical transactions, Decimal budget allocations,
+  destination accounts, and merchant rules. Paused rules and archived budget
+  references are labelled honestly; future assignment and month-copy choices
+  include active categories only.
+- Explicit merge moves only category references, combines same-month plans with
+  Prisma Decimal arithmetic, and blocks different destination accounts before
+  any write. It does not rewrite transaction source fields.
+- Merchant-rule creation, editing, retargeting, and deletion display the exact
+  normalized key. Assignment and optional rule changes remain transactional,
+  household-scoped, and exact-match only.
+- Native controls, associated errors, alert/status announcements, visible
+  focus, 44px targets, responsive stacking/overflow protection, and
+  reduced-motion behavior are covered on desktop and mobile. No prototype file
+  changed.
+
+Verification:
+
+- Targeted category-domain, maintenance, review, and two-household isolation
+  suites passed: 4 files and 45 tests.
+- `npm test` passed: 28 files and 174 tests.
+- Focused Categories Playwright coverage passed on desktop and mobile,
+  including grouped search, keyboard and touch operation, persistence,
+  validation/focus announcements, archive/restore/merge integrity, exact-rule
+  editing, responsive overflow, reduced motion, 44px targets, and axe WCAG
+  2.1 AA scans.
+- `npm run test:e2e` passed: 21 desktop/mobile tests, with the mobile duplicate
+  of the Chromium-only passkey case skipped as expected.
+- `npm run typecheck`, `npm run lint`, the issue-file Prettier check,
+  `npx prisma validate`, `npx prisma migrate status`, and `npm run build`
+  passed. Prisma reports all eight migrations applied.
+- `git diff --check` and edited-file IDE diagnostics passed. The exact
+  repository-wide Prettier check reports only the unrelated untracked
+  `docs/references/youtube-ux-portfolio-presentation-3uB_kn4HwKc.md`; no issue
+  #14 or tracked file has a formatting finding.
+
+Remaining risks:
+
+- Merge is intentionally not automatically reversible. The confirmation names
+  the source and target and the mutation reports migrated dependency counts.
+- Exact merchant identity cannot be derived when both merchant and transaction
+  names are absent. Currents leaves rule creation unavailable instead of
+  inventing a key.
+- Category names are enforced case-insensitively in Serializable application
+  logic; a future multi-writer service should add a database-normalized unique
+  key before bypassing these boundaries.
+
 ## Next handoff
 
 Issue
-[#13 Complete grouped Accounts and net-worth experience](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/13)
-is complete, verified, and pushed in commit `789e6c3`. Keep roadmap issue #1
-and the full Currents goal open because the private v1 application is not
-complete.
+[#14 Categories maintenance](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/14)
+is complete and locally verified. Do not commit or push until explicit approval
+is given. Keep roadmap issue #1 and the full Currents goal open because the
+private v1 application is not complete.

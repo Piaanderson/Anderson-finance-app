@@ -14,6 +14,7 @@ export type BudgetCalculationAllocation = {
   categoryName: string;
   section: CategorySection;
   sortOrder: number;
+  categoryArchived: boolean;
   planned: string;
   destinationAccountId: string | null;
 };

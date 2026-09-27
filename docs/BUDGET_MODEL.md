@@ -89,6 +89,14 @@ current value. These are current account positions, not transaction-aligned
 historical balances; any projection is labelled as the result after the
 remaining plan.
 
+Archiving a category does not delete or detach an existing allocation. Existing
+months continue to calculate and display that row with an archived-category
+label; new month copies omit it. An explicit category merge moves a source-only
+allocation to the target. If both categories exist in one month, their Prisma
+Decimal plans are added and a single available destination is preserved.
+Different non-null destinations block the complete merge transaction rather
+than being chosen implicitly.
+
 ## Copying the previous month
 
 Copy creates only the immediately following calendar month and never

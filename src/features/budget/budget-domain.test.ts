@@ -31,6 +31,7 @@ function leg({
 }): MovementLeg {
   return {
     transactionId: id,
+    revision: "2026-09-12T00:00:00.000Z",
     role,
     direction,
     account: {
@@ -133,6 +134,7 @@ function allocation(
   return {
     categoryName: values.categoryId,
     sortOrder: 0,
+    categoryArchived: false,
     planned: "100.00",
     destinationAccountId: null,
     ...values

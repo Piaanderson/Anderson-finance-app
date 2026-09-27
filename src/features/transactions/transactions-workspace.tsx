@@ -311,7 +311,9 @@ export function TransactionsWorkspace({
   async function assignCategory(
     movement: TransactionMovement,
     category: CategoryReviewChoice,
-    createRule: boolean
+    createRule: boolean,
+    merchantKey: string,
+    expectedRuleRevision: string | null
   ) {
     setBusy(true);
     setError("");
@@ -323,7 +325,10 @@ export function TransactionsWorkspace({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           categoryId: category.id,
-          createRule
+          createRule,
+          merchantKey,
+          expectedTransactionRevision: movement.legs[0].revision,
+          expectedRuleRevision
         })
       }
     ).catch(() => null);
@@ -365,8 +370,9 @@ export function TransactionsWorkspace({
       return [
         ...withoutCurrent,
         {
-          id: `local:${ruleKey}`,
-          merchantKey: ruleKey,
+          id: `local:${merchantKey}`,
+          merchantKey,
+          revision: new Date().toISOString(),
           category: { id: category.id, name: category.name }
         }
       ];
@@ -476,8 +482,19 @@ export function TransactionsWorkspace({
               }
               queueCount={categoryQueue.length}
               busy={busy}
-              onAssign={(category, createRule) =>
-                assignCategory(categoryQueue[0], category, createRule)
+              onAssign={(
+                category,
+                createRule,
+                merchantKey,
+                expectedRuleRevision
+              ) =>
+                assignCategory(
+                  categoryQueue[0],
+                  category,
+                  createRule,
+                  merchantKey,
+                  expectedRuleRevision
+                )
               }
               onSkip={skipCategory}
             />

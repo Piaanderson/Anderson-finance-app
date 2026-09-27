@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   CATEGORY_SECTIONS,
+  categoryNameKey,
   categorySectionOrder,
   categorySectionSchema,
-  isCategorySection
+  isCategorySection,
+  normalizeCategoryName
 } from "./category-domain";
-import { merchantRuleKey } from "./merchant-rule";
+import { merchantRuleKey, normalizeMerchantRuleKey } from "./merchant-rule";
 
 describe("category domain", () => {
   it("keeps the approved budget sections in product order", () => {
@@ -18,6 +20,13 @@ describe("category domain", () => {
     expect(categorySectionSchema.safeParse("Other").success).toBe(false);
     expect(isCategorySection("Flex")).toBe(true);
     expect(isCategorySection("flex")).toBe(false);
+  });
+
+  it("normalizes display names and compares duplicate names consistently", () => {
+    expect(normalizeCategoryName("  HOA\u00a0  + birthdays ")).toBe(
+      "HOA + birthdays"
+    );
+    expect(categoryNameKey(" DINING ")).toBe(categoryNameKey("dining"));
   });
 });
 
@@ -38,5 +47,12 @@ describe("merchant rule identity", () => {
         name: "  COFFEE   SHOP 123 "
       })
     ).toBe("coffee shop 123");
+  });
+
+  it("normalizes user-edited exact rule keys with the same policy", () => {
+    expect(normalizeMerchantRuleKey("  CAFÉ\u00a0  MARKET ")).toBe(
+      "café market"
+    );
+    expect(normalizeMerchantRuleKey("   ")).toBe("");
   });
 });

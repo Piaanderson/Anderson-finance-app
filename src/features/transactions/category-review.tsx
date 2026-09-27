@@ -1,12 +1,15 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
-import { CATEGORY_SECTIONS } from "@/features/categories/category-domain";
+import { useId, useState } from "react";
 import type {
   CategoryReviewChoice,
   MerchantRuleReview
 } from "@/features/categories/category-data";
-import { merchantRuleKey } from "@/features/categories/merchant-rule";
+import { GroupedCategoryPicker } from "@/features/categories/grouped-category-picker";
+import {
+  merchantRuleKey,
+  normalizeMerchantRuleKey
+} from "@/features/categories/merchant-rule";
 import { formatMovementAmount } from "@/lib/money";
 import type { TransactionMovement } from "./movements";
 
@@ -41,56 +44,27 @@ export function CategoryReview({
   existingRule: MerchantRuleReview | null;
   queueCount: number;
   busy: boolean;
-  onAssign: (category: CategoryReviewChoice, createRule: boolean) => void;
+  onAssign: (
+    category: CategoryReviewChoice,
+    createRule: boolean,
+    merchantKey: string,
+    expectedRuleRevision: string | null
+  ) => void;
   onSkip: () => void;
 }) {
   const reactId = useId().replaceAll(":", "");
-  const inputId = `category-combobox-${reactId}`;
-  const listboxId = `category-listbox-${reactId}`;
   const headingId = `category-review-${reactId}`;
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(true);
-  const [activeIndex, setActiveIndex] = useState(0);
   const [selectedId, setSelectedId] = useState(existingRule?.category.id ?? "");
   const [createRule, setCreateRule] = useState(Boolean(existingRule));
-  const ruleKey = merchantRuleKey({
+  const defaultRuleKey = merchantRuleKey({
     merchantName: movement.legs[0].merchantName,
     name: movement.legs[0].name
   });
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase("en-US");
-    if (!needle) return categories;
-    return categories.filter(
-      (category) =>
-        category.name.toLocaleLowerCase("en-US").includes(needle) ||
-        category.section.toLocaleLowerCase("en-US").includes(needle)
-    );
-  }, [categories, query]);
+  const [ruleKeyInput, setRuleKeyInput] = useState(defaultRuleKey);
+  const normalizedRuleKey = normalizeMerchantRuleKey(ruleKeyInput);
   const selected =
     categories.find((category) => category.id === selectedId) ?? null;
-  const active = filtered[Math.min(activeIndex, filtered.length - 1)] ?? null;
-
-  function select(category: CategoryReviewChoice) {
-    setSelectedId(category.id);
-    setQuery(category.name);
-    setOpen(false);
-  }
-
-  function moveActive(direction: 1 | -1) {
-    if (filtered.length === 0) return;
-    setOpen(true);
-    setActiveIndex((current) => {
-      const next = current + direction;
-      if (next < 0) return filtered.length - 1;
-      if (next >= filtered.length) return 0;
-      return next;
-    });
-  }
-
-  const grouped = CATEGORY_SECTIONS.map((section) => ({
-    section,
-    categories: filtered.filter((category) => category.section === section)
-  })).filter((group) => group.categories.length > 0);
+  const ruleUnavailable = defaultRuleKey.length === 0;
 
   return (
     <section
@@ -120,128 +94,53 @@ export function CategoryReview({
         <strong className="row-amount">{movementAmount(movement)}</strong>
       </div>
 
-      <div className="category-combobox">
-        <label htmlFor={inputId}>Search and choose a category</label>
-        <input
-          className="input"
-          id={inputId}
-          type="text"
-          role="combobox"
-          autoComplete="off"
-          aria-autocomplete="list"
-          aria-expanded={open}
-          aria-controls={listboxId}
-          aria-activedescendant={
-            open && active ? `${listboxId}-option-${active.id}` : undefined
-          }
-          value={query}
-          placeholder="Type a category or section"
-          onFocus={() => setOpen(true)}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setSelectedId("");
-            setActiveIndex(0);
-            setOpen(true);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "ArrowDown") {
-              event.preventDefault();
-              moveActive(1);
-            } else if (event.key === "ArrowUp") {
-              event.preventDefault();
-              moveActive(-1);
-            } else if (event.key === "Home" && open) {
-              event.preventDefault();
-              setActiveIndex(0);
-            } else if (event.key === "End" && open) {
-              event.preventDefault();
-              setActiveIndex(Math.max(0, filtered.length - 1));
-            } else if (event.key === "Enter" && open && active) {
-              event.preventDefault();
-              select(active);
-            } else if (event.key === "Escape") {
-              event.preventDefault();
-              setOpen(false);
-            }
-          }}
-        />
-        {open ? (
-          <div
-            className="category-listbox"
-            id={listboxId}
-            role="listbox"
-            aria-label="Categories grouped by budget section"
-          >
-            {grouped.map((group) => (
-              <div
-                className="category-option-group"
-                role="group"
-                aria-label={group.section}
-                key={group.section}
-              >
-                <span className="category-group-label" aria-hidden="true">
-                  {group.section}
-                </span>
-                {group.categories.map((category) => {
-                  const optionIndex = filtered.findIndex(
-                    (entry) => entry.id === category.id
-                  );
-                  const isActive = active?.id === category.id;
-                  const isSelected = selected?.id === category.id;
-                  return (
-                    <div
-                      className="category-option"
-                      id={`${listboxId}-option-${category.id}`}
-                      role="option"
-                      tabIndex={-1}
-                      aria-selected={isSelected}
-                      data-active={isActive || undefined}
-                      key={category.id}
-                      onPointerDown={(event) => {
-                        event.preventDefault();
-                        select(category);
-                      }}
-                      onMouseEnter={() => setActiveIndex(optionIndex)}
-                    >
-                      <span>{category.name}</span>
-                      {isSelected ? <span>Selected</span> : null}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-            {filtered.length === 0 ? (
-              <p className="category-no-results" role="status">
-                No categories match “{query}”.
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-        {selected ? (
-          <p className="category-selection" role="status">
-            Selected: {selected.name} · {selected.section}
-          </p>
-        ) : (
-          <p className="muted">Use arrow keys and Enter, or choose by touch.</p>
-        )}
-      </div>
+      <GroupedCategoryPicker
+        categories={categories}
+        value={selectedId}
+        onChange={(category) => setSelectedId(category.id)}
+        initialOpen
+        hint="Use arrow keys and Enter, or choose by touch."
+      />
 
       <label className="merchant-rule-choice">
         <input
           type="checkbox"
           checked={createRule}
+          disabled={ruleUnavailable}
           onChange={(event) => setCreateRule(event.target.checked)}
         />
         <span>
           <strong>Use this category for future exact merchant matches</strong>
           <span>
-            Merchant key: “{ruleKey}”.
+            Exact matches only; no fuzzy or substring matching.
             {existingRule
               ? ` Existing rule: ${existingRule.category.name}. Uncheck to remove it.`
               : " Optional; leave unchecked for this transaction only."}
           </span>
         </span>
       </label>
+      <div className="field merchant-rule-key-field">
+        <label htmlFor={`merchant-rule-key-${reactId}`}>
+          Exact normalized merchant key
+        </label>
+        <input
+          className="input"
+          id={`merchant-rule-key-${reactId}`}
+          type="text"
+          value={ruleKeyInput}
+          readOnly={!createRule || ruleUnavailable}
+          required={createRule}
+          maxLength={120}
+          aria-describedby={`merchant-rule-key-hint-${reactId}`}
+          onChange={(event) => setRuleKeyInput(event.target.value)}
+          onBlur={() => setRuleKeyInput(normalizedRuleKey)}
+        />
+        <p className="muted" id={`merchant-rule-key-hint-${reactId}`}>
+          {ruleUnavailable
+            ? "No usable merchant text is available, so only this transaction can be assigned."
+            : `Will save exactly as “${normalizedRuleKey}”. You can edit this key before assignment.`}
+        </p>
+      </div>
 
       <div className="review-actions">
         <button
@@ -250,7 +149,14 @@ export function CategoryReview({
           disabled={!selected || busy}
           data-category-primary-action
           onClick={() => {
-            if (selected) onAssign(selected, createRule);
+            if (selected) {
+              onAssign(
+                selected,
+                createRule,
+                normalizedRuleKey,
+                existingRule?.revision ?? null
+              );
+            }
           }}
         >
           {busy ? "Assigning…" : "Assign category"}

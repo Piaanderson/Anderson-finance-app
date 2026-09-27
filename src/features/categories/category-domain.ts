@@ -15,3 +15,11 @@ export function isCategorySection(value: string): value is CategorySection {
 export function categorySectionOrder(section: CategorySection) {
   return sectionOrder.get(section) ?? CATEGORY_SECTIONS.length;
 }
+
+export function normalizeCategoryName(value: string) {
+  return value.trim().normalize("NFKC").replace(/\s+/g, " ");
+}
+
+export function categoryNameKey(value: string) {
+  return normalizeCategoryName(value).toLocaleLowerCase("en-US");
+}

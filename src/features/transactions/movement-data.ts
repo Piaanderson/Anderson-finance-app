@@ -57,6 +57,7 @@ export async function getHouseholdMovements({
         authorizedDate: true,
         pending: true,
         removedAt: true,
+        updatedAt: true,
         category: {
           select: {
             id: true,

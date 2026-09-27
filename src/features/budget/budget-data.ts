@@ -68,7 +68,8 @@ export async function getHouseholdBudgetView({
                   householdId: true,
                   name: true,
                   section: true,
-                  sortOrder: true
+                  sortOrder: true,
+                  archivedAt: true
                 }
               },
               destinationAccount: {
@@ -155,6 +156,7 @@ export async function getHouseholdBudgetView({
       categoryName: allocation.category.name,
       section: allocation.category.section,
       sortOrder: allocation.category.sortOrder,
+      categoryArchived: allocation.category.archivedAt !== null,
       planned: allocation.planned.toFixed(2),
       destinationAccountId:
         allocation.destinationAccount?.householdId === householdId

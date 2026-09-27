@@ -1,3 +1,11 @@
+export function normalizeMerchantRuleKey(value: string) {
+  return value
+    .trim()
+    .normalize("NFKC")
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("en-US");
+}
+
 export function merchantRuleKey({
   merchantName,
   name
@@ -5,8 +13,5 @@ export function merchantRuleKey({
   merchantName: string | null | undefined;
   name: string;
 }) {
-  return (merchantName?.trim() || name.trim())
-    .normalize("NFKC")
-    .replace(/\s+/g, " ")
-    .toLocaleLowerCase("en-US");
+  return normalizeMerchantRuleKey(merchantName?.trim() || name);
 }

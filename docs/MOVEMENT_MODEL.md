@@ -145,10 +145,13 @@ for new assignments.
 A merchant rule uses one exact normalized key: trimmed merchant name when
 present, otherwise the Plaid transaction name; Unicode NFKC normalization;
 collapsed whitespace; and locale-stable lowercase. The UI displays that key
-before confirmation. Checking the optional rule control upserts the one
-household rule for that key. Leaving an existing rule unchecked removes that
-exact rule. Both the transaction assignment and rule change commit in one
-database transaction.
+before confirmation and allows it to be edited. Checking the optional rule
+control creates or updates the one household rule for that exact key. Leaving a
+visible existing rule unchecked removes that exact rule. A missing or already
+claimed edited key returns an explicit error rather than replacing another
+rule. The transaction revision and any existing-rule revision are rechecked;
+stale writes fail without a partial assignment. Both the transaction assignment
+and rule change commit in one Serializable database transaction.
 
 Plaid synchronization uses the same key function and applies rules only when
 their destination category is still active in the same household. A

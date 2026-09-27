@@ -86,6 +86,24 @@ also scopes those rules and destination categories to the Item household.
 Cross-household integration coverage exercises foreign transactions,
 categories, and merchant rules at the real Route Handler boundary.
 
+Category maintenance remains one authenticated Server Action boundary.
+`maintainCategoryAction` accepts local category or rule IDs and requested
+changes only, derives the household with `requireHousehold()`, and re-reads
+every category, rule, transaction dependency, budget month, allocation, and
+destination through that household. Category list and record revisions prevent
+stale rename, move, reorder, archive, restore, and merge writes. Merchant rules
+have their own `updatedAt` revision. All multi-record changes run at
+Serializable isolation.
+
+Archive is soft and preserves transaction, allocation, and rule foreign keys.
+Rules whose category is archived stay visible in maintenance but are excluded
+from assignment and Plaid sync. Explicit merge is the only operation that
+reclassifies historical transaction category IDs. It migrates rules and budget
+references atomically, adds same-month Decimal plans exactly, and rejects
+different non-null destinations before writing. The two-household maintenance
+fixture proves a foreign category or rule cannot be read through or changed by
+this boundary.
+
 Monthly budget reads scope the plan, allocations, categories, destinations,
 and movements to the authenticated household. The previous-month copy boundary
 accepts only canonical adjacent month keys, re-reads the source inside the

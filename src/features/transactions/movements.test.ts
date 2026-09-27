@@ -38,6 +38,7 @@ function transaction(
     authorizedDate: null,
     pending: false,
     removedAt: null,
+    updatedAt: new Date("2026-09-12T00:00:00.000Z"),
     category: null,
     ...overrides
   };

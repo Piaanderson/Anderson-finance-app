@@ -19,6 +19,7 @@ export type MovementCategory = {
 
 export type MovementLeg = {
   transactionId: string;
+  revision: string;
   role: "OUTGOING" | "INCOMING" | "SINGLE";
   direction: MovementDirection;
   account: {
@@ -94,6 +95,7 @@ export type MovementSourceTransaction = {
   authorizedDate: Date | null;
   pending: boolean;
   removedAt: Date | null;
+  updatedAt: Date;
   category: {
     id: string;
     householdId: string;
@@ -182,6 +184,7 @@ function legFor(
 ): MovementLeg {
   return {
     transactionId: transaction.id,
+    revision: transaction.updatedAt.toISOString(),
     role,
     direction: directionFor(transaction.amount),
     account: {
