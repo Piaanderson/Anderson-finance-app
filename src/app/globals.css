@@ -5,11 +5,15 @@
   z-index: 100;
   top: var(--space-3);
   left: var(--space-3);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);
   background: var(--color-accent-200);
   color: var(--color-bg);
   transform: translateY(-160%);
+  transition: transform 140ms ease-out;
 }
 
 .skip-link:focus {
@@ -35,6 +39,7 @@
 }
 
 .brand {
+  min-height: 44px;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -70,7 +75,7 @@
 
 .nav-link:hover,
 .nav-link[aria-current="page"] {
-  border-color: var(--color-accent-800);
+  border-color: var(--color-accent-600);
   background: var(--color-accent-900);
   color: var(--color-accent-200);
 }
@@ -84,6 +89,11 @@
 
 .app-main {
   min-width: 0;
+}
+
+#main-content:focus {
+  outline: 2px solid var(--color-accent-200);
+  outline-offset: -2px;
 }
 
 .page-header {
@@ -108,9 +118,20 @@
 }
 
 .page-content {
+  width: min(100%, 100rem);
+  min-width: 0;
   display: grid;
   gap: var(--space-6);
+  margin-inline: auto;
   padding: var(--space-6) clamp(1rem, 4vw, 2rem) var(--space-8);
+}
+
+.page-header-copy,
+.page-actions,
+.stack,
+.security-grid,
+.card {
+  min-width: 0;
 }
 
 .visually-hidden {
@@ -244,13 +265,15 @@
   display: flex;
   gap: 2px;
   overflow: hidden;
-  border: 1px solid var(--color-neutral-800);
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-md);
   background: var(--color-bg);
 }
 
 .allocation-segment {
   min-width: 0;
+  box-shadow: inset 0 0 0 1px var(--color-control-border);
+  transition: width 240ms ease-out;
 }
 
 .allocation-segment[data-section="Debt"] {
@@ -703,7 +726,7 @@
   gap: var(--space-2);
   margin: 0;
   padding: var(--space-3);
-  border: 1px solid var(--color-neutral-700);
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-md);
 }
 
@@ -828,7 +851,7 @@
   max-height: 18rem;
   overflow-y: auto;
   padding: var(--space-1) 0;
-  border: 1px solid var(--color-accent-700);
+  border: 1px solid var(--color-accent-600);
   border-radius: var(--radius-md);
   background: var(--color-bg);
 }
@@ -846,7 +869,7 @@
 }
 
 .category-option {
-  min-height: 44px;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1161,16 +1184,21 @@
 
 .movement-disclosure {
   min-height: 44px;
+  min-width: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-accent-700);
+  border: 1px solid var(--color-accent-600);
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-accent-200);
   cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
 }
 
 .movement-disclosure:hover {
@@ -1263,6 +1291,12 @@
   align-items: center;
   color: var(--color-neutral-300);
   cursor: pointer;
+}
+
+.auth-actions > p a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .button-row,
@@ -1439,7 +1473,7 @@
 }
 
 .net-worth-chart line {
-  stroke: var(--color-neutral-700);
+  stroke: var(--color-neutral-600);
   stroke-width: 1;
 }
 
@@ -1449,6 +1483,9 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 4;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: chart-line-draw 420ms ease-out both;
 }
 
 .history-data {
@@ -1754,7 +1791,7 @@
   justify-content: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-neutral-700);
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-md);
   color: var(--color-accent-200);
   text-align: center;
@@ -1797,6 +1834,7 @@
     var(--color-accent-700),
     var(--color-accent-400)
   );
+  transition: width 240ms ease-out;
 }
 
 .home-pace progress::-moz-progress-bar {
@@ -1805,6 +1843,7 @@
     var(--color-accent-700),
     var(--color-accent-400)
   );
+  transition: width 240ms ease-out;
 }
 
 .home-pace > div {
@@ -1973,6 +2012,7 @@
   display: block;
   height: 100%;
   background: var(--color-accent-500);
+  transition: width 240ms ease-out;
 }
 
 .home-recent .movement-list {
@@ -2000,6 +2040,53 @@
 
 .home-budget-segment {
   min-width: 3px;
+  box-shadow: inset 0 0 0 1px var(--color-control-border);
+  transition: flex-grow 240ms ease-out;
+}
+
+.transfer-details,
+.transfer-candidate-details,
+details[open] > .account-detail-panel,
+.history-data[open] > ol,
+.category-danger-zone[open] > div,
+.auth-actions details[open] > form {
+  transform-origin: top;
+  animation: content-reveal 180ms ease-out both;
+}
+
+@keyframes content-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chart-line-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.route-loading {
+  min-height: 12rem;
+  align-content: center;
+}
+
+.route-loading-title {
+  font-family: var(--font-heading);
+  font-size: clamp(1.75rem, 4vw, 2.625rem);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
 }
 
 .home-budget-segment.is-debt {
@@ -2094,18 +2181,19 @@
   }
 
   .nav-list {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .nav-link {
     justify-content: center;
     padding-inline: var(--space-1);
-    font-size: 0.7rem;
+    font-size: 0.75rem;
+    text-align: center;
   }
 
   .mobile-brand {
     display: block;
-    padding: var(--space-4) var(--space-4) 0;
+    padding: calc(var(--space-4) + env(safe-area-inset-top)) var(--space-4) 0;
   }
 
   .page-header {
@@ -2360,6 +2448,20 @@
   .property-debt-row {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 599px) {
+  .app-shell {
+    padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
+  }
+
+  .nav-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .nav-link {
+    min-height: 48px;
   }
 }
 

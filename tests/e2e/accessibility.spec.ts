@@ -1302,12 +1302,30 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
     ).toContainText("no more than two decimal places");
     await expect(incomeInput).toHaveAttribute("aria-invalid", "true");
     await expect(incomeInput).toBeFocused();
+    await prisma.budgetMonth.update({
+      where: { id: `${fixture}-september` },
+      data: { updatedAt: new Date(Date.now() + 1_000) }
+    });
     await incomeInput.fill("1100.00");
+    await page.keyboard.press("Enter");
+    await expect(
+      page.locator(".budget-income-form").getByRole("alert")
+    ).toContainText(
+      "This income plan changed in another session. Reload the budget before saving again."
+    );
+    await expect(incomeInput).toBeFocused();
+
+    await page.reload();
+    const refreshedIncomeInput = page.getByRole("textbox", {
+      name: "Income plan",
+      exact: true
+    });
+    await refreshedIncomeInput.fill("1100.00");
     await page.keyboard.press("Enter");
     await expect(
       page.getByRole("status").filter({ hasText: "Income plan saved" })
     ).toBeAttached();
-    await expect(incomeInput).toBeFocused();
+    await expect(refreshedIncomeInput).toBeFocused();
     await expect(
       page.locator(".budget-left").getByText("$200.00", { exact: true })
     ).toBeVisible();

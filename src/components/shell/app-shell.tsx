@@ -20,7 +20,9 @@ export function AppShell({
           <div className="mobile-brand">
             <strong>Currents</strong>
           </div>
-          <main id="main-content">{children}</main>
+          <main id="main-content" tabIndex={-1}>
+            {children}
+          </main>
         </div>
       </div>
     </>

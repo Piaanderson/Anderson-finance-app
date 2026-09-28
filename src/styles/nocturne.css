@@ -27,6 +27,7 @@
   --color-success: #75c9a5;
   --color-warning: #f3b66f;
   --color-danger: #ff8f87;
+  --color-control-border: var(--color-neutral-600);
   --font-heading: "Inter", system-ui, sans-serif;
   --font-body: "Inter", system-ui, sans-serif;
   --space-1: 0.25rem;
@@ -51,11 +52,13 @@
 
 html {
   background: var(--color-bg);
+  overflow-x: clip;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: clip;
   background: var(--color-bg);
   color: var(--color-text);
   font: 400 0.9375rem/1.55 var(--font-body);
@@ -63,12 +66,14 @@ body {
 
 h1,
 h2,
-h3 {
+h3,
+h4 {
   margin: 0;
   font-family: var(--font-heading);
   font-weight: 500;
   line-height: 1.15;
   letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
 }
 
 h1 {
@@ -81,6 +86,7 @@ h2 {
 
 p {
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 a {
@@ -106,6 +112,7 @@ textarea {
 
 .button {
   min-height: 44px;
+  min-width: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -117,14 +124,23 @@ textarea {
   color: var(--color-accent-200);
   cursor: pointer;
   text-decoration: none;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 120ms ease;
 }
 
 .button:hover {
   background: var(--color-accent-900);
 }
 
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
 .button.secondary {
-  border-color: var(--color-neutral-700);
+  border-color: var(--color-control-border);
   color: var(--color-neutral-300);
 }
 
@@ -147,10 +163,15 @@ textarea {
   min-height: 44px;
   width: 100%;
   padding: 0.65rem 0.75rem;
-  border: 1px solid var(--color-neutral-700);
+  border: 1px solid var(--color-control-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
+  font-size: 1rem;
+}
+
+[aria-busy="true"] {
+  cursor: progress;
 }
 
 .eyebrow {

@@ -73,8 +73,15 @@ export function OwnerSetup() {
   }
 
   async function copyCodes() {
-    await navigator.clipboard.writeText(recoveryCodes.join("\n"));
-    setCopied(true);
+    setError("");
+    try {
+      await navigator.clipboard.writeText(recoveryCodes.join("\n"));
+      setCopied(true);
+    } catch {
+      setError(
+        "Recovery codes could not be copied. Select and save them manually."
+      );
+    }
   }
 
   if (recoveryCodes.length > 0) {
@@ -104,9 +111,14 @@ export function OwnerSetup() {
             Continue to sign in
           </Link>
         </div>
-        <p role="status" className="positive">
+        <p role="status" className="positive" aria-live="polite">
           {copied ? "Recovery codes copied." : "Owner account created."}
         </p>
+        {error ? (
+          <p className="danger" role="alert">
+            {error}
+          </p>
+        ) : null}
       </section>
     );
   }
@@ -114,7 +126,8 @@ export function OwnerSetup() {
   return (
     <form
       className="stack"
-      aria-describedby="setup-help"
+      aria-describedby={`setup-help${error ? " owner-setup-error" : ""}`}
+      aria-busy={busy}
       onSubmit={(event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         void register(new FormData(event.currentTarget));
@@ -163,13 +176,15 @@ export function OwnerSetup() {
           type="password"
           autoComplete="off"
           required
+          aria-invalid={error ? "true" : undefined}
+          aria-describedby={error ? "owner-setup-error" : undefined}
         />
       </div>
       <button className="button" type="submit" disabled={busy}>
         {busy ? "Creating passkey…" : "Create owner passkey"}
       </button>
       {error ? (
-        <p className="danger" role="alert">
+        <p className="danger" id="owner-setup-error" role="alert">
           {error}
         </p>
       ) : null}

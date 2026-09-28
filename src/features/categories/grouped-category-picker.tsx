@@ -156,8 +156,8 @@ export function GroupedCategoryPicker({
                     key={category.id}
                     onPointerDown={(event) => {
                       event.preventDefault();
-                      select(category);
                     }}
+                    onClick={() => select(category)}
                     onMouseEnter={() => setActiveIndex(optionIndex)}
                   >
                     <span>{category.name}</span>

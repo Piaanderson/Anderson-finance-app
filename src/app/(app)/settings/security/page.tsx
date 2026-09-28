@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/page-header";
 import { PasskeyManager } from "@/features/auth/passkey-manager";
 import { requireHousehold } from "@/server/households";
 import { prisma } from "@/server/db";
+
+export const metadata: Metadata = { title: "Security" };
 
 export default async function SecurityPage() {
   const owner = await requireHousehold();

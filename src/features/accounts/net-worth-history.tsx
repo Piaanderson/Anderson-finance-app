@@ -73,7 +73,7 @@ export function NetWorthHistory({
               {dateLabel.format(history.points.at(-1)!.effectiveAt)}.
             </desc>
             <line x1="18" y1="162" x2="702" y2="162" />
-            <polyline points={chartPoints(history.points)} />
+            <polyline pathLength="1" points={chartPoints(history.points)} />
           </svg>
           <div className="history-caption">
             <p>

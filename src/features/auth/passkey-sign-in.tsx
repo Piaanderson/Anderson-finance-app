@@ -15,10 +15,14 @@ export function PasskeySignIn() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [errorSource, setErrorSource] = useState<"passkey" | "recovery" | null>(
+    null
+  );
 
   async function authenticate() {
     setBusy(true);
     setError("");
+    setErrorSource(null);
     try {
       const optionsResponse = await fetch(
         "/api/passkeys/authentication/options",
@@ -43,6 +47,7 @@ export function PasskeySignIn() {
       } else {
         setError("We couldn’t verify that passkey. Please try again.");
       }
+      setErrorSource("passkey");
       setBusy(false);
     }
   }
@@ -50,21 +55,28 @@ export function PasskeySignIn() {
   async function recover(formData: FormData) {
     setBusy(true);
     setError("");
-    const result = await signIn("recovery-code", {
-      code: formData.get("recoveryCode"),
-      redirect: false
-    });
-    if (result?.ok) {
-      router.push("/settings/security");
-      router.refresh();
-      return;
+    setErrorSource(null);
+    try {
+      const result = await signIn("recovery-code", {
+        code: formData.get("recoveryCode"),
+        redirect: false
+      });
+      if (result?.ok) {
+        router.push("/settings/security");
+        router.refresh();
+        return;
+      }
+    } catch {
+      // Auth.js rejects invalid credentials in some runtime paths.
+    } finally {
+      setBusy(false);
     }
     setError("That recovery code is invalid or has already been used.");
-    setBusy(false);
+    setErrorSource("recovery");
   }
 
   return (
-    <div className="auth-actions">
+    <div className="auth-actions" aria-busy={busy}>
       <button
         className="button"
         type="button"
@@ -93,7 +105,10 @@ export function PasskeySignIn() {
               autoComplete="one-time-code"
               spellCheck={false}
               required
-              aria-describedby="recovery-help"
+              aria-invalid={errorSource === "recovery" ? "true" : undefined}
+              aria-describedby={`recovery-help${
+                errorSource === "recovery" ? " sign-in-error" : ""
+              }`}
             />
             <p className="muted" id="recovery-help">
               Each saved recovery code can be used only once.
@@ -106,7 +121,7 @@ export function PasskeySignIn() {
       </details>
 
       {error ? (
-        <p className="danger" role="alert">
+        <p className="danger" id="sign-in-error" role="alert">
           {error}
         </p>
       ) : null}

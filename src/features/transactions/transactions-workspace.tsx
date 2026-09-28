@@ -521,7 +521,7 @@ export function TransactionsWorkspace({
           </div>
         ) : (
           <div className="empty-state">
-            <h2>No transactions yet</h2>
+            <h3>No transactions yet</h3>
             <p className="muted">
               Connect an account and start the sync worker to fill this ledger.
             </p>

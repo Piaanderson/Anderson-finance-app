@@ -20,6 +20,7 @@ export default defineConfig({
       PASSKEY_ORIGIN: passkeyOrigin,
       PASSKEY_RP_ID: "localhost",
       PASSKEY_RP_NAME: "Currents",
+      WATCHPACK_POLLING: "true",
       DATABASE_URL:
         process.env.DATABASE_URL ??
         "postgresql://postgres:postgres@127.0.0.1:5432/currents"

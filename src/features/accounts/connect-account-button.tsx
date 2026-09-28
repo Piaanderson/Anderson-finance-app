@@ -9,11 +9,13 @@ export function ConnectAccountButton() {
   const router = useRouter();
   const { startLink } = usePlaidConnectionManager();
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
 
   async function connect() {
     setBusy(true);
-    setMessage("Preparing secure bank connection…");
+    setError("");
+    setStatus("Preparing secure bank connection…");
     try {
       await startLink({
         onSuccess: async (
@@ -21,11 +23,12 @@ export function ConnectAccountButton() {
           metadata: PlaidLinkOnSuccessMetadata
         ) => {
           if (!publicToken) {
-            setMessage("Plaid did not return a connection token.");
+            setStatus("");
+            setError("Plaid did not return a connection token.");
             setBusy(false);
             return;
           }
-          setMessage("Saving your connection…");
+          setStatus("Saving your connection…");
           try {
             const response = await fetch("/api/plaid/exchange", {
               method: "POST",
@@ -37,30 +40,34 @@ export function ConnectAccountButton() {
               })
             });
             if (!response.ok) throw new Error("exchange");
-            setMessage("Connected. Accounts are syncing now.");
+            setStatus("Connected. Accounts are syncing now.");
             router.refresh();
           } catch {
-            setMessage("The connection could not be saved.");
+            setStatus("");
+            setError("The connection could not be saved.");
           } finally {
             setBusy(false);
           }
         },
         onExit: (error) => {
           setBusy(false);
-          setMessage(
-            error
-              ? "Connection closed before it was completed."
-              : "Connection canceled."
-          );
+          if (error) {
+            setStatus("");
+            setError("Connection closed before it was completed.");
+          } else {
+            setStatus("Connection canceled.");
+          }
         },
         onUnavailable: () => {
           setBusy(false);
-          setMessage("Secure bank connection is unavailable. Try again.");
+          setStatus("");
+          setError("Secure bank connection is unavailable. Try again.");
         }
       });
     } catch {
       setBusy(false);
-      setMessage("Bank connection is not configured yet.");
+      setStatus("");
+      setError("Bank connection is not configured yet.");
     }
   }
 
@@ -75,8 +82,13 @@ export function ConnectAccountButton() {
         {busy ? "Opening Plaid…" : "Connect account"}
       </button>
       <span role="status" className="muted status-region" aria-live="polite">
-        {message}
+        {status}
       </span>
+      {error ? (
+        <span className="danger" role="alert">
+          {error}
+        </span>
+      ) : null}
     </>
   );
 }

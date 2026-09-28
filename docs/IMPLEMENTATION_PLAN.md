@@ -5,7 +5,8 @@ Last updated: 2026-09-27
 ## Current status
 
 - Release target: secure, polished private-household v1
-- Current phase: Phase 6 — Home dashboard — complete
+- Current phase: Phase 7 — Motion, responsive design, and accessibility —
+  complete
 - Roadmap issue:
   [#1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/1)
 - Milestone:
@@ -14,7 +15,7 @@ Last updated: 2026-09-27
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
 - Next future handoff:
-  [#16](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/16).
+  [#17](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/17).
   It has not been started.
 
 ## Product finish line
@@ -252,24 +253,69 @@ Exit evidence:
 - comparisons state their period and basis
 - no production path depends on static scenario figures
 
-## Phase 7 — Motion, responsive design, and accessibility
+## Phase 7 — Motion, responsive design, and accessibility — complete
 
 Goal: complete the intended polish without sacrificing inclusive use.
 
-- Add restrained expansion, transfer, allocation, and number-change motion.
-- Disable nonessential motion with `prefers-reduced-motion`.
-- Verify desktop, tablet, and mobile layouts.
-- Keep all targets at least 44 by 44 CSS pixels.
-- Verify headings, landmarks, names, descriptions, live regions, form errors,
-  focus order, disclosure state, contrast, and keyboard interaction.
-- Run automated WCAG checks plus a manual keyboard checklist on every route.
+- [x] Add restrained expansion, transfer, allocation, chart, and state-change
+      motion.
+- [x] Disable nonessential motion with `prefers-reduced-motion`.
+- [x] Verify desktop, tablet, mobile, large-desktop, and practical 200% reflow
+      layouts.
+- [x] Keep all targets at least 44 by 44 CSS pixels.
+- [x] Verify headings, landmarks, names, descriptions, live regions, form
+      errors, focus order, disclosure state, contrast, and keyboard
+      interaction.
+- [x] Run automated WCAG checks and direct browser keyboard/visual inspection
+      on every route.
 
 Exit evidence:
 
-- automated accessibility suite passes
-- manual keyboard and reduced-motion checks pass
-- state is never communicated by color alone
-- no inaccessible custom interactive elements remain
+- The route-by-route decisions, state coverage, responsive widths,
+  direct-inspection method, motion decisions, and residual risks are recorded
+  in [the Phase 7 audit](./ACCESSIBILITY_AUDIT.md).
+- Axe WCAG 2.1 A/AA scans cover sign in, setup, Home, Budget, Accounts,
+  Transactions, Categories, and Security in desktop Chromium and mobile
+  projects.
+- Browser checks cover 320, 375, 390, 412, 512, 768, 1024, 1280, 1440, and
+  1920 CSS pixels, with 512 serving as the practical 1024-at-200%-zoom reflow
+  check.
+- Keyboard workflows cover the skip link, native disclosures, transfer
+  tie/untie, grouped category assignment, category maintenance, budget editing,
+  account recovery/maintenance, passkeys, and recovery codes.
+- Validation errors, operation failures, unavailable data, pending work,
+  successful updates, and stale-revision conflicts have labelled alerts or
+  polite statuses as appropriate.
+- All visible interactive targets pass the 44-by-44 CSS-pixel browser check;
+  state includes text or structure and never relies on color alone.
+- Reduced-motion browser checks prove that rendered animation and transition
+  durations resolve to no more than 0.01ms.
+- Browser request capture proves that acceptance tests make no Plaid-hosted
+  requests.
+
+Local verification on 2026-09-27:
+
+- `npm run test:unit` — 17 files, 92 tests passed.
+- `npm run test:integration` — 13 files, 91 tests passed.
+- `npm test` — 30 files, 183 tests passed.
+- `npm run typecheck` — Next route generation and TypeScript passed.
+- `npm run lint` — passed with no findings.
+- scoped `npx prettier --check` across every issue-owned file — passed.
+- `npx prisma validate` — schema valid.
+- `npx prisma migrate status` — eight migrations found; local schema up to
+  date.
+- `npm run build` — Next.js 16.3.5 production build and all 21 static pages
+  passed.
+- focused Phase 7 desktop/mobile audit — 6 tests passed; focused responsive
+  screenshot pass — 2 tests passed.
+- `npm run test:e2e` — 29 tests passed and the expected mobile duplicate of
+  the Chromium-only passkey ceremony was skipped.
+- direct rendered-image inspection covered 320, 375, 390, 412, 512, 768, 1024,
+  1280, 1440, and 1920 CSS pixels; no clipping, horizontal page overflow,
+  overlapping navigation, obscured end content, or unbounded large-screen
+  stretching was found.
+- edited-file IDE diagnostics — no errors.
+- `git diff --check` — passed.
 
 ## Phase 8 — Private production readiness
 

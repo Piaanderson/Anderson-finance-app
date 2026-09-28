@@ -125,12 +125,20 @@ export function PasskeyManager({
   }
 
   async function copyRecoveryCodes() {
-    await navigator.clipboard.writeText(recoveryCodes.join("\n"));
-    setStatus("Recovery codes copied.");
+    setError("");
+    try {
+      await navigator.clipboard.writeText(recoveryCodes.join("\n"));
+      setStatus("Recovery codes copied.");
+    } catch {
+      setStatus("");
+      setError(
+        "Recovery codes could not be copied. Select and save them manually."
+      );
+    }
   }
 
   return (
-    <div className="security-grid">
+    <div className="security-grid" aria-busy={busy}>
       <section className="card" aria-labelledby="passkeys-title">
         <div className="section-heading">
           <div>
@@ -159,6 +167,7 @@ export function PasskeyManager({
                   className="button secondary"
                   type="button"
                   disabled={busy}
+                  aria-label={`Remove ${name}`}
                   onClick={() => removePasskey(credential.id, name)}
                 >
                   Remove
