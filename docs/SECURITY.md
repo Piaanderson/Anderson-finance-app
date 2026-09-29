@@ -12,9 +12,19 @@ database exports, credentials, and support screenshots as confidential.
 - To rotate keys, increment `TOKEN_ENCRYPTION_KEY_VERSION`, provide the new
   current key, and retain old keys as `TOKEN_ENCRYPTION_KEY_V1`, `_V2`, and so
   on until all stored tokens have been re-encrypted.
+- Automated Plaid-token rotation is staging-only. It refuses local, CI, and
+  production contexts, re-reads and conditionally updates each row in a
+  transaction, and never deletes an old key.
 - Never log Plaid request/response bodies, authorization headers, transaction
   descriptions, account numbers, or balances.
+- Operational snapshots are allowlisted to generation time, queue counts,
+  oldest-pending lag, Item-state counts, and safe local Item IDs. They never
+  include provider Item IDs, account data, transactions, balances, or token
+  ciphertext.
 - The local credentials provider is disabled whenever `NODE_ENV=production`.
+- Railway staging and production must not define `AUTH_DEV_BYPASS`. The runtime
+  guard refuses that setting when `RAILWAY_ENVIRONMENT_NAME` is staging or
+  production.
 
 ## Passkeys
 
@@ -24,7 +34,8 @@ database exports, credentials, and support screenshots as confidential.
   Challenges expire after five minutes and are consumed before verification
   so failed responses cannot be replayed.
 - `PASSKEY_BOOTSTRAP_TOKEN` exists only while creating the first owner. Remove
-  it from Railway immediately after setup succeeds.
+  it from Railway immediately after setup succeeds. Production startup refuses
+  the token once at least one user exists.
 - Recovery codes are random, HMAC-hashed with `AUTH_SECRET`, displayed once,
   and consumed atomically. Regenerating codes invalidates every prior code.
 - Never log WebAuthn responses, challenges, bootstrap tokens, or recovery
@@ -156,12 +167,33 @@ classification.
 - Start in Sandbox, test real institution behavior on Plaid Trial, and complete
   Plaid's company, application, OAuth, and security reviews before production.
 
+## Browser security headers
+
+- Every route receives HSTS in production, CSP, clickjacking protection,
+  MIME-sniffing protection, a strict referrer policy, a restrictive
+  permissions policy, and same-origin opener isolation compatible with
+  WebAuthn popups.
+- CSP allows scripts and frames only from the application and Plaid Link's
+  documented CDN. `connect-src` permits only the configured Plaid environment,
+  rather than all Plaid environments or a wildcard.
+- The static Next.js CSP retains `unsafe-inline` for framework and Plaid Link
+  compatibility. `unsafe-eval` is development-only.
+- Request-error instrumentation records only method, query-free path, route
+  type, and Next.js digest. It does not serialize the error, request headers,
+  query string, body, or external payload.
+
 ## Release checklist
 
 - Run `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build`.
 - Review dependency advisories; do not apply breaking `npm audit --force`
   updates without testing.
 - Confirm production has no `AUTH_DEV_BYPASS` value.
+- Confirm production has no `PASSKEY_BOOTSTRAP_TOKEN` after owner setup.
 - Confirm the passkey relying-party host, HTTPS origin, and Plaid webhook URL.
-- Confirm a recent backup and restore drill.
+- Confirm local, CI, staging, and production databases and secrets are distinct.
+- Confirm production PITR is healthy and the approved Daily + Weekly volume
+  schedules are active. The disposable restore drill remains issue #18.
+- Confirm the $15 usage alert and $40 hard limit are active. The hard limit
+  stops every Railway service, including production.
 - Confirm logs and error reports contain no financial payloads.
+- Confirm security headers, including Content-Security-Policy, on `/api/health`.

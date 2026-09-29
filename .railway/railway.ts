@@ -9,7 +9,8 @@ import {
   volume
 } from "railway/iac";
 
-export default defineRailway(() => {
+export default defineRailway((ctx) => {
+  const production = ctx.isEnvironment("production");
   const AndersonFinanceApp = github("Piaanderson/Anderson-finance-app", {
     checkSuites: false
   });
@@ -22,7 +23,9 @@ export default defineRailway(() => {
     region: "sfo",
     sizeMB: 500
   });
-  const PostgresPITR = bucket("Postgres-PITR", { region: "sjc" });
+  const PostgresPITR = production
+    ? bucket("Postgres-PITR", { region: "sjc" })
+    : null;
   const web = service("web", {
     source: AndersonFinanceApp,
     build: "npm run build",
@@ -36,11 +39,14 @@ export default defineRailway(() => {
       AUTH_SECRET: preserve(),
       AUTH_TRUST_HOST: preserve(),
       AUTH_URL: preserve(),
-      DATABASE_URL: preserve(),
+      DATABASE_URL: Postgres.env.DATABASE_URL,
       NEXT_TELEMETRY_DISABLED: preserve(),
-      PASSKEY_BOOTSTRAP_TOKEN: preserve(),
-      PASSKEY_ORIGIN: "https://web-production-5ec4a.up.railway.app",
-      PASSKEY_RP_ID: "web-production-5ec4a.up.railway.app",
+      PASSKEY_ORIGIN: production
+        ? "https://web-production-5ec4a.up.railway.app"
+        : preserve(),
+      PASSKEY_RP_ID: production
+        ? "web-production-5ec4a.up.railway.app"
+        : preserve(),
       PASSKEY_RP_NAME: "Currents",
       PLAID_CLIENT_ID: preserve(),
       PLAID_ENV: preserve(),
@@ -56,7 +62,7 @@ export default defineRailway(() => {
     start: "npm run cron:sync",
     replicas: { sfo: 1 },
     deploy: { cronSchedule: "17 */6 * * *", restartPolicyType: "NEVER" },
-    env: { DATABASE_URL: preserve() }
+    env: { DATABASE_URL: Postgres.env.DATABASE_URL }
   });
   const worker = service("worker", {
     source: AndersonFinanceApp,
@@ -65,7 +71,7 @@ export default defineRailway(() => {
     preDeploy: "npm run db:deploy",
     replicas: { sfo: 1 },
     env: {
-      DATABASE_URL: preserve(),
+      DATABASE_URL: Postgres.env.DATABASE_URL,
       LOG_LEVEL: preserve(),
       PLAID_CLIENT_ID: preserve(),
       PLAID_ENV: preserve(),
@@ -78,6 +84,13 @@ export default defineRailway(() => {
   });
 
   return project("Currents", {
-    resources: [web, Postgres, syncCron, worker, postgresVolume, PostgresPITR]
+    resources: [
+      web,
+      Postgres,
+      syncCron,
+      worker,
+      postgresVolume,
+      ...(PostgresPITR ? [PostgresPITR] : [])
+    ]
   });
 });

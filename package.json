@@ -14,6 +14,8 @@
     "start": "next start",
     "worker": "tsx src/worker.ts",
     "cron:sync": "tsx src/cron/reconcile.ts",
+    "ops:snapshot": "tsx src/server/ops/print-snapshot.ts",
+    "ops:exercise-token-rotation": "tsx src/server/plaid/staging-rotation-exercise.ts",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",

@@ -30,6 +30,10 @@ function encryptionKey(version = currentKeyVersion()) {
   return key;
 }
 
+export function rotateEncryptedSecret(value: EncryptedSecret): EncryptedSecret {
+  return encryptSecret(decryptSecret(value));
+}
+
 export function encryptSecret(
   plaintext: string,
   key = encryptionKey()

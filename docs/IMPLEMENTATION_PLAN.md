@@ -1,12 +1,13 @@
 # Currents implementation plan
 
-Last updated: 2026-09-27
+Last updated: 2026-09-28
 
 ## Current status
 
 - Release target: secure, polished private-household v1
-- Current phase: Phase 7 — Motion, responsive design, and accessibility —
-  complete
+- Current phase: Phase 8 — Private production readiness — in progress on
+  issue
+  [#17](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/17)
 - Roadmap issue:
   [#1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/1)
 - Milestone:
@@ -14,9 +15,9 @@ Last updated: 2026-09-27
 - Board:
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
-- Next future handoff:
-  [#17](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/17).
-  It has not been started.
+- Next future handoff after this issue:
+  [#18](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/18).
+  Do not start it from this context.
 
 ## Product finish line
 
@@ -321,17 +322,24 @@ Local verification on 2026-09-27:
 
 Goal: make private v1 safe to use daily with real financial data.
 
-- Create and validate staging before production Plaid access.
-- Remove development bypass and bootstrap credentials from deployed contexts.
-- Finalize the production hostname before relying on passkeys.
-- Complete Plaid Trial before Plaid Production.
-- Monitor worker health, sync lag, failed jobs, and login-required Items.
-- Exercise encryption-key rotation in staging.
-- Configure Railway usage alerts and spending limits.
-- Enable backups and point-in-time recovery.
-- complete and record a disposable-database restore drill.
-- Verify security headers and PII-scrubbed error reporting.
-- Complete `docs/SECURITY.md` and `docs/RAILWAY.md` release checklists.
+- [ ] Create and validate staging before production Plaid access.
+- [x] Remove development bypass and bootstrap credentials from the current
+      Railway production web service, and refuse them at runtime if they
+      return.
+- [x] Record the current production hostname and matching passkey origin.
+      Do not change it without a credential migration.
+- [ ] Complete Plaid Trial before Plaid Production.
+- [x] Monitor worker health, sync lag, failed jobs, and login-required Items.
+- [x] Implement encryption-key rotation and prove it against local fixtures.
+      Staging execution is gated on creating an isolated staging environment.
+- [ ] Configure Railway usage alerts and spending limits.
+- [x] Point-in-time recovery is enabled on production PostgreSQL. Daily volume
+      backup schedules are still unset.
+- [ ] complete and record a disposable-database restore drill.
+- [x] Verify security headers and PII-scrubbed error reporting in application
+      code and tests.
+- [ ] Complete `docs/SECURITY.md` and `docs/RAILWAY.md` release checklists
+      after staging, backups, and usage limits exist.
 
 Exit evidence:
 
@@ -1494,9 +1502,72 @@ Remaining risks:
 - “Remaining this month” has no scheduling claim. Supporting actual upcoming
   due dates requires a future recurrence or obligation model.
 
+### Issue #17 operations evidence — 2026-09-28 (in progress)
+
+Inspection (read-only except the accidental domain noted below):
+
+- Canonical `main` remains `4a45078` until this work is committed.
+- Railway project Currents has isolated production and staging environments.
+  Each has its own PostgreSQL volume, web, worker, and sync-cron
+  (`17 */6 * * *`). Production and staging database credentials differ, and
+  every application `DATABASE_URL` uses the private
+  `postgres.railway.internal` host.
+- Public web origin is `https://web-production-5ec4a.up.railway.app`. Worker
+  and PostgreSQL have no domains. Staging web is
+  `https://web-staging-7944.up.railway.app`; its worker, cron, and PostgreSQL
+  also have no domain or TCP proxy. Both `/api/health` endpoints returned
+  `{"status":"ok"}`.
+- Production web has no `AUTH_DEV_BYPASS` and no `PASSKEY_BOOTSTRAP_TOKEN`.
+  `AUTH_URL`, `PASSKEY_ORIGIN`, and the webhook host share that Railway
+  hostname. `PASSKEY_RP_NAME` is Currents. Auth and encryption key
+  fingerprints differ. `PLAID_ENV` is sandbox. Application `DATABASE_URL`
+  values use `postgres.railway.internal`. GitLab CI project variables are
+  empty.
+- Staging uses a separate Auth.js secret, encryption key, PostgreSQL password,
+  passkey origin/RP ID, webhook URL, and a newly created Plaid team with
+  Sandbox credentials. Staging web and worker share only their staging
+  encryption and Plaid values; all differ from production. Neither deployed
+  environment defines the development bypass or bootstrap token.
+- PITR is enabled, has 15 backup sets, and reports a healthy WAL archiver.
+  No volume-backup schedule is configured. The approved Daily + Weekly command
+  is blocked by Railway `OAUTH_INSUFFICIENT_GRANT`.
+- Workspace compute limits remain unset. Railway rejects the approved $15
+  alert/$40 hard limit because the workspace has no active subscription. The
+  separate Railway agent hard limit remains $1.50.
+- Production domain inventory now proves only web is public. The accidental
+  sync-cron domain is absent; no deletion was needed.
+
+In-repo implementation and local verification:
+
+- Runtime isolation guards, allowlisted operational snapshots, transactional
+  restart-safe encryption rotation, a staging-only disposable rotation
+  exercise, Plaid environment mapping, environment-specific CSP, and
+  PII-scrubbed request-error reporting.
+- Targeted runtime, header, secret, snapshot, and rotation coverage passed:
+  4 files and 12 tests before the disposable-exercise test was added; the
+  operations integration file now passes all 3 tests.
+- `npm run test:unit` passed: 19 files and 99 tests.
+- `npm run test:integration` passed: 14 files and 94 tests.
+- `npm test` passed: 33 files and 193 tests.
+- `npm run typecheck`, `npm run lint`, scoped Prettier, `npx prisma validate`,
+  `npx prisma migrate status`, `npm run build`, and edited-file diagnostics
+  passed. Prisma reports all eight migrations applied and Next.js generated
+  all 21 static pages.
+- Focused operations Playwright passed, and `npm run test:e2e` passed after
+  restoring its missing pinned Chromium binary: 31 passed and the expected
+  mobile passkey duplicate skipped.
+
+Remaining #17 work: deploy this implementation, execute and record the
+staging-only key rotation, prove safe production worker/cron snapshots, and
+resolve or formally leave open the account-level backup-schedule and
+usage-limit blockers. Issue #18 still owns the disposable restore drill and
+final release audit.
+
 ## Next handoff
 
-Issue
-[#16](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/16)
-is the next future action and has not been started. Keep roadmap issue #1 and
-the full Currents goal open because the private v1 application is not complete.
+Finish issue
+[#17](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/17)
+after the approved Railway mutations. Keep roadmap issue #1 open. Do not start
+issue
+[#18](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/18)
+or commercialization work.

@@ -8,10 +8,24 @@ import {
 
 export { CountryCode, Products };
 
+export type PlaidRuntimeEnv = "sandbox" | "development" | "production";
+
+export function resolvePlaidEnvironment(
+  value = process.env.PLAID_ENV
+): PlaidRuntimeEnv {
+  const environment = value ?? "sandbox";
+  if (
+    environment === "sandbox" ||
+    environment === "development" ||
+    environment === "production"
+  ) {
+    return environment;
+  }
+  throw new Error("PLAID_ENV must be sandbox, development, or production.");
+}
+
 function plaidHost() {
-  const environment = process.env.PLAID_ENV ?? "sandbox";
-  if (environment === "production") return PlaidEnvironments.production;
-  return PlaidEnvironments.sandbox;
+  return PlaidEnvironments[resolvePlaidEnvironment()];
 }
 
 const configuration = new Configuration({

@@ -1,8 +1,10 @@
 import { pathToFileURL } from "node:url";
 import { prisma } from "@/server/db";
+import { getOpsSnapshot } from "@/server/ops/snapshot";
 import { claimNextSyncJob } from "@/server/plaid/jobs";
 import { syncPlaidItem } from "@/server/plaid/sync";
 import { sanitizedPlaidError } from "@/server/plaid/errors";
+import { assertIsolatedRuntime } from "@/server/runtime-context";
 
 type ClaimedSyncJob = NonNullable<Awaited<ReturnType<typeof claimNextSyncJob>>>;
 
@@ -93,6 +95,16 @@ export async function processClaimedSyncJob(
   }
 }
 
+const OPS_SNAPSHOT_MS = Number(process.env.OPS_SNAPSHOT_MS ?? "60000");
+let lastOpsSnapshotAt = 0;
+
+async function maybeLogOpsSnapshot(now = Date.now()) {
+  if (now - lastOpsSnapshotAt < OPS_SNAPSHOT_MS) return;
+  lastOpsSnapshotAt = now;
+  const snapshot = await getOpsSnapshot(new Date(now));
+  logger.info("ops.snapshot", snapshot);
+}
+
 export async function runWorker({
   pollMs = Number(process.env.SYNC_POLL_MS ?? "5000"),
   shouldStop,
@@ -104,13 +116,17 @@ export async function runWorker({
   sleep?: (milliseconds: number) => Promise<void>;
 }) {
   logger.info("worker.started");
+  lastOpsSnapshotAt = Date.now();
   while (!shouldStop()) {
     const job = await claimNextSyncJob();
     if (!job) {
+      await maybeLogOpsSnapshot();
       await sleep(pollMs);
       continue;
     }
     await processClaimedSyncJob(job);
+    lastOpsSnapshotAt = 0;
+    await maybeLogOpsSnapshot();
   }
 
   await prisma.$disconnect();
@@ -118,6 +134,7 @@ export async function runWorker({
 }
 
 async function main() {
+  assertIsolatedRuntime();
   let stopping = false;
   process.on("SIGTERM", () => {
     stopping = true;
