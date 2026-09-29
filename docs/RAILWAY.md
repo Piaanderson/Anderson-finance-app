@@ -43,9 +43,9 @@ In production:
 - set `PASSKEY_RP_ID` to the public hostname, `PASSKEY_ORIGIN` to its HTTPS
   origin, and `PASSKEY_RP_NAME=Currents`;
 - do not define `PASSKEY_BOOTSTRAP_TOKEN` after the owner passkey exists;
-- set Plaid environment to `development` (Trial) or `production` only after
-  those credentials are approved; never leave production on another context's
-  secrets;
+- keep the current private deployment on its separately held Sandbox
+  credentials until Trial or Production access and credentials are explicitly
+  approved; do not change `PLAID_ENV` as part of unrelated operations work;
 - set a random `TOKEN_ENCRYPTION_KEY` and version;
 - do not define `AUTH_DEV_BYPASS`;
 - set `NEXT_TELEMETRY_DISABLED=1`.
@@ -141,7 +141,8 @@ has never been restored is unverified. Do not commit dump files.
   including production.
 - The worker and six-hour cron emit an `ops.snapshot` event with pending,
   running, and failed job counts, pending lag, login-required Items, error
-  Items, and stale active Items. Counts only; never payloads.
+  Items, stale active Items, and safe local Item IDs. They never emit provider
+  IDs, account or transaction data, balances, tokens, or raw payloads.
 - Local operators can print the same snapshot with `npm run ops:snapshot`
   against a non-production database.
 - A failed sync retries with exponential backoff and stops after eight
@@ -149,6 +150,19 @@ has never been restored is unverified. Do not commit dump files.
 - Investigate `LOGIN_REQUIRED` Items by launching Plaid update mode before
   adding more retries.
 - Run migrations forward; create a backup before any destructive migration.
+
+Observed production evidence on 2026-09-28:
+
+- 300 worker records contained 299 snapshots. The latest reported zero
+  pending, running, and failed jobs and zero login-required, error, and stale
+  active Items.
+- 16 cron records contained two snapshots. The latest reported one newly
+  enqueued pending job, zero running or failed jobs, zero-second pending lag,
+  and zero login-required, error, and stale active Items.
+- The structured records contained no financial-payload fields and no blocked
+  sensitive terms.
+- Production and staging web, worker, cron, and PostgreSQL deployments report
+  `SUCCESS`. Only each environment's web service has a public domain.
 
 ## Encryption-key rotation
 
@@ -167,7 +181,10 @@ fixture.
 4. Redeploy both services and run this inside the staging worker:
 
 ```bash
-npm run ops:exercise-token-rotation
+npx --yes @railway/cli@5.57.12 ssh \
+  --service worker \
+  --environment staging \
+  npm run ops:exercise-token-rotation
 ```
 
 5. Preserve only the safe JSON result. It must report one rotation, zero old
@@ -177,3 +194,11 @@ npm run ops:exercise-token-rotation
 
 Never rotate production keys or remove an old version without explicit
 approval and proof that no ciphertext remains on the previous version.
+
+The staging exercise completed on 2026-09-28. Web and worker both moved from
+version 1 to version 2 and retained the same version-1 key. The safe result
+reported `rotated: 1`, `remainingOld: 0`, changed ciphertext, successful
+current-key decryption, retained previous-key access, complete current-version
+coverage, and fixture cleanup. Staging health returned HTTP 200 after redeploy;
+its CSP allowed Plaid Sandbox and did not allow Plaid Production. No key
+material or ciphertext was printed.

@@ -15,6 +15,10 @@ database exports, credentials, and support screenshots as confidential.
 - Automated Plaid-token rotation is staging-only. It refuses local, CI, and
   production contexts, re-reads and conditionally updates each row in a
   transaction, and never deletes an old key.
+- The 2026-09-28 staging exercise moved web and worker together from key
+  version 1 to 2 while retaining version 1. One disposable encrypted Item
+  rotated, changed ciphertext, decrypted with version 2, left no old-version
+  rows, and was removed. No production key or Item was changed.
 - Never log Plaid request/response bodies, authorization headers, transaction
   descriptions, account numbers, or balances.
 - Operational snapshots are allowlisted to generation time, queue counts,
@@ -197,3 +201,26 @@ classification.
   stops every Railway service, including production.
 - Confirm logs and error reports contain no financial payloads.
 - Confirm security headers, including Content-Security-Policy, on `/api/health`.
+
+Issue #17 release-check evidence on 2026-09-28:
+
+- Production and staging databases, Auth.js secrets, encryption keys, passkey
+  origins, webhook URLs, and Plaid credentials are distinct. CI has no Plaid,
+  Railway, or encryption credentials.
+- Production has neither `AUTH_DEV_BYPASS` nor
+  `PASSKEY_BOOTSTRAP_TOKEN`. Only production web is public; worker, cron, and
+  PostgreSQL are private. The same topology holds independently in staging.
+- Production and staging `/api/health` returned HTTP 200 with the expected
+  security headers. Their CSPs permit only the Plaid environment configured
+  for that deployment; staging allows Sandbox and excludes Production.
+- Production worker and cron logs contained the allowlisted `ops.snapshot`
+  fields and no financial-payload keys or blocked sensitive terms.
+- Production PITR and WAL archiving are healthy with 15 backup sets. The
+  approved Daily + Weekly volume schedule is not active because Railway
+  returned `OAUTH_INSUFFICIENT_GRANT`; an authorized workspace owner must
+  enable and verify it.
+- The approved $15 usage alert and $40 hard limit are not active because
+  Railway requires an active workspace subscription. Issue #17 remains open
+  rather than treating either unavailable control as complete.
+- The actual disposable restore drill remains exclusively in issue #18 and
+  was not run.

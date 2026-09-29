@@ -322,7 +322,9 @@ Local verification on 2026-09-27:
 
 Goal: make private v1 safe to use daily with real financial data.
 
-- [ ] Create and validate staging before production Plaid access.
+- [x] Create and validate isolated staging before production Plaid access.
+      Staging has its own PostgreSQL volume, Auth.js and encryption secrets,
+      passkey origin, webhook URL, and Plaid Sandbox team.
 - [x] Remove development bypass and bootstrap credentials from the current
       Railway production web service, and refuse them at runtime if they
       return.
@@ -330,8 +332,8 @@ Goal: make private v1 safe to use daily with real financial data.
       Do not change it without a credential migration.
 - [ ] Complete Plaid Trial before Plaid Production.
 - [x] Monitor worker health, sync lag, failed jobs, and login-required Items.
-- [x] Implement encryption-key rotation and prove it against local fixtures.
-      Staging execution is gated on creating an isolated staging environment.
+- [x] Implement encryption-key rotation and prove it against local fixtures
+      and a disposable staging-only encrypted Item.
 - [ ] Configure Railway usage alerts and spending limits.
 - [x] Point-in-time recovery is enabled on production PostgreSQL. Daily volume
       backup schedules are still unset.
@@ -1502,11 +1504,11 @@ Remaining risks:
 - “Remaining this month” has no scheduling claim. Supporting actual upcoming
   due dates requires a future recurrence or obligation model.
 
-### Issue #17 operations evidence — 2026-09-28 (in progress)
+### Issue #17 operations evidence — 2026-09-28 (blocked)
 
 Inspection (read-only except the accidental domain noted below):
 
-- Canonical `main` remains `4a45078` until this work is committed.
+- Canonical `main` contains issue #17 implementation commit `75ec5bb`.
 - Railway project Currents has isolated production and staging environments.
   Each has its own PostgreSQL volume, web, worker, and sync-cron
   (`17 */6 * * *`). Production and staging database credentials differ, and
@@ -1556,18 +1558,49 @@ In-repo implementation and local verification:
 - Focused operations Playwright passed, and `npm run test:e2e` passed after
   restoring its missing pinned Chromium binary: 31 passed and the expected
   mobile passkey duplicate skipped.
+- GitLab
+  [pipeline #32](https://gitlab.com/piaanderson-group/anderson-finance-app/-/pipelines/2891596022)
+  passed commit `75ec5bb`; the server-side GitHub deployment mirror resolved
+  to the same commit. Railway production and staging deployments for web,
+  worker, cron, and PostgreSQL reported `SUCCESS`.
+- The deployed staging CSP permits Plaid Sandbox and excludes Plaid Production;
+  `/api/health` returned HTTP 200 after the rotation redeploy.
 
-Remaining #17 work: deploy this implementation, execute and record the
-staging-only key rotation, prove safe production worker/cron snapshots, and
-resolve or formally leave open the account-level backup-schedule and
-usage-limit blockers. Issue #18 still owns the disposable restore drill and
-final release audit.
+External operations evidence:
+
+- Staging web and worker moved together from encryption-key version 1 to 2
+  while retaining the matching version-1 key. The staging-only exercise
+  rotated one disposable encrypted Item, left zero old-version rows, changed
+  ciphertext, decrypted with the current key, proved the previous key remained
+  available, proved every non-removed Item was current, and removed its
+  fixture. No key material or ciphertext was printed.
+- The latest inspected production worker snapshot reported zero pending,
+  running, and failed jobs and zero login-required, error, and stale active
+  Items. The latest cron snapshot reported one newly enqueued pending job,
+  zero running or failed jobs, zero-second lag, and zero login-required,
+  error, or stale active Items. Across 316 inspected records there were no
+  financial-payload keys or blocked sensitive terms.
+- PITR remains healthy with 15 backup sets and a healthy WAL archiver. The
+  separately approved Daily + Weekly volume schedule remains unavailable:
+  Railway returned `OAUTH_INSUFFICIENT_GRANT`.
+- The approved $15 usage alert and $40 workspace hard limit remain
+  unavailable: Railway returned “Usage limits require an active
+  subscription.” No workaround was attempted.
+
+Issue #17 remains open because its usage-alert and spending-limit acceptance
+criterion cannot be satisfied on the current unsubscribed Railway workspace.
+The backup schedule limitation is also recorded rather than represented as
+configured. Issue #18 still owns the disposable restore drill and final release
+audit; neither was started here.
 
 ## Next handoff
 
-Finish issue
+Issue
 [#17](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/17)
-after the approved Railway mutations. Keep roadmap issue #1 open. Do not start
-issue
+is blocked only by Railway account capabilities: activate an eligible
+subscription, then configure and verify the approved $15 alert and $40 hard
+limit; an authorized workspace owner should also configure and verify the
+approved Daily + Weekly volume schedule. Keep roadmap issue #1 open. Do not
+start issue
 [#18](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/18)
 or commercialization work.
