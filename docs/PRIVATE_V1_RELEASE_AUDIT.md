@@ -2,8 +2,8 @@
 
 Audit date: 2026-10-02
 Owner: Pia Anderson
-Scope: Currents private-household v1 at GitLab `main` commit `df7dd81`,
-plus the uncommitted restore follow-up listed below.
+Scope: Currents private-household v1 at GitLab `main` commit `04b49dc`,
+plus this publication-status follow-up.
 
 ## Conclusion
 
@@ -16,6 +16,9 @@ still incomplete because Plaid Trial access and real-institution OAuth,
 webhook, reauthentication, and `LOGIN_REPAIRED` behavior have not been proven.
 The later paid Plaid Production gates are documented but are not represented
 as complete.
+
+Issue #17 closed after commit `04b49dc`, pipeline #35, the server-side mirror,
+and the production web deployment all succeeded.
 
 Issue
 [#18](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/18),
@@ -190,7 +193,8 @@ Excluded:
 
 - **Proven deployed — topology and health.** Production and staging web,
   worker, sync-cron, and PostgreSQL deployments report `SUCCESS` at
-  `89ae18d`. Only web has a domain. Both PostgreSQL volumes report `READY`.
+  their expected revisions. Production web reports `SUCCESS` at `04b49dc`.
+  Only web has a domain. Both PostgreSQL volumes report `READY`.
 - **Proven locally — runtime isolation and migration behavior.**
   `src/server/runtime-context.test.ts` and
   `tests/integration/operations.test.ts` cover environment guards and
@@ -316,10 +320,10 @@ the suite or source boundary that exercises the behavior.
   `https://web-staging-7944.up.railway.app`
 - Staging private services: worker, sync-cron, PostgreSQL.
 - Production and staging sync cron: `17 */6 * * *`.
-- Current deployed application commit: `89ae18d`.
-- Latest GitLab pipelines: #32 and #33 passed.
+- Current production web deployment commit: `04b49dc`.
+- Latest GitLab pipeline: #35 passed.
 - GitLab-to-GitHub server-side mirror: enabled, `finished`, no error. GitHub is
-  not a direct push target.
+  not a direct push target; mirrored `main` matches `04b49dc`.
 - No disposable Railway or local database, volume, socket, passphrase, or
   backup artifact remains after separately approved cleanup.
 
@@ -328,13 +332,9 @@ the suite or source boundary that exercises the behavior.
 Owner: Pia Anderson. Next review: 2026-10-08, or earlier when Plaid responds
 to the pending access review.
 
-1. Publish the restore evidence after explicit commit/push approval and verify
-   the GitLab pipeline and server-side mirror.
-2. Close issue #17 after its updated Railway evidence and owner-approved backup
-   scope are published.
-3. Complete Plaid Trial and record real-institution OAuth, reauthentication,
+1. Complete Plaid Trial and record real-institution OAuth, reauthentication,
    webhook, and `LOGIN_REPAIRED` evidence.
-4. Complete Plaid Production application/security approval and configure
+2. Complete Plaid Production application/security approval and configure
    Production credentials and webhook only under separate authorization.
-5. Keep issue #18, roadmap issue #1, and the Currents goal open until the
+3. Keep issue #18, roadmap issue #1, and the Currents goal open until the
    remaining Plaid evidence is direct.

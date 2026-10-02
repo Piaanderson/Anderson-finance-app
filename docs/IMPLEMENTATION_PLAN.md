@@ -10,8 +10,8 @@ Last updated: 2026-10-02
   has a successful encrypted logical restore but remains blocked on Plaid
   Trial and real-institution recovery evidence. Issue
   [#17](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/17)
-  has satisfied its remaining usage-control criterion and is ready to close
-  after this follow-up evidence is published.
+  is closed after its revised recovery scope, usage controls, pipeline #35,
+  server-side mirror, and production deployment were verified.
 - Roadmap issue:
   [#1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/1)
 - Milestone:
@@ -1610,7 +1610,8 @@ External inspection and restore attempt:
 - The workspace reports the $15 soft alert and $40 hard limit active. The
   volume-schedule list remains empty under the owner-approved Hobby scope.
 - Production and staging web, worker, sync-cron, and PostgreSQL deployments
-  report `SUCCESS` at `89ae18d`. Only web is public in each environment.
+  report `SUCCESS` at their expected revisions. Production web reports
+  `SUCCESS` at `04b49dc`. Only web is public in each environment.
 - Safe production source counts were captured without financial values or
   identifying source data: 8 migrations, 1 household, 1 user, 1 membership,
   1 active Plaid Item, 14 accounts, 14 snapshots, 396 transactions, 0 transfer
@@ -1669,17 +1670,16 @@ Local audit and correction:
   [`docs/PRIVATE_V1_RELEASE_AUDIT.md`](./PRIVATE_V1_RELEASE_AUDIT.md).
 
 Issue #18 cannot move to review or close yet. The restore and current Railway
-controls are proven, and issue #17 is ready to close after publication. Plaid
-Trial access and real-institution OAuth, webhook, reauthentication, and
-`LOGIN_REPAIRED` behavior remain unproven. Paid Plaid Production remains a
-documented later gate, not a readiness claim. Roadmap issue #1 and the Currents
-goal remain open.
+controls are proven, and issue #17 closed after pipeline #35, the server-side
+mirror, and the production deployment succeeded. Plaid Trial access and
+real-institution OAuth, webhook, reauthentication, and `LOGIN_REPAIRED`
+behavior remain unproven. Paid Plaid Production remains a documented later
+gate, not a readiness claim. Roadmap issue #1 and the Currents goal remain
+open.
 
 ## Next handoff
 
-Publish the restore and revised-scope evidence after explicit commit/push
-approval, then close issue #17 if the pipeline and mirror pass. Complete Plaid
-Trial and test a real institution in staging before any separately authorized
-production credential or environment change. Keep issue #18, roadmap issue #1,
-and the Currents goal open until that evidence exists. Do not start
-commercialization work.
+Complete Plaid Trial and test a real institution in staging before any
+separately authorized production credential or environment change. Keep issue
+#18, roadmap issue #1, and the Currents goal open until that evidence exists.
+Do not start commercialization work.
