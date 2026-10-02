@@ -37,9 +37,11 @@ jobs:
       - run: npx prisma validate
       - run: npm run typecheck
       - run: npm run lint
+      - run: npm run format:check
+      - run: npm audit --omit=dev
       - run: npm test
       - run: npm run build
       - run: npm run db:deploy
       - run: npm run db:seed
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- --project=chromium
+      - run: npm run test:e2e

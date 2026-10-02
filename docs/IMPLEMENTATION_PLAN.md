@@ -1,13 +1,16 @@
 # Currents implementation plan
 
-Last updated: 2026-09-28
+Last updated: 2026-10-01
 
 ## Current status
 
 - Release target: secure, polished private-household v1
-- Current phase: Phase 8 — Private production readiness — in progress on
-  issue
+- Current phase: Phase 8 — Private production readiness — issue
+  [#18](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/18)
+  is in progress but blocked before restore by Railway's free-plan resource
+  limit. Issue
   [#17](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/17)
+  remains blocked on account capabilities.
 - Roadmap issue:
   [#1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/1)
 - Milestone:
@@ -15,9 +18,8 @@ Last updated: 2026-09-28
 - Board:
   [Currents Private v1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/boards/11624000)
 - Canonical remote: GitLab; GitHub is a server-side deployment mirror only
-- Next future handoff after this issue:
-  [#18](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/18).
-  Do not start it from this context.
+- Current release-audit record:
+  [`docs/PRIVATE_V1_RELEASE_AUDIT.md`](./PRIVATE_V1_RELEASE_AUDIT.md)
 
 ## Product finish line
 
@@ -1590,17 +1592,86 @@ External operations evidence:
 Issue #17 remains open because its usage-alert and spending-limit acceptance
 criterion cannot be satisfied on the current unsubscribed Railway workspace.
 The backup schedule limitation is also recorded rather than represented as
-configured. Issue #18 still owns the disposable restore drill and final release
-audit; neither was started here.
+configured.
+
+### Issue #18 restore and release-audit evidence — 2026-10-01 (blocked)
+
+External inspection and restore attempt:
+
+- Issue #18 moved to `workflow::in-progress`.
+- Production PITR is enabled with 15 backup sets. The latest backup was
+  `2026-09-30T19:22:54Z`; the WAL archiver was healthy and last archived at
+  `2026-10-01T17:07:46Z`.
+- The production volume-schedule list remains empty and the workspace usage
+  limit remains unset.
+- Production and staging web, worker, sync-cron, and PostgreSQL deployments
+  report `SUCCESS` at `89ae18d`. Only web is public in each environment.
+- After explicit approval, Railway created isolated environment
+  `private-v1-restore-20261001`, but PostgreSQL provisioning failed with
+  `Free plan resource provision limit exceeded`. It contained no service,
+  volume, domain, or TCP proxy and was deleted only after separate explicit
+  approval. The verified environment list then contained production and
+  staging only.
+- No logical backup or temporary archive was created. Nothing was restored,
+  cleaned, overwritten, or deleted in production or staging. The restore
+  criterion remains unchecked.
+- Safe production source counts were captured without financial values or
+  identifying source data: 8 migrations, 1 household, 1 user, 1 membership,
+  1 active Plaid Item, 14 accounts, 14 snapshots, 396 transactions, 0 transfer
+  matches, 0 categories, 0 merchant rules, 0 Budget months/allocations, and 1
+  completed-or-historical SyncJob with 0 pending/running/failed.
+- Count-only integrity checks returned zero errors for household membership,
+  Item/account ownership, snapshots, transaction/category references,
+  transfer legs, Budget destinations, property/debt links, and merchant-rule
+  categories. Token metadata reported one production version-1 Item and zero
+  missing ciphertext/IV/tag rows; no token was printed or decrypted.
+
+Local audit and correction:
+
+- `npm ci`, Prisma validation and migration status, typecheck, lint, and the
+  repository-wide formatting check passed.
+- The initial production dependency audit found critical Next.js advisory
+  `GHSA-vcvr-r3jv-pc5j`. A non-breaking audit update moved the lockfile from
+  Next.js 16.3.5 to 16.3.8. The final production audit reports zero findings.
+  The full audit reports two moderate development-only `@vitest/mocker`
+  findings whose offered fix is the breaking Vitest 5 upgrade; no forced
+  update was applied.
+- `npm run test:unit` passed 20 files/100 tests,
+  `npm run test:integration` passed 14 files/94 tests, and `npm test` passed
+  34 files/194 tests.
+- The production build passed on Next.js 16.3.8 with all 21 static-generation
+  tasks.
+- The browser suite exposed a stale assumption that September 2026 was always
+  the current month. The Home acceptance test now derives current/future UTC
+  months. Its focused desktop/mobile run passed, and the complete suite passed
+  31 tests with the expected duplicate mobile passkey ceremony skipped.
+- Request-error instrumentation now has a direct unit test proving error
+  messages, authorization headers, and query strings do not enter the
+  allowlisted log record. The populated Security route now receives an axe
+  scan after passkey and recovery-code use.
+- GitLab and mirrored GitHub CI now gate on the production dependency audit,
+  repository formatting, and both desktop and mobile Playwright projects.
+- The approved read-only production `railway config plan --json` returned
+  `ok: true`, no diagnostics, no changes, and `No changes.` Nothing was
+  applied.
+- `docs/RAILWAY.md` now states accurately that PostgreSQL custom format is
+  compressed/structured but not encrypted. It documents a protected direct
+  stream and a real GPG layer when a local archive is necessary.
+- The requirement matrix, deployment inventory, Plaid Trial/Production gates,
+  restore record, blockers, and no-go conclusion are recorded in
+  [`docs/PRIVATE_V1_RELEASE_AUDIT.md`](./PRIVATE_V1_RELEASE_AUDIT.md).
+
+Issue #18 cannot move to review or close. The restore is not proven, issue #17
+is still blocked, Railway controls are incomplete, and Plaid Trial/Production
+approval and real-institution behavior are not proven. Roadmap issue #1 and the
+Currents goal remain open.
 
 ## Next handoff
 
-Issue
-[#17](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/17)
-is blocked only by Railway account capabilities: activate an eligible
-subscription, then configure and verify the approved $15 alert and $40 hard
-limit; an authorized workspace owner should also configure and verify the
-approved Daily + Weekly volume schedule. Keep roadmap issue #1 open. Do not
-start issue
-[#18](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/18)
-or commercialization work.
+Activate an eligible Railway subscription/resource capability, configure and
+verify the approved $15 alert, $40 hard limit, and Daily + Weekly volume
+schedules, then provision a new private disposable PostgreSQL target and
+repeat the complete restore drill. Complete Plaid Trial before any separately
+authorized Production credential or environment change. Keep issues #17, #18,
+roadmap issue #1, and the Currents goal open. Do not start commercialization
+work.

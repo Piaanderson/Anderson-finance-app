@@ -1845,6 +1845,10 @@ test("a local owner can add and use a passkey and recovery code", async ({
       .getByRole("button", { name: "Sign in with recovery code" })
       .click();
     await expect(page).toHaveURL(/\/settings\/security$/);
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(results.violations).toEqual([]);
   } finally {
     if (householdId) {
       await prisma.household.deleteMany({ where: { id: householdId } });

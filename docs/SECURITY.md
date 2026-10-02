@@ -224,3 +224,27 @@ Issue #17 release-check evidence on 2026-09-28:
   rather than treating either unavailable control as complete.
 - The actual disposable restore drill remains exclusively in issue #18 and
   was not run.
+
+Issue #18 audit evidence on 2026-10-01:
+
+- The production dependency audit initially found critical Next.js advisory
+  `GHSA-vcvr-r3jv-pc5j`. The lockfile now resolves Next.js 16.3.8, and
+  `npm audit --omit=dev` reports zero production findings. The two remaining
+  moderate findings are development-only `@vitest/mocker` findings whose
+  offered remediation is a breaking Vitest 5 upgrade; no forced update was
+  applied.
+- Production source metadata contains one non-removed Plaid Item on encryption
+  key version 1 and zero rows with missing ciphertext, IV, or authentication
+  tag metadata. No token was printed or decrypted. This is consistent with
+  the recorded staging-only version-2 rotation and unchanged production keys.
+- Count-only source checks returned zero membership, Plaid Item/account,
+  snapshot, transaction/category, transfer-leg, Budget destination,
+  property/debt, or merchant-rule relationship errors. These checks did not
+  expose names, balances, provider IDs, tokens, or transaction data.
+- The disposable restore remains unproven. Railway created an empty isolated
+  environment but refused to provision PostgreSQL because the free-plan
+  resource limit was exceeded. No logical backup was created or restored, and
+  production and staging were not changed.
+- The complete release matrix and blocker record are in
+  `docs/PRIVATE_V1_RELEASE_AUDIT.md`. The release conclusion remains no-go
+  until the restore, Railway controls, and Plaid Trial/Production gates pass.

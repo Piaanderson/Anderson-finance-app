@@ -120,17 +120,45 @@ schedule is active. An authorized workspace owner must enable Daily and Weekly
 under PostgreSQL → Backups; do not claim scheduled backups until
 `schedule list` returns both.
 
-Also create a portable encrypted logical backup:
+Also create a portable logical backup. PostgreSQL custom format is compressed
+and structured, but it is **not encrypted**. Prefer a protected direct stream
+from the private production service into a private disposable target:
 
 ```bash
-pg_dump "$DATABASE_PUBLIC_URL" --format=custom --file=currents.dump
-pg_restore --clean --if-exists --no-owner --exit-on-error \
-  --dbname="$RESTORE_DATABASE_URL" currents.dump
+pg_dump "$SOURCE_DATABASE_URL" --format=custom --no-owner --no-acl |
+  pg_restore --clean --if-exists --no-owner --exit-on-error \
+    --dbname="$RESTORE_DATABASE_URL"
 ```
 
-Quarterly, restore into a disposable database, run `npx prisma migrate status`,
-check household/account/transaction counts, and record the date. A backup that
-has never been restored is unverified. Do not commit dump files.
+If a local archive is operationally necessary, create it outside the
+repository with restrictive permissions and add a real encryption layer:
+
+```bash
+umask 077
+pg_dump "$SOURCE_DATABASE_URL" --format=custom --no-owner --no-acl |
+  gpg --symmetric --cipher-algo AES256 --output /secure/path/currents.dump.gpg
+gpg --decrypt /secure/path/currents.dump.gpg |
+  pg_restore --list >/dev/null
+```
+
+Never write credentials into command arguments or logs. Never print or upload
+the archive, and never commit it. Restore only into a newly provisioned private
+disposable target. Use `pg_restore --clean --if-exists` only against that
+target. Obtain separate explicit approval before deleting the target or exact
+temporary artifacts.
+
+Quarterly, run `npx prisma migrate status` against the restored database,
+compare safe source/restored counts, check critical household relationships,
+run safe application reads, and record the date and duration. A backup that
+has never passed all of those checks is unverified.
+
+The 2026-10-01 issue #18 attempt stopped before backup creation. Railway created
+the empty isolated environment `private-v1-restore-20261001`, but rejected the
+PostgreSQL service with `Free plan resource provision limit exceeded`. No
+database, dump, restore, or cleanup command touched production or staging. The
+empty environment was deleted after separate explicit approval. The complete
+evidence and safe source baseline are in
+`docs/PRIVATE_V1_RELEASE_AUDIT.md`.
 
 ## Operations
 

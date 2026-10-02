@@ -7,6 +7,24 @@ test("Home traces household data across dynamic months and honest unavailable st
   page
 }, testInfo) => {
   const fixture = `home-${testInfo.project.name}-${randomUUID()}`;
+  const now = new Date();
+  const currentMonth = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+  );
+  const futureMonth = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+  );
+  const monthKey = (date: Date) => date.toISOString().slice(0, 7);
+  const monthLabel = (date: Date) =>
+    new Intl.DateTimeFormat("en-US", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC"
+    }).format(date);
+  const currentMonthKey = monthKey(currentMonth);
+  const currentMonthLabel = monthLabel(currentMonth);
+  const futureMonthKey = monthKey(futureMonth);
+  const futureMonthLabel = monthLabel(futureMonth);
   const email = `${fixture}@example.test`;
   const plaidRequests: string[] = [];
   const pageErrors: string[] = [];
@@ -383,7 +401,7 @@ test("Home traces household data across dynamic months and honest unavailable st
       name: "Next month, September 2026"
     });
     const current = page.getByRole("link", {
-      name: /Current month, September 2026/
+      name: `Current month, ${currentMonthLabel}`
     });
     for (const control of [previous, next, current]) {
       const box = await control.boundingBox();
@@ -394,26 +412,35 @@ test("Home traces household data across dynamic months and honest unavailable st
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/month=2026-09/);
     await expect(
-      page.locator(".home-month-position").getByText(/Day \d+ of 30/)
+      page.getByRole("heading", { level: 2, name: "September 2026" })
     ).toBeVisible();
-    await page.getByRole("link", { name: "Next month, October 2026" }).click();
-    await expect(page).toHaveURL(/month=2026-10/);
+    await page
+      .getByRole("link", { name: `Current month, ${currentMonthLabel}` })
+      .click();
+    await expect(page).toHaveURL(new RegExp(`month=${currentMonthKey}`));
+    await expect(
+      page.locator(".home-month-position").getByText(/Day \d+ of \d+/)
+    ).toBeVisible();
+    await page
+      .getByRole("link", { name: `Next month, ${futureMonthLabel}` })
+      .click();
+    await expect(page).toHaveURL(new RegExp(`month=${futureMonthKey}`));
     await expect(
       page
         .locator(".home-month-position")
-        .getByText("Month not started · 31 days", { exact: false })
+        .getByText(/Month not started · \d+ days/, { exact: false })
     ).toBeVisible();
     await expect(
       page
         .getByRole("region", { name: "Comparison basis" })
         .getByText(
-          "Previous-month comparison unavailable until October 2026 begins"
+          `Previous-month comparison unavailable until ${futureMonthLabel} begins`
         )
     ).toBeVisible();
     await page
-      .getByRole("link", { name: "Current month, September 2026" })
+      .getByRole("link", { name: `Current month, ${currentMonthLabel}` })
       .click();
-    await expect(page).toHaveURL(/month=2026-09/);
+    await expect(page).toHaveURL(new RegExp(`month=${currentMonthKey}`));
 
     await page.goto("/dashboard?month=2025-01");
     await expect(

@@ -192,6 +192,10 @@ Automated evidence and direct inspection are reported separately:
 - Reduced motion: the surface has no interaction-blocking motion.
 - Remaining risk: passkey browser automation remains Chromium-only by design;
   the expected duplicate mobile ceremony is skipped.
+- Issue #18 revalidation: after adding a passkey, generating recovery codes,
+  signing in with the passkey, and consuming one recovery code, the populated
+  Security route now receives its own WCAG 2.1 A/AA axe scan. The focused
+  Chromium ceremony and scan passed on 2026-10-01.
 
 ## Motion and contrast decisions
 
@@ -213,3 +217,8 @@ The audit does not claim a human VoiceOver, NVDA, JAWS, TalkBack, or physical
 device certification. Axe cannot prove usability, and browser emulation cannot
 reproduce every font, safe-area, browser-chrome, or platform-authenticator
 combination. These are residual acceptance risks, not known WCAG failures.
+
+Issue #18 also updates both CI definitions to run the complete desktop and
+mobile Playwright projects instead of Chromium desktop alone. The production
+dependency audit and formatting check are merge-gating alongside those browser
+checks after the issue #18 changes are published.
