@@ -1,26 +1,21 @@
 # Private-v1 release audit
 
-Audit date: 2026-10-01  
-Owner: Pia Anderson  
-Scope: Currents private-household v1 at GitLab `main` commit `89ae18d`,
-plus the uncommitted issue #18 audit fixes listed below.
+Audit date: 2026-10-02
+Owner: Pia Anderson
+Scope: Currents private-household v1 at GitLab `main` commit `df7dd81`,
+plus the uncommitted restore follow-up listed below.
 
 ## Conclusion
 
 **NO-GO for real-data daily use.**
 
 The implemented product, household authorization, local security controls,
-automated accessibility coverage, and current production topology have strong
-direct evidence. Release readiness is still incomplete because:
-
-1. the disposable Railway restore target could not be provisioned, so no
-   logical backup was restored or verified;
-2. issue
-   [#17](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/17)
-   remains blocked on the inactive usage alert, hard limit, and volume backup
-   schedules; and
-3. Plaid Trial and Production approval, credentials, OAuth, webhook, security
-   review, and real-institution recovery behavior have not been proven.
+automated accessibility coverage, current production topology, usage controls,
+and logical recovery path have strong direct evidence. Release readiness is
+still incomplete because Plaid Trial access and real-institution OAuth,
+webhook, reauthentication, and `LOGIN_REPAIRED` behavior have not been proven.
+The later paid Plaid Production gates are documented but are not represented
+as complete.
 
 Issue
 [#18](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/18),
@@ -38,13 +33,19 @@ Included:
 - transaction synchronization, transfer review, category review, exact
   merchant rules, monthly budgets, account maintenance, and the Home summary;
 - Railway web, worker, six-hour reconciliation cron, PostgreSQL, PITR, and
-  staging.
+  staging;
+- Railway Hobby operation with continuously verified PITR plus encrypted,
+  portable logical backups before risky migrations and during release/recovery
+  drills.
 
 Excluded:
 
 - public registration, invitations, household switching, billing, and
   commercialization;
 - AI features;
+- Railway Pro-only scheduled volume snapshots. On 2026-10-02 the owner
+  explicitly accepted PITR plus encrypted logical backups instead of raising
+  the monthly plan floor solely for Daily + Weekly snapshots;
 - a switch from the separately held production Sandbox credentials to Plaid
   Trial or Production.
 
@@ -195,40 +196,64 @@ Excluded:
   `tests/integration/operations.test.ts` cover environment guards and
   staging-only rotation. Web and worker execute `prisma migrate deploy` before
   start in `.railway/railway.ts`.
-- **Proven deployed — PITR/WAL.** PITR is enabled with 15 backup sets. The
-  latest backup was `2026-09-30T19:22:54Z`; the WAL archiver was healthy and
-  last archived at `2026-10-01T17:07:46Z`.
-- **Blocked — volume schedules.** The schedule list remains empty. Railway
-  previously returned `OAUTH_INSUFFICIENT_GRANT` for the approved Daily +
-  Weekly schedule.
-- **Blocked — usage controls.** The workspace usage limit remains `null`.
-  Railway requires an active subscription before the approved $15 alert and
-  $40 hard limit can be configured.
-- **Blocked — restore drill.** See the restore record below.
+- **Proven deployed — PITR/WAL.** PITR is enabled with 15 backup sets. On
+  2026-10-02 the latest backup was `2026-10-02T19:24:31Z`; the WAL archiver
+  was healthy and last archived at `2026-10-02T22:36:34Z`.
+- **Accepted scope — volume schedules.** The schedule list remains empty.
+  Railway's current dashboard says creating backups and enabling PITR require
+  Pro. The owner chose to retain Hobby and explicitly replaced Daily + Weekly
+  volume snapshots with the existing PITR plus encrypted portable logical
+  backups. This is an accepted risk, not a configured control.
+- **Proven deployed — usage controls.** Railway reports a $15 soft usage alert,
+  a $40 workspace hard limit, and `isOverLimit: false`.
+- **Proven — restore drill.** See the restore record below.
 - **Proven read-only — final IaC plan.** The approved production
   `railway config plan --json` returned `ok: true`, no diagnostics, an empty
   change set, and `No changes.` No plan was applied.
 
 ## Restore-drill record
 
-Result: **BLOCKED BEFORE BACKUP CREATION; NOT A SUCCESSFUL RESTORE.**
+Result: **SUCCESSFUL ENCRYPTED LOGICAL BACKUP AND ISOLATED LOCAL RESTORE.**
 
-1. Read-only PITR inspection passed with 15 backup sets and healthy WAL
-   archiving.
-2. With explicit approval, Railway created isolated environment
-   `private-v1-restore-20261001`
-   (`8fdc57f6-4bbe-4fc0-bc87-e056fe753406`).
-3. The environment has no services, volumes, domains, or TCP proxy.
-4. PostgreSQL provisioning ran for 13.8 seconds and failed with:
-   `Free plan resource provision limit exceeded. Please upgrade to provision more resources!`
-5. No disposable database existed, so no logical backup, restore,
-   `pg_restore --clean --if-exists`, restored migration check, count
-   comparison, restored integrity check, or restored application read was
-   possible.
-6. No dump file or other backup artifact was created. Production and staging
-   were not restored, cleaned, overwritten, or changed.
-7. After separate explicit approval, the empty environment was deleted.
-   Railway's environment list then contained only production and staging.
+The earlier Railway attempt remains useful evidence: on 2026-10-01 the
+isolated environment `private-v1-restore-20261001` could not provision
+PostgreSQL on the then-current resource capability. It contained no service,
+database, volume, domain, or proxy and was deleted after separate approval.
+
+On 2026-10-02 the owner explicitly approved a lower-cost recovery scope:
+continuing Railway PITR plus encrypted portable logical backups, restored into
+an isolated disposable PostgreSQL database on the operator's Mac.
+
+1. Read-only PITR inspection passed with 15 backup sets, a current recovery
+   point, and healthy WAL archiving.
+2. Safe source counts and integrity results were captured before the dump.
+3. Production `pg_dump --format=custom --no-owner --no-privileges` streamed
+   directly through GPG AES-256 symmetric encryption. No plaintext dump file
+   was created. The encrypted archive was 29,219 bytes and backup/encryption
+   completed in 4.434 seconds.
+4. Decrypting the archive directly into `pg_restore --list` succeeded before
+   restore.
+5. A fresh PostgreSQL 18.3 cluster listened only on local loopback with a
+   private Unix socket. It had no public domain, proxy, or remote listener.
+   The first start attempt hit macOS's Unix-socket path-length limit; the
+   cluster started successfully with a shorter private socket path.
+6. The verified encrypted archive restored in 0.388 seconds using
+   `pg_restore --clean --if-exists --no-owner --no-privileges --exit-on-error`
+   against only the disposable `currents_restore` database.
+7. `npx prisma migrate status` found all eight migrations and reported the
+   restored schema current.
+8. Every safe source and restored count matched exactly. All ten relationship
+   checks returned zero errors.
+9. Token metadata matched: one non-removed key-version-1 Item and zero missing
+   ciphertext, IV, or tag values. No token was printed or decrypted.
+10. Application ORM reads succeeded against the restored database and returned
+    only counts: one household, one connection, 14 accounts, 14 latest
+    snapshots, 396 transactions, and zero transfer, category, rule, or Budget
+    rows.
+11. After separate explicit approval, the local server was stopped and the
+    exact disposable cluster, private socket, temporary random passphrase, and
+    encrypted test archives were deleted. Production and staging were never
+    restored, cleaned, overwritten, or changed.
 
 Safe production source baseline captured without names, descriptions,
 balances, provider IDs, tokens, or transaction data:
@@ -245,10 +270,10 @@ Item/account ownership, account snapshots, transaction account/category
 references, transfer legs, Budget allocation destinations, property/debt
 links, and merchant-rule categories.
 
-The source baseline is not restore evidence. Restore acceptance remains
-unchecked until a newly provisioned private target receives a logical backup,
-reports current migrations, matches every safe count, passes every integrity
-check, and serves safe application reads.
+The matching restored baseline, migration result, integrity checks, and safe
+application reads are direct restore evidence. Reusable checks live in
+`scripts/restore-audit.sql` and `scripts/restore-app-read-check.ts`; neither
+prints raw financial rows or token material.
 
 ## Dependency and test record
 
@@ -295,24 +320,21 @@ the suite or source boundary that exercises the behavior.
 - Latest GitLab pipelines: #32 and #33 passed.
 - GitLab-to-GitHub server-side mirror: enabled, `finished`, no error. GitHub is
   not a direct push target.
-- The empty `private-v1-restore-20261001` environment was removed after
-  separate approval; no disposable service, database, volume, or artifact
-  remained.
+- No disposable Railway or local database, volume, socket, passphrase, or
+  backup artifact remains after separately approved cleanup.
 
 ## Required next actions
 
-Owner: Pia Anderson. Next review: 2026-10-08, or earlier when the Railway
-subscription/resource capability or Plaid access changes.
+Owner: Pia Anderson. Next review: 2026-10-08, or earlier when Plaid responds
+to the pending access review.
 
-1. Activate an eligible Railway subscription/capability.
-2. Configure and verify the $15 usage alert and $40 hard limit.
-3. Have an authorized workspace owner configure and verify Daily + Weekly
-   volume schedules.
-4. Provision a new private disposable PostgreSQL target and rerun the complete
-   restore drill.
-5. Complete Plaid Trial and record real-institution OAuth, reauthentication,
+1. Publish the restore evidence after explicit commit/push approval and verify
+   the GitLab pipeline and server-side mirror.
+2. Close issue #17 after its updated Railway evidence and owner-approved backup
+   scope are published.
+3. Complete Plaid Trial and record real-institution OAuth, reauthentication,
    webhook, and `LOGIN_REPAIRED` evidence.
-6. Complete Plaid Production application/security approval and configure
+4. Complete Plaid Production application/security approval and configure
    Production credentials and webhook only under separate authorization.
-7. Publish the issue #18 changes after explicit commit/push approval, and
-   verify the GitLab pipeline and server-side mirror.
+5. Keep issue #18, roadmap issue #1, and the Currents goal open until the
+   remaining Plaid evidence is direct.

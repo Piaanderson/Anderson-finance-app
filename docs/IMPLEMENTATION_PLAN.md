@@ -1,16 +1,17 @@
 # Currents implementation plan
 
-Last updated: 2026-10-01
+Last updated: 2026-10-02
 
 ## Current status
 
 - Release target: secure, polished private-household v1
 - Current phase: Phase 8 — Private production readiness — issue
   [#18](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/18)
-  is in progress but blocked before restore by Railway's free-plan resource
-  limit. Issue
+  has a successful encrypted logical restore but remains blocked on Plaid
+  Trial and real-institution recovery evidence. Issue
   [#17](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/17)
-  remains blocked on account capabilities.
+  has satisfied its remaining usage-control criterion and is ready to close
+  after this follow-up evidence is published.
 - Roadmap issue:
   [#1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/1)
 - Milestone:
@@ -336,14 +337,16 @@ Goal: make private v1 safe to use daily with real financial data.
 - [x] Monitor worker health, sync lag, failed jobs, and login-required Items.
 - [x] Implement encryption-key rotation and prove it against local fixtures
       and a disposable staging-only encrypted Item.
-- [ ] Configure Railway usage alerts and spending limits.
-- [x] Point-in-time recovery is enabled on production PostgreSQL. Daily volume
-      backup schedules are still unset.
-- [ ] complete and record a disposable-database restore drill.
+- [x] Configure Railway usage alerts and spending limits. The $15 alert and
+      $40 hard limit are active.
+- [x] Point-in-time recovery is enabled and advancing on production
+      PostgreSQL. Under the owner-approved Hobby scope, encrypted portable
+      logical backups replace Pro-only Daily + Weekly volume snapshots.
+- [x] Complete and record a disposable-database restore drill.
 - [x] Verify security headers and PII-scrubbed error reporting in application
       code and tests.
-- [ ] Complete `docs/SECURITY.md` and `docs/RAILWAY.md` release checklists
-      after staging, backups, and usage limits exist.
+- [x] Complete the current-scope `docs/SECURITY.md` and `docs/RAILWAY.md`
+      release checklists after staging, recovery, and usage limits exist.
 
 Exit evidence:
 
@@ -1589,32 +1592,25 @@ External operations evidence:
   unavailable: Railway returned “Usage limits require an active
   subscription.” No workaround was attempted.
 
-Issue #17 remains open because its usage-alert and spending-limit acceptance
-criterion cannot be satisfied on the current unsubscribed Railway workspace.
-The backup schedule limitation is also recorded rather than represented as
-configured.
+At the 2026-09-28 checkpoint, issue #17 remained open because its usage-alert
+and spending-limit criterion could not be satisfied. On 2026-10-02 Railway
+reported the $15 alert and $40 hard limit active. The owner explicitly retained
+Hobby and accepted continuously verified PITR plus encrypted logical backups
+instead of Pro-only Daily + Weekly volume snapshots. Issue #17 is ready to
+close after this evidence is published.
 
-### Issue #18 restore and release-audit evidence — 2026-10-01 (blocked)
+### Issue #18 restore and release-audit evidence — 2026-10-02 (Plaid blocked)
 
 External inspection and restore attempt:
 
 - Issue #18 moved to `workflow::in-progress`.
 - Production PITR is enabled with 15 backup sets. The latest backup was
-  `2026-09-30T19:22:54Z`; the WAL archiver was healthy and last archived at
-  `2026-10-01T17:07:46Z`.
-- The production volume-schedule list remains empty and the workspace usage
-  limit remains unset.
+  `2026-10-02T19:24:31Z`; the WAL archiver was healthy and last archived at
+  `2026-10-02T22:36:34Z`.
+- The workspace reports the $15 soft alert and $40 hard limit active. The
+  volume-schedule list remains empty under the owner-approved Hobby scope.
 - Production and staging web, worker, sync-cron, and PostgreSQL deployments
   report `SUCCESS` at `89ae18d`. Only web is public in each environment.
-- After explicit approval, Railway created isolated environment
-  `private-v1-restore-20261001`, but PostgreSQL provisioning failed with
-  `Free plan resource provision limit exceeded`. It contained no service,
-  volume, domain, or TCP proxy and was deleted only after separate explicit
-  approval. The verified environment list then contained production and
-  staging only.
-- No logical backup or temporary archive was created. Nothing was restored,
-  cleaned, overwritten, or deleted in production or staging. The restore
-  criterion remains unchecked.
 - Safe production source counts were captured without financial values or
   identifying source data: 8 migrations, 1 household, 1 user, 1 membership,
   1 active Plaid Item, 14 accounts, 14 snapshots, 396 transactions, 0 transfer
@@ -1625,6 +1621,17 @@ External inspection and restore attempt:
   transfer legs, Budget destinations, property/debt links, and merchant-rule
   categories. Token metadata reported one production version-1 Item and zero
   missing ciphertext/IV/tag rows; no token was printed or decrypted.
+- With explicit approval, a production custom-format dump streamed directly
+  through GPG AES-256 encryption. No plaintext dump was created. Backup and
+  encryption took 4.434 seconds; format verification passed.
+- A fresh PostgreSQL database bound only to local loopback received
+  `pg_restore --clean --if-exists` in 0.388 seconds. All eight migrations were
+  current; every safe count matched; all ten relationship checks returned
+  zero; token metadata matched; and safe application ORM reads returned the
+  expected counts.
+- After separate approval, the disposable database, socket, temporary random
+  passphrase, and encrypted test archives were deleted. Production and staging
+  were never restored, cleaned, overwritten, or changed.
 
 Local audit and correction:
 
@@ -1661,17 +1668,18 @@ Local audit and correction:
   restore record, blockers, and no-go conclusion are recorded in
   [`docs/PRIVATE_V1_RELEASE_AUDIT.md`](./PRIVATE_V1_RELEASE_AUDIT.md).
 
-Issue #18 cannot move to review or close. The restore is not proven, issue #17
-is still blocked, Railway controls are incomplete, and Plaid Trial/Production
-approval and real-institution behavior are not proven. Roadmap issue #1 and the
-Currents goal remain open.
+Issue #18 cannot move to review or close yet. The restore and current Railway
+controls are proven, and issue #17 is ready to close after publication. Plaid
+Trial access and real-institution OAuth, webhook, reauthentication, and
+`LOGIN_REPAIRED` behavior remain unproven. Paid Plaid Production remains a
+documented later gate, not a readiness claim. Roadmap issue #1 and the Currents
+goal remain open.
 
 ## Next handoff
 
-Activate an eligible Railway subscription/resource capability, configure and
-verify the approved $15 alert, $40 hard limit, and Daily + Weekly volume
-schedules, then provision a new private disposable PostgreSQL target and
-repeat the complete restore drill. Complete Plaid Trial before any separately
-authorized Production credential or environment change. Keep issues #17, #18,
-roadmap issue #1, and the Currents goal open. Do not start commercialization
-work.
+Publish the restore and revised-scope evidence after explicit commit/push
+approval, then close issue #17 if the pipeline and mirror pass. Complete Plaid
+Trial and test a real institution in staging before any separately authorized
+production credential or environment change. Keep issue #18, roadmap issue #1,
+and the Currents goal open until that evidence exists. Do not start
+commercialization work.

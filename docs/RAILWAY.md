@@ -105,7 +105,7 @@ railway postgres pitr status --service Postgres --environment production --json
 Railway volume-backup schedules are separate. Daily snapshots are retained for
 6 days, weekly snapshots for 1 month, and monthly snapshots for 3 months.
 Snapshots are incremental and billed at the volume-storage rate for unique
-data. The approved production cadence is daily plus weekly:
+data. The commands to inspect or configure them are:
 
 ```bash
 railway postgres pitr schedule set --daily --weekly \
@@ -114,11 +114,12 @@ railway postgres pitr schedule list \
   --service Postgres --environment production --json
 ```
 
-As of 2026-09-28, PITR is healthy but the schedule command returns
-`OAUTH_INSUFFICIENT_GRANT` for the current Railway integration. No volume
-schedule is active. An authorized workspace owner must enable Daily and Weekly
-under PostgreSQL → Backups; do not claim scheduled backups until
-`schedule list` returns both.
+As of 2026-10-02, the schedule list is empty and Railway's dashboard says
+creating backups and enabling PITR are Pro-only. The owner elected to keep the
+Hobby plan and explicitly accepted continuously verified PITR plus encrypted,
+portable logical backups in place of Daily + Weekly volume snapshots. Do not
+claim that volume schedules are active. Revisit this accepted risk if PITR
+stops advancing or the application expands beyond private household use.
 
 Also create a portable logical backup. PostgreSQL custom format is compressed
 and structured, but it is **not encrypted**. Prefer a protected direct stream
@@ -143,30 +144,33 @@ gpg --decrypt /secure/path/currents.dump.gpg |
 
 Never write credentials into command arguments or logs. Never print or upload
 the archive, and never commit it. Restore only into a newly provisioned private
-disposable target. Use `pg_restore --clean --if-exists` only against that
-target. Obtain separate explicit approval before deleting the target or exact
-temporary artifacts.
+disposable Railway target or an isolated loopback-only local PostgreSQL
+database. Use `pg_restore --clean --if-exists` only against that target. Obtain
+separate explicit approval before deleting the target or exact temporary
+artifacts.
 
 Quarterly, run `npx prisma migrate status` against the restored database,
 compare safe source/restored counts, check critical household relationships,
 run safe application reads, and record the date and duration. A backup that
 has never passed all of those checks is unverified.
 
-The 2026-10-01 issue #18 attempt stopped before backup creation. Railway created
-the empty isolated environment `private-v1-restore-20261001`, but rejected the
-PostgreSQL service with `Free plan resource provision limit exceeded`. No
-database, dump, restore, or cleanup command touched production or staging. The
-empty environment was deleted after separate explicit approval. The complete
-evidence and safe source baseline are in
-`docs/PRIVATE_V1_RELEASE_AUDIT.md`.
+The 2026-10-02 issue #18 drill streamed production `pg_dump` output directly
+through GPG AES-256 encryption with no plaintext archive, validated the custom
+format, and restored only into a fresh loopback-only local PostgreSQL
+database. All eight migrations, safe row counts, token metadata, ten
+relationship checks, and application ORM reads passed. Backup/encryption took
+4.434 seconds and restore took 0.388 seconds. After separate approval, the
+disposable database, socket, random passphrase, and encrypted test archives
+were deleted. The complete evidence is in
+`docs/PRIVATE_V1_RELEASE_AUDIT.md`; reusable safe checks are
+`scripts/restore-audit.sql` and `scripts/restore-app-read-check.ts`.
 
 ## Operations
 
 - Set a $15 monthly workspace usage alert and a $40 hard limit in Railway.
-  Recheck with `railway usage limit status --target workspace --json`. As of
-  2026-09-28, Railway rejects this setting because the workspace has no active
-  subscription; the limit remains unset. A hard limit stops all services,
-  including production.
+  Recheck with `railway usage limit status --target workspace --json`. On
+  2026-10-02 Railway reported both values active and `isOverLimit: false`. A
+  hard limit stops all services, including production.
 - The worker and six-hour cron emit an `ops.snapshot` event with pending,
   running, and failed job counts, pending lag, login-required Items, error
   Items, stale active Items, and safe local Item IDs. They never emit provider

@@ -195,8 +195,9 @@ classification.
 - Confirm production has no `PASSKEY_BOOTSTRAP_TOKEN` after owner setup.
 - Confirm the passkey relying-party host, HTTPS origin, and Plaid webhook URL.
 - Confirm local, CI, staging, and production databases and secrets are distinct.
-- Confirm production PITR is healthy and the approved Daily + Weekly volume
-  schedules are active. The disposable restore drill remains issue #18.
+- Confirm production PITR is healthy and advancing. Under the owner-approved
+  Hobby scope, create an encrypted logical backup before risky migrations and
+  periodically prove it against an isolated disposable local database.
 - Confirm the $15 usage alert and $40 hard limit are active. The hard limit
   stops every Railway service, including production.
 - Confirm logs and error reports contain no financial payloads.
@@ -215,17 +216,14 @@ Issue #17 release-check evidence on 2026-09-28:
   for that deployment; staging allows Sandbox and excludes Production.
 - Production worker and cron logs contained the allowlisted `ops.snapshot`
   fields and no financial-payload keys or blocked sensitive terms.
-- Production PITR and WAL archiving are healthy with 15 backup sets. The
-  approved Daily + Weekly volume schedule is not active because Railway
-  returned `OAUTH_INSUFFICIENT_GRANT`; an authorized workspace owner must
-  enable and verify it.
-- The approved $15 usage alert and $40 hard limit are not active because
-  Railway requires an active workspace subscription. Issue #17 remains open
-  rather than treating either unavailable control as complete.
-- The actual disposable restore drill remains exclusively in issue #18 and
-  was not run.
+- Production PITR and WAL archiving are healthy with 15 backup sets. Daily +
+  Weekly volume schedules are not active; on 2026-10-02 the owner explicitly
+  accepted continuously verified PITR plus encrypted logical backups rather
+  than upgrading to Railway Pro solely for volume snapshots.
+- On 2026-10-02 Railway reported the approved $15 usage alert and $40 hard
+  limit active with `isOverLimit: false`.
 
-Issue #18 audit evidence on 2026-10-01:
+Issue #18 audit evidence on 2026-10-02:
 
 - The production dependency audit initially found critical Next.js advisory
   `GHSA-vcvr-r3jv-pc5j`. The lockfile now resolves Next.js 16.3.8, and
@@ -241,10 +239,17 @@ Issue #18 audit evidence on 2026-10-01:
   snapshot, transaction/category, transfer-leg, Budget destination,
   property/debt, or merchant-rule relationship errors. These checks did not
   expose names, balances, provider IDs, tokens, or transaction data.
-- The disposable restore remains unproven. Railway created an empty isolated
-  environment but refused to provision PostgreSQL because the free-plan
-  resource limit was exceeded. No logical backup was created or restored, and
-  production and staging were not changed.
+- A production custom-format logical backup streamed directly through GPG
+  AES-256 encryption; no plaintext dump file was created. The encrypted
+  archive passed `pg_restore --list`.
+- The archive restored only into a fresh loopback-only local PostgreSQL
+  database using `--clean --if-exists`. All eight migrations were current;
+  safe row counts and token key-version metadata matched; all relationship
+  checks returned zero errors; and safe application ORM reads passed.
+- After separate approval, the disposable database, socket, passphrase, and
+  encrypted test archives were deleted. Production and staging were not
+  restored, cleaned, overwritten, or changed.
 - The complete release matrix and blocker record are in
   `docs/PRIVATE_V1_RELEASE_AUDIT.md`. The release conclusion remains no-go
-  until the restore, Railway controls, and Plaid Trial/Production gates pass.
+  until Plaid Trial and real-institution recovery behavior are proven. Paid
+  Plaid Production remains a documented later gate rather than a claim.
