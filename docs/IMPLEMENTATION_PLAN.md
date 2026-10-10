@@ -12,6 +12,13 @@ Last updated: 2026-10-09
   [#17](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/17)
   is closed after its revised recovery scope, usage controls, pipeline #35,
   server-side mirror, and production deployment were verified.
+- Parallel product track: Phase 9 — UI parity and visual finish — parent issue
+  [#30](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/30).
+  The full backlog is defined now, but implementation proceeds one
+  independently reviewable slice at a time. The integrated
+  `prototype/Finance App.dc.html` screens are authoritative for Home, Budget,
+  Accounts, Transactions, and the shared shell. The separately approved
+  Categories direction is recorded in `prototype/Categories.html`.
 - Roadmap issue:
   [#1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/1)
 - Milestone:
@@ -257,9 +264,11 @@ Exit evidence:
 - comparisons state their period and basis
 - no production path depends on static scenario figures
 
-## Phase 7 — Motion, responsive design, and accessibility — complete
+## Phase 7 — Interaction motion, responsive design, and accessibility — complete
 
-Goal: complete the intended polish without sacrificing inclusive use.
+Goal: establish the inclusive interaction, motion, and responsive baseline.
+This phase proves behavior and accessibility; it does not claim final visual
+parity with the design prototypes. That work is tracked separately in Phase 9.
 
 - [x] Add restrained expansion, transfer, allocation, chart, and state-change
       motion.
@@ -356,6 +365,62 @@ Exit evidence:
 - production contains no Sandbox, bypass, or bootstrap credentials
 - all private-v1 requirements have direct completion evidence
 
+## Phase 9 — UI parity and visual finish
+
+Goal: bring every private-v1 production surface to an explicitly approved
+visual direction without weakening tested calculations, honest data states,
+responsive behavior, or WCAG 2.1 AA accessibility.
+
+Operating model:
+
+- Define the full backlog up front, then implement one independently reviewable
+  slice at a time.
+- Land shared tokens and shell work before page-specific parity.
+- Keep Home, Accounts, and Categories implementation blocked until each has a
+  durable design decision.
+- Treat `prototype/Finance App.dc.html` as the exact integrated visual
+  reference for Home, Budget, Accounts, Transactions, and the shared shell.
+  Direction files are historical ideation, not alternative implementation
+  choices.
+- Reconcile the current uncommitted Budget work before a parity slice changes
+  `src/app/globals.css` or `src/features/budget/budget-experience.tsx`.
+- Keep every file under `prototype/` read-only.
+
+Design closure:
+
+- [x] [#19 Record the integrated Home visual direction](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/19)
+- [x] [#21 Record the integrated Accounts visual direction](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/21)
+- [x] [#20 Define the Categories maintenance visual direction](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/20)
+
+Shared foundation:
+
+- [ ] [#29 Align Nocturne tokens and shared UI primitives](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/29)
+- [ ] [#22 Refine the shared shell and navigation](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/22)
+
+Page parity:
+
+- [ ] [#27 Match the integrated Budget screen](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/27)
+- [ ] [#24 Match the integrated Transactions screen](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/24)
+- [ ] [#28 Match the integrated Accounts screen](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/28)
+- [ ] [#23 Match the integrated Home screen](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/23)
+- [ ] [#26 Implement the approved Categories maintenance direction](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/26)
+
+Final pass:
+
+- [ ] [#25 Complete cross-page motion and visual consistency](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/25)
+
+Exit evidence:
+
+- every page names its approved prototype or recorded design direction
+- every implementation issue records before/after screenshots and intentional
+  deviations
+- affected desktop and mobile Playwright flows and the route audit pass
+- direct inspection covers the audited responsive widths and practical 200%
+  reflow
+- semantic HTML, keyboard operation, visible focus, 44px targets, WCAG 2.1 AA
+  contrast, text alternatives, and reduced motion remain intact
+- the final consistency issue records full-route visual and motion evidence
+
 ## Future commercialization phase
 
 Do not begin without an explicit product decision:
@@ -382,7 +447,7 @@ Workflow labels:
 
 Other label families:
 
-- `phase::0` through `phase::8`
+- `phase::0` through `phase::9`
 - `area::platform`, `area::plaid`, `area::accounts`,
   `area::transactions`, `area::budget`, `area::categories`,
   `area::dashboard`, `area::accessibility`, `area::operations`
@@ -419,6 +484,18 @@ Implementation issues:
 - [#16 Accessibility and motion](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/16)
 - [#17 Railway operations](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/17)
 - [#18 Restore and release audit](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/18)
+- [#19 Home visual direction](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/19)
+- [#20 Categories visual direction](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/20)
+- [#21 Accounts visual direction](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/21)
+- [#22 Shared shell and navigation](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/22)
+- [#23 Home visual parity](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/23)
+- [#24 Transactions visual parity](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/24)
+- [#25 Cross-page motion and consistency](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/25)
+- [#26 Categories visual parity](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/26)
+- [#27 Budget visual parity](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/27)
+- [#28 Accounts visual parity](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/28)
+- [#29 Nocturne tokens and shared primitives](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/29)
+- [#30 UI parity and visual finish](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/30)
 
 ## Context handoff protocol
 
@@ -1676,6 +1753,53 @@ real-institution OAuth, webhook, reauthentication, and `LOGIN_REPAIRED`
 behavior remain unproven. Paid Plaid Production remains a documented later
 gate, not a readiness claim. Roadmap issue #1 and the Currents goal remain
 open.
+
+### Phase 9 backlog evidence — 2026-10-02
+
+- Created the `phase::9` GitLab label and parent issue
+  [#30](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/30).
+- Created three ready design-decision issues for Home
+  [#19](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/19),
+  Accounts
+  [#21](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/21),
+  and Categories
+  [#20](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/20).
+- Created shared foundation issues
+  [#29](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/29)
+  and
+  [#22](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/22);
+  five page-parity issues
+  [#27](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/27),
+  [#24](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/24),
+  [#28](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/28),
+  [#23](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/23),
+  and
+  [#26](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/26);
+  and final consistency issue
+  [#25](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/25).
+- Every child issue records outcome, scope and non-scope, dependencies,
+  relevant files, acceptance criteria, accessibility criteria, and
+  verification.
+- Parent issue #30 links all eleven child issues and records the
+  define-everything-now, implement-one-slice-at-a-time operating model.
+- No production UI or prototype file changed during backlog setup. Existing
+  uncommitted Budget, global CSS, browser-test, and documentation work was
+  preserved.
+
+### Categories design closure — 2026-10-09
+
+- `prototype/Categories.html` now records one selected grouped-table and
+  inspector direction, combining the preferred inspector with visible Planned
+  and Spent columns.
+- The direction keeps color at the Needs, Flex, Savings, and Debt group level
+  and states explicitly that category spending combines activity across
+  household accounts rather than attaching categories to accounts.
+- Create, rename, move, reorder, archive, restore, merge, exact merchant-rule,
+  validation, conflict, empty, confirmation, responsive, and reduced-motion
+  states are represented without adding category colors, defaults, undo
+  mutations, hit counts, or last-used metadata.
+- `CLAUDE.md` records the durable Categories keeper and issue #26 can implement
+  the selected direction without another visual decision.
 
 ### Budget Needs review reconciliation — 2026-10-09
 
