@@ -1,11 +1,18 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 :root {
   color-scheme: dark;
   --color-bg: #161826;
   --color-surface: #232532;
+  --color-surface-raised: color-mix(
+    in srgb,
+    var(--color-surface) 55%,
+    var(--color-bg)
+  );
   --color-text: #e9e9ed;
   --color-accent: #9184d9;
+  --color-accent-2: #a7a1db;
+  --color-divider: color-mix(in srgb, var(--color-text) 16%, transparent);
   --color-neutral-100: #f3f5fe;
   --color-neutral-200: #e4e7f5;
   --color-neutral-300: #cfd3e5;
@@ -24,24 +31,43 @@
   --color-accent-700: #5d5294;
   --color-accent-800: #423a6a;
   --color-accent-900: #2b2741;
+  --color-accent-2-100: #f5f4ff;
+  --color-accent-2-200: #e7e5fe;
+  --color-accent-2-300: #d2cefd;
+  --color-accent-2-400: #b5afe8;
+  --color-accent-2-500: #9690c9;
+  --color-accent-2-600: #7972a9;
+  --color-accent-2-700: #5c5783;
+  --color-accent-2-800: #423e5d;
+  --color-accent-2-900: #2b293a;
   --color-success: #75c9a5;
   --color-warning: #f3b66f;
   --color-danger: #ff8f87;
   --color-control-border: var(--color-neutral-600);
+  --color-control-border-hover: var(--color-neutral-400);
+  --color-disabled-surface: color-mix(
+    in srgb,
+    var(--color-text) 4%,
+    var(--color-surface)
+  );
+  --color-disabled-border: var(--color-neutral-700);
+  --color-disabled-text: var(--color-neutral-500);
   --font-heading: "Inter", system-ui, sans-serif;
+  --font-heading-weight: 500;
   --font-body: "Inter", system-ui, sans-serif;
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
+  --space-1: 2.8px;
+  --space-2: 5.6px;
+  --space-3: 8.4px;
+  --space-4: 11.2px;
+  --space-5: 14px;
+  --space-6: 16.8px;
+  --space-8: 22.4px;
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 14px;
-  --shadow-sm: 0 0 0 1px var(--color-neutral-800);
-  --shadow-md:
-    0 0 0 1px var(--color-neutral-700), 0 6px 18px rgba(0, 0, 0, 0.55);
+  --shadow-sm: 0 0 0 1px #3f424d;
+  --shadow-md: 0 0 0 1px #595d6c, 0 6px 18px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 0 0 1px #9397ab, 0 16px 40px rgba(0, 0, 0, 0.65);
 }
 
 *,
@@ -61,7 +87,7 @@ body {
   overflow-x: clip;
   background: var(--color-bg);
   color: var(--color-text);
-  font: 400 0.9375rem/1.55 var(--font-body);
+  font: 400 15px/1.55 var(--font-body);
 }
 
 h1,
@@ -70,8 +96,8 @@ h3,
 h4 {
   margin: 0;
   font-family: var(--font-heading);
-  font-weight: 500;
-  line-height: 1.15;
+  font-weight: var(--font-heading-weight);
+  line-height: 1.12;
   letter-spacing: -0.015em;
   overflow-wrap: anywhere;
 }
@@ -90,8 +116,12 @@ p {
 }
 
 a {
-  color: inherit;
-  text-underline-offset: 0.2em;
+  color: var(--color-accent);
+  text-underline-offset: 3px;
+}
+
+a:hover {
+  color: var(--color-accent-400);
 }
 
 button,
@@ -102,7 +132,7 @@ textarea {
 }
 
 :focus-visible {
-  outline: 2px solid currentColor;
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 
@@ -116,37 +146,61 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  padding: 0.65rem 0.9rem;
+  gap: 6px;
+  padding: var(--space-2) calc(var(--space-3) * 1.2);
   border: 1px solid var(--color-accent);
   border-radius: var(--radius-md);
   background: transparent;
-  color: var(--color-accent-200);
+  color: var(--color-accent);
   cursor: pointer;
+  font-family: var(--font-heading);
+  font-size: 0.875rem;
+  font-weight: var(--font-heading-weight);
+  line-height: 1.2;
   text-decoration: none;
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
     color 160ms ease,
-    transform 120ms ease;
+    transform 120ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease;
 }
 
-.button:hover {
-  background: var(--color-accent-900);
+.button:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-accent-300);
 }
 
-.button:active:not(:disabled) {
+.button:active:not(:disabled):not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--color-accent) 22%, transparent);
   transform: translateY(1px);
 }
 
 .button.secondary {
   border-color: var(--color-control-border);
-  color: var(--color-neutral-300);
+  color: var(--color-text);
 }
 
-.button:disabled {
+.button.secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--color-control-border-hover);
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+  color: var(--color-text);
+}
+
+.button.secondary:active:not(:disabled):not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--color-text) 14%, transparent);
+}
+
+.button:disabled,
+.button[aria-disabled="true"] {
+  border-color: var(--color-disabled-border);
+  background: var(--color-disabled-surface);
+  box-shadow: none;
+  color: var(--color-disabled-text);
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 1;
+  transform: none;
 }
 
 .field {
@@ -156,7 +210,7 @@ textarea {
 
 .field label {
   color: var(--color-neutral-300);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
 }
 
 .input {
@@ -166,8 +220,39 @@ textarea {
   border: 1px solid var(--color-control-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
+  caret-color: var(--color-accent);
   color: var(--color-text);
   font-size: 1rem;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.input:hover:where(:not(:disabled)) {
+  border-color: var(--color-control-border-hover);
+}
+
+.input:focus-visible {
+  border-color: var(--color-accent);
+  outline-offset: 0;
+}
+
+.input[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+
+.input:disabled {
+  border-color: var(--color-disabled-border);
+  background: var(--color-disabled-surface);
+  color: var(--color-disabled-text);
+  cursor: not-allowed;
+  opacity: 1;
+  -webkit-text-fill-color: var(--color-disabled-text);
+}
+
+.input::placeholder {
+  color: var(--color-neutral-500);
 }
 
 [aria-busy="true"] {
@@ -187,14 +272,17 @@ textarea {
 
 .positive {
   color: var(--color-success);
+  font-weight: 500;
 }
 
 .warning {
   color: var(--color-warning);
+  font-weight: 500;
 }
 
 .danger {
   color: var(--color-danger);
+  font-weight: 500;
 }
 
 @media (prefers-reduced-motion: reduce) {

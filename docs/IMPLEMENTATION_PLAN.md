@@ -18,7 +18,12 @@ Last updated: 2026-10-09
   independently reviewable slice at a time. The integrated
   `prototype/Finance App.dc.html` screens are authoritative for Home, Budget,
   Accounts, Transactions, and the shared shell. The separately approved
-  Categories direction is recorded in `prototype/Categories.html`.
+  Categories direction is recorded in `prototype/Categories.html`. Shared
+  Nocturne foundation issue
+  [#29](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/29)
+  is complete; shared shell issue
+  [#22](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/22)
+  is the exact next Phase 9 slice.
 - Roadmap issue:
   [#1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/1)
 - Milestone:
@@ -394,7 +399,7 @@ Design closure:
 
 Shared foundation:
 
-- [ ] [#29 Align Nocturne tokens and shared UI primitives](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/29)
+- [x] [#29 Align Nocturne tokens and shared UI primitives](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/29)
 - [ ] [#22 Refine the shared shell and navigation](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/22)
 
 Page parity:
@@ -1836,6 +1841,61 @@ Verification:
   generation tasks.
 - `git diff --check` and edited-file IDE diagnostics passed with no findings.
 
+### Nocturne shared visual foundation — 2026-10-09
+
+- Issue
+  [#29](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/29)
+  began only after the Budget reconciliation (`180a4f2`) and Phase 9 direction
+  record (`0a1fb86`) were committed. No route layout, domain calculation,
+  interaction, or prototype file changed.
+- Production now carries the approved Nocturne secondary-accent, divider,
+  elevation, heading-weight, raised-surface, and 2.8px-based spacing tokens.
+  The previously undefined `--space-5` token is now part of the scale.
+- Shared cards use the Nocturne 8px radius and compact spacing. Buttons,
+  fields, links, focus rings, invalid fields, semantic status text, busy
+  cursors, and disabled controls now share explicit default, hover, active,
+  focus, invalid, and unavailable treatments.
+- Regression coverage now checks the dark color scheme, spacing scale, shared
+  surface and radius, 16px input text, 44px controls, hover and focus
+  boundaries, primary action color, disabled treatment, and invalid/error
+  styling in both desktop and mobile Chromium. Screenshot capture accepts a
+  destination, stage, and representative-width filter.
+- Representative before/after Home screenshots are stored in
+  `docs/visual-evidence/issue-29/` at 1280px desktop and 390px mobile. The
+  after pass retains content order, has no page-level horizontal overflow,
+  keeps the fixed mobile navigation clear of the final content, and preserves
+  visible state labels.
+
+Intentional production differences from the read-only Nocturne bundle:
+
+- Interactive controls remain at least 44px high and inputs remain 16px,
+  instead of the reference bundle's 36px controls and 14px input text, to
+  preserve target sizing and prevent iOS input zoom.
+- Meaningful control boundaries use `--color-neutral-600` rather than the
+  low-contrast decorative divider. That boundary measures 3.52:1 against the
+  surface and 4.08:1 against the page background; the accent focus indicator
+  measures 4.71:1 and 5.45:1 respectively.
+- Production keeps the responsive application heading mapping and a static
+  card boundary rather than applying the reference bundle's display-oriented
+  heading sizes or borderless card literally. Route-specific typography and
+  composition remain for their dedicated parity issues.
+- Success, warning, and danger remain production-only, high-contrast semantic
+  tokens with visible text cues. Disabled controls use explicit surface,
+  border, text, and cursor changes instead of opacity alone.
+- Dark-only `color-scheme`, native semantics, text-based state cues, and the
+  global 0.01ms reduced-motion override remain unchanged.
+
+Verification:
+
+- `npm run typecheck`, `npm run lint`, and `npm run format:check` — passed.
+- `npx playwright test tests/e2e/phase-7-audit.spec.ts` — 8 tests passed
+  across desktop and mobile Chromium, including axe WCAG 2.1 A/AA scans,
+  focus, target sizing, disabled/invalid states, responsive widths, horizontal
+  overflow, bottom-navigation clearance, and reduced motion.
+- `npm test` — 34 files and 198 tests passed.
+- `npm run build` — Next.js 16.3.8 production build passed.
+- `git diff --check` and edited-file IDE diagnostics passed with no findings.
+
 ## Next handoff
 
 Two independent tracks can proceed:
@@ -1844,9 +1904,9 @@ Two independent tracks can proceed:
    staging before any separately authorized production credential or
    environment change. Keep issue #18, roadmap issue #1, and the Currents goal
    open until that evidence exists.
-2. UI parity exact next action: review and commit the preserved Phase 9 backlog
-   and Categories design-closure work separately from the completed Budget
-   slice. Then begin issue #29, followed by #22 and the page-parity issues, one
-   independently reviewable slice at a time; do not start issue #27 early.
+2. UI parity exact next action: start
+   [#22 Refine the shared shell and navigation](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/22)
+   from the completed issue #29 foundation. Keep all page-specific parity
+   issues, including #27, out of that independently reviewable shell slice.
 
 Do not start commercialization work.
