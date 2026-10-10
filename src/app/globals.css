@@ -499,6 +499,26 @@
   border-top: 1px solid var(--color-neutral-900);
 }
 
+.budget-review-row {
+  border-top-color: color-mix(
+    in srgb,
+    var(--color-warning) 45%,
+    var(--color-neutral-900)
+  );
+}
+
+.budget-review-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+
+.budget-review-content .budget-row-status {
+  display: grid;
+  gap: var(--space-1);
+}
+
 .budget-paired-form {
   display: grid;
   grid-template-columns:
@@ -2321,6 +2341,14 @@ details[open] > .account-detail-panel,
 
   .budget-paired-form {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .budget-review-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .budget-review-content .budget-save {
+    width: 100%;
   }
 
   .budget-plan-cell,

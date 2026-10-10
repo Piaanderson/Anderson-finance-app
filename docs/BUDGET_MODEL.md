@@ -56,10 +56,14 @@ budget order.
 
 ## Spending, refunds, and transfers
 
-Needs and Flex activity comes from categorized transaction movements:
+Needs and Flex activity comes from transaction movements:
 
 - an outflow increases category activity;
 - a categorized inflow is treated as a refund and decreases category activity;
+- an uncategorized USD outflow remains eligible for category review and appears
+  as a read-only **Needs review** row in Flex, where it reduces the shared Flex
+  amount until assigned; all eligible outflows are aggregated into that one
+  row, which is not a category or allocation and has no destination account;
 - spending in a category without a monthly allocation is surfaced separately;
 - pending transaction movements follow the movement model and are included;
   and
@@ -77,17 +81,21 @@ For each row:
 - `remaining = max(planned − activity, 0)`
 - `over = max(activity − planned, 0)`
 
-The section totals are sums of the displayed rows, so the allocation bar,
-Where it goes summary, section headings, and row statuses reconcile to the same
-calculation.
+Section planned and activity totals are sums of the displayed rows. Flex
+remaining or over is calculated from its shared section-level planned amount
+minus all Flex activity, including Needs review. The allocation bar, Where it
+goes summary, section heading, and rows therefore reconcile without pretending
+uncategorized spending is outside the budget.
 
-Every production row pairs its editable plan with an explicit destination
-selector and current account context. Flex additionally shows planned, spent,
-and left or over with a progress graphic. When a Needs destination is a linked
-debt account, the row shows the debt's amount owed and the linked property's
-current value. These are current account positions, not transaction-aligned
-historical balances; any projection is labelled as the result after the
-remaining plan.
+Every allocation row pairs its editable plan with an explicit destination
+selector and current account context. The Needs review row is the deliberate
+exception: it exposes no plan editor, category association, or destination
+selector and links to Transactions for categorization. Flex allocation rows
+additionally show planned, spent, and left or over with a progress graphic.
+When a Needs destination is a linked debt account, the row shows the debt's
+amount owed and the linked property's current value. These are current account
+positions, not transaction-aligned historical balances; any projection is
+labelled as the result after the remaining plan.
 
 Archiving a category does not delete or detach an existing allocation. Existing
 months continue to calculate and display that row with an archived-category

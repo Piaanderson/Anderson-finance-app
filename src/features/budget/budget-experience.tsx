@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AllocationBar } from "@/components/ui/allocation-bar";
 import { signedUsd, usd } from "@/lib/money";
 import type { BudgetDestinationView, HouseholdBudgetView } from "./budget-data";
 import type {
-  BudgetCalculationRow,
+  BudgetCalculationAllocationRow,
   BudgetSectionCalculation
 } from "./budget-domain";
 import { BudgetMonthControls } from "./budget-month-controls";
@@ -196,7 +197,7 @@ function AllocationEditor({
   destinationUseCounts,
   revision
 }: {
-  row: BudgetCalculationRow;
+  row: BudgetCalculationAllocationRow;
   calculation: BudgetSectionCalculation;
   destination: BudgetDestinationView | null;
   destinationOptions: BudgetDestinationView[];
@@ -466,17 +467,40 @@ function BudgetSection({
       </div>
       {calculation.rows.length > 0 ? (
         <ul className="budget-paired-rows">
-          {calculation.rows.map((row) => (
-            <AllocationEditor
-              key={row.id}
-              row={row}
-              calculation={calculation}
-              destination={plan.destinations[row.id]}
-              destinationOptions={plan.destinationOptions}
-              destinationUseCounts={plan.destinationUseCounts}
-              revision={plan.allocationRevisions[row.id]}
-            />
-          ))}
+          {calculation.rows.map((row) =>
+            row.kind === "REVIEW" ? (
+              <li className="budget-paired-row budget-review-row" key={row.id}>
+                <div className="budget-review-content">
+                  <div className="budget-plan-cell">
+                    <strong>{row.categoryName}</strong>
+                    <span className="warning">
+                      Uncategorized spending · temporary
+                    </span>
+                  </div>
+                  <div className="budget-row-status">
+                    <span>{amount(row.activity)} spent</span>
+                    <strong>Counts against shared Flex</strong>
+                  </div>
+                  <Link
+                    className="button secondary budget-save"
+                    href="/transactions"
+                  >
+                    Review uncategorized transactions
+                  </Link>
+                </div>
+              </li>
+            ) : (
+              <AllocationEditor
+                key={row.id}
+                row={row}
+                calculation={calculation}
+                destination={plan.destinations[row.id]}
+                destinationOptions={plan.destinationOptions}
+                destinationUseCounts={plan.destinationUseCounts}
+                revision={plan.allocationRevisions[row.id]}
+              />
+            )
+          )}
         </ul>
       ) : (
         <p className="muted">No allocations in this section.</p>
@@ -593,8 +617,8 @@ export function BudgetExperience({
             </div>
             {calculation.unassignedSpending !== "0.00" ? (
               <p className="review-warning">
-                {amount(calculation.unassignedSpending)} of spending still needs
-                a category and is not included in a section.
+                {amount(calculation.unassignedSpending)} is tracked in Flex
+                under Needs review until those transactions are categorized.
               </p>
             ) : null}
             {calculation.unallocatedCategorizedSpending !== "0.00" ? (

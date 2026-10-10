@@ -99,6 +99,7 @@ function budgetView(
                 const sectionRows = rows
                   .filter((row) => row.section === section)
                   .map((row) => ({
+                    kind: "ALLOCATION" as const,
                     id: row.id,
                     categoryId: `${row.id}-category`,
                     categoryName: row.id,

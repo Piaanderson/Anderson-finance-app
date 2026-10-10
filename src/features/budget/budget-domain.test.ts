@@ -62,13 +62,15 @@ function transaction({
   direction,
   value,
   category = null,
-  currency = usd
+  currency = usd,
+  pending = false
 }: {
   id: string;
   direction: MovementDirection;
   value: string;
   category?: MovementCategory | null;
   currency?: MovementLeg["amount"]["currency"];
+  pending?: boolean;
 }): HouseholdMovement {
   const transactionLeg = leg({
     id,
@@ -77,6 +79,7 @@ function transaction({
     value
   });
   transactionLeg.amount.currency = currency;
+  transactionLeg.pending = pending;
   return {
     id: `transaction:${id}`,
     kind: "TRANSACTION",
@@ -84,7 +87,7 @@ function transaction({
     category,
     canonicalDate: transactionLeg.effectiveDate,
     description: id,
-    pending: false,
+    pending,
     amounts: [transactionLeg.amount],
     legs: [transactionLeg]
   };
@@ -250,13 +253,204 @@ describe("monthly budget calculations", () => {
       }),
       expect.objectContaining({
         section: "Flex",
-        activity: "240.00",
+        activity: "265.00",
         remaining: "0.00",
-        over: "40.00",
+        over: "65.00",
         activityLabel: "spent",
         remainingLabel: "left"
       })
     ]);
+    const reviewRow = result.sections[3].rows[0];
+    expect(reviewRow).toMatchObject({
+      kind: "REVIEW",
+      categoryName: "Needs review",
+      section: "Flex",
+      activity: "25.00"
+    });
+    expect(reviewRow).not.toHaveProperty("categoryId");
+    expect(reviewRow).not.toHaveProperty("destinationAccountId");
+    expect(reviewRow).not.toHaveProperty("planned");
+  });
+
+  it("uses uncategorized spending against the shared Flex amount", () => {
+    const result = calculateBudget({
+      incomePlan: "500.00",
+      allocations: [
+        allocation({
+          id: "flex-allocation",
+          categoryId: "flex",
+          section: "Flex",
+          planned: "200.00"
+        })
+      ],
+      movements: [
+        transaction({
+          id: "categorized-flex",
+          direction: "OUTFLOW",
+          value: "100.00",
+          category: category("flex", "Flex")
+        }),
+        transaction({
+          id: "needs-review",
+          direction: "OUTFLOW",
+          value: "25.00"
+        })
+      ]
+    });
+
+    expect(result.sections[3]).toMatchObject({
+      section: "Flex",
+      planned: "200.00",
+      activity: "125.00",
+      remaining: "75.00",
+      over: "0.00"
+    });
+    expect(result).toMatchObject({
+      totalPlanned: "200.00",
+      leftToBudget: "300.00"
+    });
+    expect(
+      result.sections[3].rows.filter((row) => row.kind === "REVIEW")
+    ).toHaveLength(1);
+  });
+
+  it("keeps refunds, pending activity, transfers, and non-USD activity distinct", () => {
+    const result = calculateBudget({
+      incomePlan: "500.00",
+      allocations: [
+        allocation({
+          id: "flex-allocation",
+          categoryId: "flex",
+          section: "Flex",
+          planned: "200.00"
+        })
+      ],
+      movements: [
+        transaction({
+          id: "pending-flex-spend",
+          direction: "OUTFLOW",
+          value: "80.00",
+          category: category("flex", "Flex"),
+          pending: true
+        }),
+        transaction({
+          id: "flex-refund",
+          direction: "INFLOW",
+          value: "20.00",
+          category: category("flex", "Flex")
+        }),
+        transaction({
+          id: "pending-needs-review",
+          direction: "OUTFLOW",
+          value: "25.00",
+          pending: true
+        }),
+        transaction({
+          id: "second-needs-review",
+          direction: "OUTFLOW",
+          value: "5.00"
+        }),
+        transaction({
+          id: "observed-income",
+          direction: "INFLOW",
+          value: "500.00"
+        }),
+        transfer({
+          id: "internal-transfer",
+          destinationAccountId: "checking",
+          value: "90.00"
+        }),
+        transaction({
+          id: "cad-needs-review",
+          direction: "OUTFLOW",
+          value: "999.00",
+          currency: { kind: "ISO", code: "CAD" }
+        }),
+        transaction({
+          id: "unofficial-needs-review",
+          direction: "OUTFLOW",
+          value: "999.00",
+          currency: { kind: "UNOFFICIAL", code: "USD" }
+        }),
+        transaction({
+          id: "unknown-needs-review",
+          direction: "OUTFLOW",
+          value: "999.00",
+          currency: { kind: "UNKNOWN", code: null }
+        })
+      ]
+    });
+
+    expect(result).toMatchObject({
+      observedIncome: "500.00",
+      unassignedSpending: "30.00"
+    });
+    expect(result.sections[3]).toMatchObject({
+      planned: "200.00",
+      activity: "90.00",
+      remaining: "110.00",
+      over: "0.00"
+    });
+    expect(result.sections[3].rows).toEqual([
+      expect.objectContaining({
+        kind: "REVIEW",
+        activity: "30.00"
+      }),
+      expect.objectContaining({
+        kind: "ALLOCATION",
+        activity: "60.00",
+        remaining: "140.00",
+        over: "0.00"
+      })
+    ]);
+  });
+
+  it("shows an honest overage when review activity has no Flex allocation", () => {
+    const result = calculateBudget({
+      incomePlan: "500.00",
+      allocations: [],
+      movements: [
+        transaction({
+          id: "needs-review",
+          direction: "OUTFLOW",
+          value: "25.00"
+        })
+      ]
+    });
+
+    expect(result).toMatchObject({
+      totalPlanned: "0.00",
+      leftToBudget: "500.00",
+      unassignedSpending: "25.00"
+    });
+    expect(result.sections[3]).toMatchObject({
+      planned: "0.00",
+      activity: "25.00",
+      remaining: "0.00",
+      over: "25.00",
+      rows: [
+        expect.objectContaining({
+          kind: "REVIEW",
+          activity: "25.00"
+        })
+      ]
+    });
+  });
+
+  it("omits the review row when there is no uncategorized USD outflow", () => {
+    const result = calculateBudget({
+      incomePlan: "0.00",
+      allocations: [],
+      movements: []
+    });
+
+    expect(result.sections[3]).toMatchObject({
+      planned: "0.00",
+      activity: "0.00",
+      remaining: "0.00",
+      over: "0.00",
+      rows: []
+    });
   });
 
   it("counts a transfer once when allocations share one destination", () => {

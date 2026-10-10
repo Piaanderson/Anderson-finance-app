@@ -1,6 +1,6 @@
 # Currents implementation plan
 
-Last updated: 2026-10-02
+Last updated: 2026-10-09
 
 ## Current status
 
@@ -1677,9 +1677,52 @@ behavior remain unproven. Paid Plaid Production remains a documented later
 gate, not a readiness claim. Roadmap issue #1 and the Currents goal remain
 open.
 
+### Budget Needs review reconciliation — 2026-10-09
+
+- Uncategorized USD outflows now aggregate once into a read-only **Needs
+  review** row in Flex. The row is a distinct calculation result rather than a
+  synthetic category or allocation: it has no planned amount, category ID,
+  destination account, editor, or selector.
+- Needs review activity contributes once to Flex activity and is netted against
+  the shared Flex plan for section remaining/over values. It does not change
+  total planned or left to budget. Zero-plan Flex reports the activity as an
+  honest overage, and zero review activity omits the row.
+- Categorized spending and refunds retain net category activity; pending
+  movements remain included; matched transfers remain excluded from spending;
+  and non-USD, unofficial-currency, and unknown-currency movements remain
+  outside USD budget arithmetic.
+- The production row links to Transactions with explicit text, preserves
+  logical desktop/mobile order, visible focus, 44px sizing, reduced motion, and
+  no horizontal page overflow. Its rendered state passes the WCAG 2.1 A/AA axe
+  scan in desktop Chromium and mobile.
+- The optional `PLAYWRIGHT_HOST` keeps the default `127.0.0.1` behavior for CI
+  while allowing a `localhost` development server to be reused without a
+  Next.js cross-origin hydration mismatch.
+
+Verification:
+
+- `npx vitest run src/features/budget/budget-domain.test.ts` — 10 tests passed.
+- `npm run typecheck`, `npm run lint`, and `npm run format:check` — passed.
+- Focused Budget Playwright coverage passed on desktop and mobile: 2 tests,
+  including shared Flex reconciliation, read-only semantics, Transactions
+  link, visible focus, 44px target, responsive order/overflow, reduced motion,
+  and WCAG 2.1 A/AA scans.
+- `npm test` — 34 files and 198 tests passed.
+- `npm run build` — Next.js 16.3.8 production build passed with all 21 static
+  generation tasks.
+- `git diff --check` and edited-file IDE diagnostics passed with no findings.
+
 ## Next handoff
 
-Complete Plaid Trial and test a real institution in staging before any
-separately authorized production credential or environment change. Keep issue
-#18, roadmap issue #1, and the Currents goal open until that evidence exists.
+Two independent tracks can proceed:
+
+1. Release readiness: complete Plaid Trial and test a real institution in
+   staging before any separately authorized production credential or
+   environment change. Keep issue #18, roadmap issue #1, and the Currents goal
+   open until that evidence exists.
+2. UI parity exact next action: review and commit the preserved Phase 9 backlog
+   and Categories design-closure work separately from the completed Budget
+   slice. Then begin issue #29, followed by #22 and the page-parity issues, one
+   independently reviewable slice at a time; do not start issue #27 early.
+
 Do not start commercialization work.

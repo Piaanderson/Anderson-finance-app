@@ -1202,6 +1202,16 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
           date: new Date("2026-09-04T00:00:00.000Z")
         },
         {
+          id: `${fixture}-needs-review`,
+          householdId,
+          accountId: checkingId,
+          plaidTransactionId: `${fixture}-plaid-needs-review`,
+          name: "UNCATEGORIZED PURCHASE",
+          amount: "30.00",
+          isoCurrencyCode: "USD",
+          date: new Date("2026-09-04T00:00:00.000Z")
+        },
+        {
           id: transferOutId,
           householdId,
           accountId: checkingId,
@@ -1279,7 +1289,64 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
     await expect(totals.getByText("$250.00 moved · $50.00 due")).toBeVisible();
     await expect(totals.getByText("$100.00 moved · $100.00 due")).toBeVisible();
     await expect(totals.getByText("$100.00 paid · $100.00 due")).toBeVisible();
-    await expect(totals.getByText("$220.00 spent · $20.00 over")).toBeVisible();
+    await expect(totals.getByText("$250.00 spent · $50.00 over")).toBeVisible();
+    await expect(
+      page.getByText(
+        "$30.00 is tracked in Flex under Needs review until those transactions are categorized."
+      )
+    ).toBeVisible();
+    const needsReviewRow = page
+      .getByRole("region", { name: "Flex" })
+      .locator(".budget-review-row");
+    await expect(needsReviewRow.getByText("Needs review")).toBeVisible();
+    await expect(
+      needsReviewRow.getByText("Counts against shared Flex")
+    ).toBeVisible();
+    await expect(
+      needsReviewRow.locator("form, input, select, button")
+    ).toHaveCount(0);
+    const reviewLink = needsReviewRow.getByRole("link", {
+      name: "Review uncategorized transactions"
+    });
+    await expect(reviewLink).toHaveAttribute("href", "/transactions");
+    const reviewLinkBox = await reviewLink.boundingBox();
+    expect(reviewLinkBox?.height).toBeGreaterThanOrEqual(44);
+    expect(reviewLinkBox?.width).toBeGreaterThanOrEqual(44);
+    await reviewLink.focus();
+    await expect(reviewLink).toBeFocused();
+    const reviewFocus = await reviewLink.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        style: style.outlineStyle,
+        width: Number.parseFloat(style.outlineWidth)
+      };
+    });
+    expect(reviewFocus.style).not.toBe("none");
+    expect(reviewFocus.width).toBeGreaterThanOrEqual(2);
+    const reviewTitleBox = await needsReviewRow
+      .locator(".budget-plan-cell")
+      .boundingBox();
+    const reviewStatusBox = await needsReviewRow
+      .locator(".budget-row-status")
+      .boundingBox();
+    if (testInfo.project.name === "mobile") {
+      expect((reviewStatusBox?.y ?? 0) > (reviewTitleBox?.y ?? 0)).toBe(true);
+      expect((reviewLinkBox?.y ?? 0) > (reviewStatusBox?.y ?? 0)).toBe(true);
+    } else {
+      expect((reviewStatusBox?.x ?? 0) > (reviewTitleBox?.x ?? 0)).toBe(true);
+      expect((reviewLinkBox?.x ?? 0) > (reviewStatusBox?.x ?? 0)).toBe(true);
+    }
+    const reviewViewport = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      innerWidth: window.innerWidth
+    }));
+    expect(reviewViewport.scrollWidth).toBeLessThanOrEqual(
+      reviewViewport.innerWidth
+    );
+    const reviewResults = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(reviewResults.violations).toEqual([]);
     await expect(
       page.getByRole("img", { name: /Income plan 1000 dollars/ })
     ).toBeVisible();
@@ -1409,7 +1476,7 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
     await page.emulateMedia({ reducedMotion: "reduce" });
     await diningPlan.fill("251.00");
     const reducedDurationSeconds = await flexSection
-      .locator(".budget-wire span")
+      .locator("form.budget-paired-form .budget-wire span")
       .evaluate((element) => {
         const duration = getComputedStyle(element).animationDuration;
         return duration.endsWith("ms")

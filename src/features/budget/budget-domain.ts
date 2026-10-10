@@ -20,11 +20,23 @@ export type BudgetCalculationAllocation = {
   destinationAccountId: string | null;
 };
 
-export type BudgetCalculationRow = BudgetCalculationAllocation & {
+export type BudgetCalculationAllocationRow = BudgetCalculationAllocation & {
+  kind: "ALLOCATION";
   activity: string;
   remaining: string;
   over: string;
 };
+
+export type BudgetCalculationReviewRow = {
+  kind: "REVIEW";
+  id: "__needs-review__";
+  categoryName: "Needs review";
+  section: "Flex";
+  activity: string;
+};
+
+export type BudgetCalculationRow =
+  BudgetCalculationAllocationRow | BudgetCalculationReviewRow;
 
 export type BudgetSectionCalculation = {
   section: CategorySection;
@@ -232,33 +244,62 @@ export function calculateBudget({
     .reduce((total, [, activity]) => total + activity, 0n);
 
   const sections = BUDGET_SECTION_ORDER.map((section) => {
-    const rows = sortedAllocations
+    const allocationRows = sortedAllocations
       .filter((allocation) => allocation.section === section)
-      .map((allocation): BudgetCalculationRow => {
+      .map((allocation): BudgetCalculationAllocationRow => {
         const planned = plannedByAllocation.get(allocation.id) ?? 0n;
         const activity = activityByAllocation.get(allocation.id) ?? 0n;
         const difference = planned - activity;
         return {
           ...allocation,
+          kind: "ALLOCATION",
           planned: decimalAmount(planned),
           activity: decimalAmount(activity),
           remaining: decimalAmount(difference > 0n ? difference : 0n),
           over: decimalAmount(difference < 0n ? -difference : 0n)
         };
       });
-    const planned = rows.reduce(
+    const rows: BudgetCalculationRow[] =
+      section === "Flex" && unassignedSpending > 0n
+        ? [
+            {
+              kind: "REVIEW",
+              id: "__needs-review__",
+              categoryName: "Needs review",
+              section: "Flex",
+              activity: decimalAmount(unassignedSpending)
+            },
+            ...allocationRows
+          ]
+        : allocationRows;
+    const planned = allocationRows.reduce(
       (total, row) => total + minorUnits(row.planned),
       0n
     );
-    const activity = rows.reduce(
-      (total, row) => total + minorUnits(row.activity),
-      0n
-    );
-    const remaining = rows.reduce(
-      (total, row) => total + minorUnits(row.remaining),
-      0n
-    );
-    const over = rows.reduce((total, row) => total + minorUnits(row.over), 0n);
+    const activity =
+      allocationRows.reduce(
+        (total, row) => total + minorUnits(row.activity),
+        0n
+      ) + (section === "Flex" ? unassignedSpending : 0n);
+    const sectionDifference = planned - activity;
+    const remaining =
+      section === "Flex"
+        ? sectionDifference > 0n
+          ? sectionDifference
+          : 0n
+        : allocationRows.reduce(
+            (total, row) => total + minorUnits(row.remaining),
+            0n
+          );
+    const over =
+      section === "Flex"
+        ? sectionDifference < 0n
+          ? -sectionDifference
+          : 0n
+        : allocationRows.reduce(
+            (total, row) => total + minorUnits(row.over),
+            0n
+          );
     return {
       section,
       planned: decimalAmount(planned),

@@ -245,7 +245,10 @@ export function deriveBudgetMovement(
       reason: `No ${sectionName.toLowerCase()} allocations are planned for ${budget.monthLabel}.`
     };
   }
-  const rowsWithDestination = section.rows.filter(
+  const allocationRows = section.rows.filter(
+    (row) => row.kind === "ALLOCATION"
+  );
+  const rowsWithDestination = allocationRows.filter(
     (row) => row.destinationAccountId
   );
   if (rowsWithDestination.length === 0) {
@@ -255,12 +258,12 @@ export function deriveBudgetMovement(
       reason: `${sectionName} allocations need destination accounts before matched transfers can be classified.`
     };
   }
-  const incomplete = rowsWithDestination.length !== section.rows.length;
+  const incomplete = rowsWithDestination.length !== allocationRows.length;
   return {
     status: incomplete ? "partial" : "available",
     amount: section.activity,
     reason: incomplete
-      ? `Partial: ${section.rows.length - rowsWithDestination.length} ${sectionName.toLowerCase()} allocation${section.rows.length - rowsWithDestination.length === 1 ? "" : "s"} lack a destination account.`
+      ? `Partial: ${allocationRows.length - rowsWithDestination.length} ${sectionName.toLowerCase()} allocation${allocationRows.length - rowsWithDestination.length === 1 ? "" : "s"} lack a destination account.`
       : null
   };
 }
@@ -282,6 +285,7 @@ export function deriveRemainingObligations(
     )
     .flatMap((section) =>
       section.rows
+        .filter((row) => row.kind === "ALLOCATION")
         .filter((row) => minorUnits(row.remaining) > 0n)
         .map((row) => ({
           id: row.id,

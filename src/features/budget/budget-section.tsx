@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { signedUsd, usd } from "@/lib/money";
 import type { BudgetDestinationView } from "./budget-data";
 import type { BudgetSectionCalculation } from "./budget-domain";
@@ -20,6 +21,25 @@ export function BudgetSection({
       {rows.length ? (
         <ul className="budget-rows">
           {rows.map((row) => {
+            if (row.kind === "REVIEW") {
+              return (
+                <li className="budget-row budget-review-row" key={row.id}>
+                  <div>
+                    <strong>{row.categoryName}</strong>
+                    <div className="warning">
+                      Uncategorized spending · temporary
+                    </div>
+                  </div>
+                  <span className="muted">
+                    {signedUsd(Number(row.activity))} spent · Counts against
+                    shared Flex
+                  </span>
+                  <Link className="button secondary" href="/transactions">
+                    Review uncategorized transactions
+                  </Link>
+                </li>
+              );
+            }
             const destination = destinations[row.id];
             return (
               <li className="budget-row" key={row.id}>
