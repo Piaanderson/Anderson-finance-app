@@ -156,6 +156,9 @@ async function captureAuditScreenshot(
   const directory = process.env.PHASE7_SCREENSHOT_DIR ?? "/tmp";
   const stage = process.env.PHASE7_SCREENSHOT_STAGE;
   await mkdir(directory, { recursive: true });
+  await page.addStyleTag({
+    content: "nextjs-portal { display: none !important; }"
+  });
   await page.screenshot({
     path: join(
       directory,
@@ -163,6 +166,36 @@ async function captureAuditScreenshot(
     ),
     fullPage: true
   });
+}
+
+async function captureMobileDrawerScreenshot(
+  page: Page,
+  projectName: string,
+  width: number
+) {
+  if (
+    process.env.PHASE7_SCREENSHOTS !== "true" ||
+    projectName !== "mobile" ||
+    width !== 390
+  ) {
+    return;
+  }
+
+  const directory = process.env.PHASE7_SCREENSHOT_DIR ?? "/tmp";
+  const stage = process.env.PHASE7_SCREENSHOT_STAGE;
+  await mkdir(directory, { recursive: true });
+  await page.getByRole("button", { name: "Open navigation menu" }).click();
+  await expect(page.getByRole("dialog", { name: "Navigation" })).toBeVisible();
+  await page.addStyleTag({
+    content: "nextjs-portal { display: none !important; }"
+  });
+  await page.screenshot({
+    path: join(
+      directory,
+      `currents-phase7-${stage ? `${stage}-` : ""}${projectName}-drawer-${width}.png`
+    )
+  });
+  await page.keyboard.press("Escape");
 }
 
 test("shared Nocturne primitives preserve accessible production treatments", async ({
@@ -285,6 +318,257 @@ test("shared Nocturne primitives preserve accessible production treatments", asy
     });
 });
 
+test("shared shell matches the integrated frame and keeps net worth honest", async ({
+  page
+}, testInfo) => {
+  const fixture = `shared-shell-${testInfo.project.name}-${randomUUID()}`;
+  const email = `${fixture}@example.test`;
+  let householdId: string | null = null;
+  let userId: string | null = null;
+
+  try {
+    ({ householdId, userId } = await signIn(page, email));
+    await page.goto("/dashboard");
+    await expect(page.locator(".route-loading")).toHaveCount(0);
+
+    const sidebar = page.locator(".sidebar");
+    const primaryNavigation = page.getByRole("navigation", { name: "Primary" });
+
+    const netWorth = sidebar.locator(".net-worth");
+    await expect(netWorth).toHaveAttribute("data-state", "unavailable");
+    await expect(netWorth).toContainText("Unavailable");
+    await expect(netWorth).toContainText("0 active accounts");
+
+    if (testInfo.project.name === "chromium") {
+      await expect(primaryNavigation.locator(".nav-link")).toHaveText([
+        "Home",
+        "Budget",
+        "Accounts",
+        "Transactions",
+        "Categories",
+        "Security"
+      ]);
+      await expect(
+        primaryNavigation.getByRole("link", { name: "Home" })
+      ).toHaveAttribute("aria-current", "page");
+      await expect(
+        primaryNavigation.locator('[aria-current="page"]')
+      ).toHaveCount(1);
+      await expect
+        .poll(() =>
+          sidebar.evaluate((element) => {
+            const style = getComputedStyle(element);
+            const mark = element.querySelector(".brand-mark");
+            const activeLink = element.querySelector(
+              '.nav-link[aria-current="page"]'
+            );
+            const activeStyle = activeLink
+              ? getComputedStyle(activeLink)
+              : null;
+            const surfaceProbe = document.createElement("div");
+            surfaceProbe.style.backgroundColor = "var(--color-surface-raised)";
+            element.append(surfaceProbe);
+            const raisedSurface =
+              getComputedStyle(surfaceProbe).backgroundColor;
+            surfaceProbe.remove();
+            return {
+              width: element.getBoundingClientRect().width,
+              padding: style.padding,
+              borderRightWidth: style.borderRightWidth,
+              borderRightColor: style.borderRightColor,
+              usesRaisedSurface: style.backgroundColor === raisedSurface,
+              markWidth: mark?.getBoundingClientRect().width,
+              markHeight: mark?.getBoundingClientRect().height,
+              activeBackground: activeStyle?.backgroundColor,
+              activeBorder: activeStyle?.borderColor,
+              activeColor: activeStyle?.color
+            };
+          })
+        )
+        .toEqual({
+          width: 184,
+          padding: "20px 14px",
+          borderRightWidth: "1px",
+          borderRightColor: "rgb(41, 43, 49)",
+          usesRaisedSurface: true,
+          markWidth: 22,
+          markHeight: 22,
+          activeBackground: "rgb(43, 39, 65)",
+          activeBorder: "rgb(66, 58, 106)",
+          activeColor: "rgb(210, 206, 253)"
+        });
+      await expect
+        .poll(() =>
+          page.locator(".page-header").evaluate((element) => {
+            const style = getComputedStyle(element);
+            const heading = element.querySelector("h1");
+            return {
+              padding: style.padding,
+              headingSize: heading
+                ? getComputedStyle(heading).fontSize
+                : undefined
+            };
+          })
+        )
+        .toEqual({ padding: "20px 26px 16px", headingSize: "22px" });
+      const frameWidths = await page.evaluate(() => ({
+        main: document.querySelector(".app-main")!.getBoundingClientRect()
+          .width,
+        header: document.querySelector(".page-header")!.getBoundingClientRect()
+          .width,
+        content: document
+          .querySelector(".page-content")!
+          .getBoundingClientRect().width
+      }));
+      expect(frameWidths.header).toBeCloseTo(frameWidths.main, 1);
+      expect(frameWidths.content).toBeCloseTo(frameWidths.main, 1);
+    } else {
+      await expect(page.locator(".mobile-header")).toBeVisible();
+      await expect(page.locator(".mobile-brand .brand-mark")).toHaveCSS(
+        "width",
+        "22px"
+      );
+      await expect(primaryNavigation.locator(".nav-link")).toHaveText([
+        "Home",
+        "Budget",
+        "Transactions"
+      ]);
+      await expect(
+        primaryNavigation.getByRole("link", { name: "Home" })
+      ).toHaveAttribute("aria-current", "page");
+      await expect(
+        primaryNavigation.locator('[aria-current="page"]')
+      ).toHaveCount(1);
+
+      const menuTrigger = page.getByRole("button", {
+        name: "Open navigation menu"
+      });
+      await menuTrigger.click();
+      await expect(menuTrigger).toHaveAttribute("aria-expanded", "true");
+      const drawer = page.getByRole("dialog", { name: "Navigation" });
+      await expect(drawer).toBeVisible();
+      const drawerPanelWidth = await drawer
+        .locator(".mobile-navigation-panel")
+        .evaluate((element) => element.getBoundingClientRect().width);
+      expect(drawerPanelWidth).toBeGreaterThanOrEqual(280);
+      expect(drawerPanelWidth).toBeLessThanOrEqual(320);
+      await expect(
+        drawer
+          .getByRole("navigation", { name: "All destinations" })
+          .locator(".nav-link")
+      ).toHaveText([
+        "Home",
+        "Budget",
+        "Accounts",
+        "Transactions",
+        "Categories",
+        "Security"
+      ]);
+      await expectNoAxeViolations(page);
+      await expectTouchTargets(page);
+      await page.keyboard.press("Escape");
+      await expect(drawer).toBeHidden();
+      await expect(menuTrigger).toHaveAttribute("aria-expanded", "false");
+      await expect(menuTrigger).toBeFocused();
+
+      await expect
+        .poll(() =>
+          primaryNavigation.evaluate((element) => {
+            const columns = getComputedStyle(
+              element.querySelector(".mobile-quick-links")!
+            ).gridTemplateColumns.split(" ");
+            return {
+              position: getComputedStyle(element).position,
+              columns: columns.length
+            };
+          })
+        )
+        .toEqual({ position: "fixed", columns: 3 });
+      await expect(sidebar).toBeHidden();
+    }
+
+    await prisma.financialAccount.create({
+      data: {
+        id: `${fixture}-usd`,
+        householdId,
+        source: "MANUAL",
+        classification: "CASH",
+        name: "US cash",
+        currentBalance: "100.00",
+        isoCurrencyCode: "USD"
+      }
+    });
+    await page.reload();
+    await expect(netWorth).toHaveAttribute("data-state", "complete");
+    await expect(netWorth).toContainText("Net worth");
+    await expect(netWorth).toContainText("$100.00");
+    await expect(netWorth).toContainText("1 active account");
+
+    await prisma.financialAccount.create({
+      data: {
+        id: `${fixture}-cad`,
+        householdId,
+        source: "MANUAL",
+        classification: "CASH",
+        name: "Canadian cash",
+        currentBalance: "50.00",
+        isoCurrencyCode: "CAD"
+      }
+    });
+    await page.reload();
+    await expect(netWorth).toHaveAttribute("data-state", "multi-currency");
+    await expect(netWorth).toContainText("Net worth by currency");
+    await expect(netWorth.locator(".net-worth-values strong")).toHaveCount(2);
+    await expect(netWorth).toContainText("2 active accounts");
+
+    const itemId = `${fixture}-item`;
+    await prisma.plaidItem.create({
+      data: {
+        id: itemId,
+        householdId,
+        linkedByUserId: userId,
+        plaidItemId: `${fixture}-plaid-item`,
+        institutionName: "Fixture Bank",
+        accessTokenCiphertext: "fixture",
+        accessTokenIv: "fixture",
+        accessTokenTag: "fixture",
+        status: "ACTIVE",
+        lastSyncedAt: new Date()
+      }
+    });
+    await prisma.financialAccount.create({
+      data: {
+        id: `${fixture}-missing`,
+        householdId,
+        plaidItemId: itemId,
+        plaidAccountId: `${fixture}-plaid-missing`,
+        source: "PLAID",
+        classification: "PROPERTY",
+        name: "Value unavailable",
+        type: "other",
+        currentBalance: null,
+        isoCurrencyCode: "USD"
+      }
+    });
+    await page.reload();
+    await expect(netWorth).toHaveAttribute("data-state", "partial");
+    await expect(netWorth).toContainText("Partial net worth by currency");
+    await expect(netWorth).toContainText(
+      "Partial — a balance or currency is missing"
+    );
+    await expectNoAxeViolations(page);
+    await expectNoHorizontalPageOverflow(page);
+    await expectTouchTargets(page);
+  } finally {
+    if (householdId) {
+      await prisma.household.deleteMany({ where: { id: householdId } });
+    }
+    if (userId) {
+      await prisma.user.deleteMany({ where: { id: userId } });
+    }
+  }
+});
+
 test("public authentication routes expose associated errors and WCAG semantics", async ({
   page
 }, testInfo) => {
@@ -296,6 +580,7 @@ test("public authentication routes expose associated errors and WCAG semantics",
   });
 
   await page.goto("/sign-in");
+  await page.waitForLoadState("networkidle");
   await expectHeadingStructure(page);
   await expect(page).toHaveTitle("Sign in · Currents");
   if (testInfo.project.name === "chromium") {
@@ -310,6 +595,17 @@ test("public authentication routes expose associated errors and WCAG semantics",
     });
     await page.getByText("Use a recovery code").click();
     const recoveryCode = page.getByLabel("One-time recovery code");
+    await expect
+      .poll(() =>
+        recoveryCode.evaluate((element) => {
+          const form = element.closest("form");
+          return Boolean(
+            form &&
+            Object.keys(form).some((key) => key.startsWith("__reactProps$"))
+          );
+        })
+      )
+      .toBe(true);
     await recoveryCode.fill("not-a-valid-code");
     await page
       .getByRole("button", { name: "Sign in with recovery code" })
@@ -438,13 +734,20 @@ test("all routes reflow, preserve touch targets, and disable nonessential motion
         await expectTouchTargets(page);
         if (route.path === "/dashboard") {
           await captureAuditScreenshot(page, testInfo.project.name, width);
+          await captureMobileDrawerScreenshot(
+            page,
+            testInfo.project.name,
+            width
+          );
         }
         if (width < 600) {
           await page.evaluate(() =>
             window.scrollTo({ top: document.documentElement.scrollHeight })
           );
           const overlap = await page.evaluate(() => {
-            const navigation = document.querySelector(".sidebar");
+            const navigation = document.querySelector(
+              ".mobile-bottom-navigation"
+            );
             const lastContent = document.querySelector(
               ".page-content > :last-child"
             );

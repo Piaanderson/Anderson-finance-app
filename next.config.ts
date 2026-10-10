@@ -4,6 +4,7 @@ import { securityHeaderList } from "./src/server/security-headers";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   typedRoutes: true,
+  devIndicators: process.env.PHASE7_SCREENSHOTS === "true" ? false : undefined,
   async headers() {
     return [
       {

@@ -21,9 +21,10 @@ Last updated: 2026-10-09
   Categories direction is recorded in `prototype/Categories.html`. Shared
   Nocturne foundation issue
   [#29](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/29)
-  is complete; shared shell issue
+  is complete. Shared shell issue
   [#22](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/22)
-  is the exact next Phase 9 slice.
+  is implemented locally and ready for review; page-specific parity remains
+  out of scope until that shell slice is accepted.
 - Roadmap issue:
   [#1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/1)
 - Milestone:
@@ -400,7 +401,7 @@ Design closure:
 Shared foundation:
 
 - [x] [#29 Align Nocturne tokens and shared UI primitives](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/29)
-- [ ] [#22 Refine the shared shell and navigation](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/22)
+- [x] [#22 Refine the shared shell and navigation](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/22)
 
 Page parity:
 
@@ -1896,6 +1897,100 @@ Verification:
 - `npm run build` — Next.js 16.3.8 production build passed.
 - `git diff --check` and edited-file IDE diagnostics passed with no findings.
 
+### Integrated shared shell parity — 2026-10-09
+
+- Issue
+  [#22](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/22)
+  began after issue #29's Nocturne foundation was committed and moved to
+  review. No page-specific card, visualization, domain calculation,
+  authentication behavior, or prototype file changed.
+- The authenticated desktop shell now uses the integrated 184px rail, 20px by
+  14px rail inset, 22px logo mark, route spacing and typography, raised
+  surface, divider, active treatment, and bottom net-worth composition.
+  Production Security remains after Categories so the existing route order and
+  information architecture are unchanged.
+- The net-worth footer now exposes explicit complete, multi-currency, partial,
+  and unavailable states without applying exchange rates, filling missing
+  values, or fabricating the prototype's monthly delta. Singular and plural
+  account-count copy is accurate.
+- The main frame now follows the integrated 20px/26px page rhythm, full
+  available width, gradient divider header, compact 22px route title, and
+  centered lightweight loading treatment. The loading boundary retains
+  `aria-busy`, polite status semantics, and no duplicate `h1`.
+- At 760px and below, the safe-area-aware bottom navigation keeps Home, Budget,
+  and Transactions as the three primary destinations. A top-right hamburger in
+  the 52px brand bar opens a left-side modal drawer with all six routes in the
+  unchanged product order. The native dialog traps focus, blocks background
+  interaction, closes with Escape/backdrop/close control, and restores focus to
+  the trigger. Content reserve keeps the last control clear.
+- Regression coverage now locks the route order, single current-page state,
+  184px rail geometry, raised surface, divider and active colors, logo size,
+  page-header rhythm, full-width frame, three-link mobile bar, complete drawer
+  order, modal state, Escape/focus restoration, drawer width, net-worth truth
+  states, axe results, touch targets, and overflow. The recovery-code audit also
+  waits for client hydration before submitting so it cannot fall through to a
+  native GET while a development server is compiling.
+
+Intentional production adaptations:
+
+- The integrated prototype has only the five product routes; production keeps
+  Security sixth rather than removing an authenticated maintenance route.
+- Navigation links stay at least 44px high and the mobile logo link is 52px
+  high instead of copying the prototype's undersized controls.
+- The prototype's 11px `neutral-600` net-worth label measures 3.78:1 on the
+  raised rail. Production uses `neutral-500` at the same size and spacing to
+  meet WCAG 2.1 AA.
+- The prototype has no usable narrow-layout behavior and clips at 390px and
+  practical 200% reflow. Production uses a deliberate mobile hierarchy: three
+  frequent destinations remain thumb-reachable while the complete unchanged
+  route list is available from the top drawer, with no horizontal page scroll.
+- The prototype's fixed `$177,860` and `+$3,412 this month` footer is replaced
+  by household-scoped current totals and explicit unavailable/partial copy.
+  Route-specific card layouts and inner workspace caps remain untouched for
+  their own parity issues.
+
+Visual evidence:
+
+- Read-only integrated reference captures:
+  `docs/visual-evidence/issue-22/reference/` at 1280px desktop, 1920px wide
+  desktop, 390px mobile, and 512px practical 200%-reflow width.
+- Production before captures:
+  `docs/visual-evidence/issue-22/before/` at the same four representative
+  widths.
+- Production after captures:
+  `docs/visual-evidence/issue-22/after/` at the same four representative
+  widths, plus the open 390px navigation drawer.
+- Direct comparison confirms the desktop rail geometry, logo, route order,
+  active state, surface/divider, page header, and footer hierarchy. The 390px
+  and 512px comparisons document the intentional accessible reflow instead of
+  the prototype's clipped fixed rail.
+
+Verification:
+
+- `npm run typecheck`, `npm run lint`, and `npm run format:check` — passed.
+- `npx playwright test tests/e2e/phase-7-audit.spec.ts` — 10 tests passed
+  across desktop and mobile Chromium, including axe WCAG 2.1 A/AA, shell
+  geometry/state checks, skip-link focus, all audited widths from 320px to
+  1920px, practical 200% reflow, target sizing, safe navigation clearance,
+  honest net-worth states, horizontal overflow, and reduced motion.
+- `npx playwright test tests/e2e/accessibility.spec.ts -g 'shared application shell'`
+  — 2 desktop/mobile shell interaction tests passed.
+- `npm test` — 34 files and 198 tests passed.
+- `npm run build` — Next.js 16.3.8 production build passed with all 21 static
+  generation tasks.
+- `git diff --check`, prototype integrity, and edited-file IDE diagnostics
+  passed with no findings.
+
+Remaining risks:
+
+- Safe-area behavior is verified through CSS and emulation, not every physical
+  notched device.
+- Axe and agent-driven keyboard/browser inspection do not replace a human
+  screen-reader pass.
+- The authenticated loading fallback is usually too brief for deterministic
+  screenshot capture; its status semantics and framing were verified directly,
+  while the four stable shell states carry the visual evidence.
+
 ## Next handoff
 
 Two independent tracks can proceed:
@@ -1904,9 +1999,10 @@ Two independent tracks can proceed:
    staging before any separately authorized production credential or
    environment change. Keep issue #18, roadmap issue #1, and the Currents goal
    open until that evidence exists.
-2. UI parity exact next action: start
-   [#22 Refine the shared shell and navigation](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/22)
-   from the completed issue #29 foundation. Keep all page-specific parity
-   issues, including #27, out of that independently reviewable shell slice.
+2. UI parity exact next action: review the local issue #22 commit and its
+   desktop/mobile/wide/reflow evidence, then explicitly authorize its GitLab
+   push. Do not start
+   [#27 Budget visual parity](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/27)
+   or another page-specific parity issue until the shell slice is accepted.
 
 Do not start commercialization work.

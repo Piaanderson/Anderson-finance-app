@@ -1,8 +1,8 @@
 export default function AuthenticatedLoading() {
   return (
-    <div className="page-content" aria-busy="true">
+    <div className="page-content route-loading-frame" aria-busy="true">
       <section
-        className="card route-loading"
+        className="route-loading"
         aria-labelledby="route-loading-title"
         role="status"
         aria-live="polite"

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { HouseholdPositionSummary } from "@/features/accounts/position-summary";
 import { AppSidebar } from "./app-sidebar";
+import { MobileNavigation } from "./mobile-navigation";
 
 export function AppShell({
   children,
@@ -17,9 +18,7 @@ export function AppShell({
       <div className="app-shell">
         <AppSidebar positionSummary={positionSummary} />
         <div className="app-main">
-          <div className="mobile-brand">
-            <strong>Currents</strong>
-          </div>
+          <MobileNavigation />
           <main id="main-content" tabIndex={-1}>
             {children}
           </main>
