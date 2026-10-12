@@ -732,6 +732,11 @@ test("all routes reflow, preserve touch targets, and disable nonessential motion
         await expect(page.locator("h1")).toHaveText(route.heading);
         await expectNoHorizontalPageOverflow(page);
         await expectTouchTargets(page);
+        if (route.path === "/budget") {
+          await expect(page.locator(".budget-integrated-header")).toBeVisible();
+          await expect(page.locator(".budget-month-arrow")).toHaveCount(2);
+          await expect(page.getByRole("link", { name: "Today" })).toBeVisible();
+        }
         if (route.path === "/dashboard") {
           await captureAuditScreenshot(page, testInfo.project.name, width);
           await captureMobileDrawerScreenshot(

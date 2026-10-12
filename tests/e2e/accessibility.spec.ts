@@ -1,7 +1,118 @@
 import { randomUUID } from "node:crypto";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { prisma } from "../../src/server/db";
+
+async function captureBudgetEvidence(page: Page, projectName: string) {
+  const directory = process.env.ISSUE27_SCREENSHOT_DIR;
+  if (!directory || projectName !== "chromium") return;
+  const originalViewport = page.viewportSize();
+  await mkdir(directory, { recursive: true });
+  await page.addStyleTag({
+    content: "nextjs-portal { display: none !important; }"
+  });
+  for (const width of [1280, 1920, 512, 390]) {
+    await page.setViewportSize({ width, height: width < 600 ? 844 : 1080 });
+    await page.screenshot({
+      path: join(directory, `budget-after-${width}.png`),
+      fullPage: true
+    });
+  }
+  if (originalViewport) await page.setViewportSize(originalViewport);
+}
+
+async function verifyPopulatedBudgetAtRequiredWidths(page: Page) {
+  const originalViewport = page.viewportSize();
+  for (const width of [375, 390, 512, 768, 1280, 1920]) {
+    await page.setViewportSize({ width, height: width < 600 ? 844 : 1080 });
+    await expect(page.locator(".budget-evidence-legs").first()).toBeVisible();
+
+    const layout = await page.evaluate(() => {
+      const form = document.querySelector<HTMLElement>(".budget-paired-form");
+      const planned = form?.querySelector<HTMLElement>(".budget-plan-cell");
+      const destination = form?.querySelector<HTMLElement>(
+        ".budget-destination-cell"
+      );
+      const interactive = [
+        ...document.querySelectorAll<HTMLElement>(
+          "main a[href], main button:not([disabled]), main input:not([type='hidden']):not([disabled]), main select:not([disabled]), main summary"
+        )
+      ].filter((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return (
+          rect.width > 0 &&
+          rect.height > 0 &&
+          style.display !== "none" &&
+          style.visibility !== "hidden"
+        );
+      });
+      const controls = [
+        ...document.querySelectorAll<HTMLElement>(
+          ".budget-experience input, .budget-experience select"
+        )
+      ].filter((element) => element.getBoundingClientRect().width > 0);
+      const plannedRect = planned?.getBoundingClientRect();
+      const destinationRect = destination?.getBoundingClientRect();
+      return {
+        bodyWidth: document.body.scrollWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        viewportWidth: window.innerWidth,
+        undersizedTargets: interactive
+          .map((element) => ({
+            name:
+              element.getAttribute("aria-label") ||
+              element.textContent?.trim() ||
+              element.tagName,
+            width: element.getBoundingClientRect().width,
+            height: element.getBoundingClientRect().height
+          }))
+          .filter((target) => target.width < 44 || target.height < 44),
+        controlFontSizes: controls.map((element) =>
+          Number.parseFloat(getComputedStyle(element).fontSize)
+        ),
+        planned: plannedRect
+          ? { x: plannedRect.x, y: plannedRect.y }
+          : undefined,
+        destination: destinationRect
+          ? { x: destinationRect.x, y: destinationRect.y }
+          : undefined
+      };
+    });
+    expect(layout.bodyWidth, `body overflow at ${width}px`).toBeLessThanOrEqual(
+      layout.viewportWidth
+    );
+    expect(
+      layout.documentWidth,
+      `document overflow at ${width}px`
+    ).toBeLessThanOrEqual(layout.viewportWidth);
+    expect(layout.undersizedTargets, `touch targets at ${width}px`).toEqual([]);
+    if (width <= 512) {
+      expect(
+        layout.controlFontSizes.every((fontSize) => fontSize >= 16),
+        `mobile input font size at ${width}px`
+      ).toBe(true);
+    }
+    if (width <= 768) {
+      expect(
+        (layout.destination?.y ?? 0) > (layout.planned?.y ?? 0),
+        `paired row stack at ${width}px`
+      ).toBe(true);
+    } else {
+      expect(
+        Math.abs((layout.destination?.y ?? 0) - (layout.planned?.y ?? 0)),
+        `paired row alignment at ${width}px`
+      ).toBeLessThan(16);
+    }
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(results.violations, `axe at ${width}px`).toEqual([]);
+  }
+  if (originalViewport) await page.setViewportSize(originalViewport);
+}
 
 test("sign-in surface has no automatically detectable WCAG violations", async ({
   page
@@ -1009,6 +1120,7 @@ test("category review supports grouped keyboard assignment and optional merchant
 test("monthly budget reconciles real activity and copies the previous plan", async ({
   page
 }, testInfo) => {
+  test.setTimeout(180_000);
   const fixture = `budget-${testInfo.project.name}-${randomUUID()}`;
   const email = `${fixture}@example.test`;
   const plaidRequests: string[] = [];
@@ -1273,23 +1385,25 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
     await page.goto("/budget?month=2026-09");
     await expect(
       page.getByRole("heading", {
-        level: 2,
-        name: "September 2026"
+        level: 1,
+        name: "Budget"
       })
     ).toBeVisible();
     await expect(
       page
-        .locator(".budget-summary-heading")
-        .getByText(/observed income \$1,000\.00/i)
+        .locator(".budget-title-copy")
+        .getByText(
+          /september 2026 · month complete · 30 days · income \$1,000\.00/i
+        )
     ).toBeVisible();
     await expect(
       page.locator(".budget-left").getByText("$100.00", { exact: true })
     ).toBeVisible();
-    const totals = page.locator(".where-it-goes");
-    await expect(totals.getByText("$250.00 moved · $50.00 due")).toBeVisible();
-    await expect(totals.getByText("$100.00 moved · $100.00 due")).toBeVisible();
-    await expect(totals.getByText("$100.00 paid · $100.00 due")).toBeVisible();
-    await expect(totals.getByText("$250.00 spent · $50.00 over")).toBeVisible();
+    const totals = page.locator(".budget-summary-stats");
+    await expect(totals.getByText("$250.00 moved / $50.00 due")).toBeVisible();
+    await expect(totals.getByText("$100.00 moved / $100.00 due")).toBeVisible();
+    await expect(totals.getByText("$100.00 paid / $100.00 due")).toBeVisible();
+    await expect(totals.getByText("$250.00 spent / $50.00 over")).toBeVisible();
     await expect(
       page.getByText(
         "$30.00 is tracked in Flex under Needs review until those transactions are categorized."
@@ -1350,6 +1464,11 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
     await expect(
       page.getByRole("img", { name: /Income plan 1000 dollars/ })
     ).toBeVisible();
+    await expect(
+      page.getByRole("progressbar", {
+        name: "Dining: $220.00 spent. $20.00 over."
+      })
+    ).toBeVisible();
     const mortgageSection = page.getByRole("region", { name: "Needs" });
     await expect(
       mortgageSection.getByText("Mortgage owed −$287,400.00")
@@ -1357,7 +1476,91 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
     await expect(
       mortgageSection.getByText("Budget home value $412,000.00")
     ).toBeVisible();
+    await expect(
+      mortgageSection.getByText(
+        "Expected date unavailable · no payment schedule is stored"
+      )
+    ).toBeVisible();
+    await expect(mortgageSection.getByText(/After remaining plan/)).toHaveCount(
+      0
+    );
+    const movementDisclosure = mortgageSection.getByText(
+      "View paid movement detail"
+    );
+    expect(
+      (await movementDisclosure.boundingBox())?.height
+    ).toBeGreaterThanOrEqual(44);
+    await movementDisclosure.focus();
+    await page.keyboard.press("Enter");
+    await expect(
+      mortgageSection.getByRole("heading", {
+        level: 3,
+        name: "Activity transactions"
+      })
+    ).toBeVisible();
+    await expect(
+      mortgageSection.getByRole("article", { name: "UTILITY", exact: true })
+    ).toBeVisible();
+    await expect(
+      mortgageSection.getByText("Source transaction", { exact: true })
+    ).toBeVisible();
+    const debtSection = page.getByRole("region", { name: "Debt" });
+    await debtSection.getByText("View moved movement detail").click();
+    await expect(
+      debtSection.getByRole("heading", {
+        level: 3,
+        name: "Matched transfer legs"
+      })
+    ).toBeVisible();
+    await expect(
+      debtSection.getByRole("article", {
+        name: "CARD PAYMENT",
+        exact: true
+      })
+    ).toBeVisible();
+    await expect(
+      debtSection.getByText("PAYMENT RECEIVED", { exact: true })
+    ).toBeVisible();
+    await expect(
+      debtSection.getByText("−$250.00", { exact: true })
+    ).toBeVisible();
+    await expect(
+      debtSection.getByText("+$250.00", { exact: true })
+    ).toBeVisible();
 
+    const savingsSection = page.getByRole("region", { name: "Savings" });
+    await savingsSection.getByText("View moved movement detail").click();
+    await expect(
+      savingsSection.getByRole("article", {
+        name: "SAVINGS TRANSFER",
+        exact: true
+      })
+    ).toBeVisible();
+    await expect(
+      savingsSection.getByText("SAVINGS DEPOSIT", { exact: true })
+    ).toBeVisible();
+    await expect(
+      savingsSection.getByText(/no pre-movement balance snapshot/i)
+    ).toBeVisible();
+    await expect(
+      page.getByText(/destination is already used by another allocation/i)
+    ).toHaveCount(0);
+    await verifyPopulatedBudgetAtRequiredWidths(page);
+    await captureBudgetEvidence(page, testInfo.project.name);
+
+    await mortgageSection
+      .getByLabel("Destination account")
+      .selectOption({ label: "Budget card · 4422" });
+    await expect(
+      mortgageSection.getByText(
+        /destination is already used by another allocation/i
+      )
+    ).toBeVisible();
+    await expect(
+      mortgageSection.getByText("PAYMENT RECEIVED", { exact: true })
+    ).toHaveCount(0);
+
+    await page.getByText("Edit income plan", { exact: true }).click();
     const incomeInput = page.getByRole("textbox", {
       name: "Income plan",
       exact: true
@@ -1383,6 +1586,7 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
     await expect(incomeInput).toBeFocused();
 
     await page.reload();
+    await page.getByText("Edit income plan", { exact: true }).click();
     const refreshedIncomeInput = page.getByRole("textbox", {
       name: "Income plan",
       exact: true
@@ -1417,11 +1621,14 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
     ).toBeAttached();
     await expect(saveDining).toBeFocused();
     await expect(
-      flexSection.getByText("$220.00 spent", { exact: true })
+      flexSection
+        .locator(".budget-flex-amount")
+        .filter({ hasText: "Spent" })
+        .getByText("$220.00", { exact: true })
     ).toBeVisible();
     await expect(
       flexSection
-        .locator(".budget-paired-form")
+        .locator(".budget-flex-form")
         .getByText("$30.00 left", { exact: true })
     ).toBeVisible();
     await expect(
@@ -1476,9 +1683,9 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
     await page.emulateMedia({ reducedMotion: "reduce" });
     await diningPlan.fill("251.00");
     const reducedDurationSeconds = await flexSection
-      .locator("form.budget-paired-form .budget-wire span")
+      .locator("form.budget-flex-form .budget-flex-progress progress")
       .evaluate((element) => {
-        const duration = getComputedStyle(element).animationDuration;
+        const duration = getComputedStyle(element).transitionDuration;
         return duration.endsWith("ms")
           ? Number.parseFloat(duration) / 1000
           : Number.parseFloat(duration);
@@ -1508,7 +1715,7 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
     await expect(
       page.getByRole("heading", {
         level: 2,
-        name: "October 2026"
+        name: "Where it goes"
       })
     ).toBeVisible();
     await expect(page.locator("#budget-summary-title")).toBeFocused();
@@ -1524,9 +1731,8 @@ test("monthly budget reconciles real activity and copies the previous plan", asy
     ).resolves.toBe(4);
 
     await page.reload();
-    await expect(
-      page.getByRole("heading", { name: "October 2026" })
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Budget" })).toBeVisible();
+    await page.getByText("Edit income plan", { exact: true }).click();
     await expect(
       page.getByRole("textbox", { name: "Income plan", exact: true })
     ).toHaveValue("1100.00");

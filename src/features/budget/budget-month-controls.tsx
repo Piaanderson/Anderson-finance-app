@@ -18,6 +18,8 @@ export function BudgetMonthControls({
   monthKey,
   previousMonthKey,
   nextMonthKey,
+  todayMonthKey,
+  context,
   planExists,
   previousPlanExists
 }: {
@@ -25,6 +27,8 @@ export function BudgetMonthControls({
   monthKey: string;
   previousMonthKey: string;
   nextMonthKey: string;
+  todayMonthKey: string;
+  context: string;
   planExists: boolean;
   previousPlanExists: boolean;
 }) {
@@ -68,27 +72,51 @@ export function BudgetMonthControls({
   }
 
   return (
-    <div className="budget-month-controls">
-      <nav className="month-navigation" aria-label="Budget months">
+    <header className="budget-month-controls">
+      <div className="budget-month-primary">
+        <nav className="month-navigation" aria-label="Budget months">
+          <Link
+            className="budget-month-arrow"
+            href={`/budget?month=${previousMonthKey}`}
+            aria-label={`Previous month, ${labelFor(previousMonthKey)}`}
+          >
+            <span aria-hidden="true">←</span>
+          </Link>
+          <Link
+            className="budget-month-arrow"
+            href={`/budget?month=${nextMonthKey}`}
+            aria-label={`Next month, ${labelFor(nextMonthKey)}`}
+          >
+            <span aria-hidden="true">→</span>
+          </Link>
+        </nav>
+        <div className="budget-title-copy">
+          <p className="eyebrow">{context}</p>
+          <h1>Budget</h1>
+        </div>
         <Link
-          className="button secondary"
-          href={`/budget?month=${previousMonthKey}`}
-          aria-label={`Previous month, ${labelFor(previousMonthKey)}`}
+          className="button secondary budget-today"
+          href="/budget"
+          aria-current={monthKey === todayMonthKey ? "date" : undefined}
         >
-          ← Previous
+          Today
+        </Link>
+      </div>
+      <div
+        className="budget-adjacent-months"
+        aria-label="Adjacent budget months"
+      >
+        <Link href={`/budget?month=${previousMonthKey}`}>
+          ← {labelFor(previousMonthKey)}
         </Link>
         <span aria-current="date">{monthLabel}</span>
-        <Link
-          className="button secondary"
-          href={`/budget?month=${nextMonthKey}`}
-          aria-label={`Next month, ${labelFor(nextMonthKey)}`}
-        >
-          Next →
+        <Link href={`/budget?month=${nextMonthKey}`}>
+          {labelFor(nextMonthKey)} →
         </Link>
-      </nav>
+      </div>
       {!planExists && previousPlanExists ? (
         <button
-          className="button"
+          className="button budget-copy-plan"
           type="button"
           disabled={copying}
           onClick={copyPreviousMonth}
@@ -100,6 +128,6 @@ export function BudgetMonthControls({
         {copied ? `${monthLabel} budget copied and ready to review.` : ""}
       </div>
       {error ? <div role="alert">{error}</div> : null}
-    </div>
+    </header>
   );
 }

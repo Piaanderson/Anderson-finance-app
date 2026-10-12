@@ -4,6 +4,10 @@ import {
   type CategorySection
 } from "@/features/categories/category-domain";
 import { getHouseholdMovements } from "@/features/transactions/movement-data";
+import type {
+  HouseholdMovement,
+  MovementLeg
+} from "@/features/transactions/movements";
 import { prisma } from "@/server/db";
 import {
   budgetMonthKey,
@@ -28,31 +32,115 @@ export type BudgetDestinationView = {
   }>;
 };
 
+export type BudgetMovementLegView = {
+  transactionId: string;
+  role: MovementLeg["role"];
+  direction: MovementLeg["direction"];
+  accountName: string;
+  accountMask: string | null;
+  effectiveDate: string;
+  pending: boolean;
+  amount: string;
+  currencyKind: MovementLeg["amount"]["currency"]["kind"];
+  currencyCode: string | null;
+  description: string;
+};
+
+export type BudgetMovementView = {
+  id: string;
+  kind: HouseholdMovement["kind"];
+  description: string;
+  canonicalDate: string;
+  pending: boolean;
+  legs: BudgetMovementLegView[];
+};
+
+export type BudgetMovementEvidenceView = {
+  activityAssociation: "CATEGORY" | "DESTINATION" | "UNAVAILABLE";
+  activityNote: string;
+  activityMovements: BudgetMovementView[];
+  relatedTransferNote: string | null;
+  relatedTransfers: BudgetMovementView[];
+};
+
+type BudgetPlanView = {
+  id: string;
+  revision: string;
+  calculation: BudgetCalculation;
+  destinations: Record<string, BudgetDestinationView | null>;
+  destinationOptions: BudgetDestinationView[];
+  destinationUseCounts: Record<string, number>;
+  allocationRevisions: Record<string, string>;
+  excludedAllocationCount: number;
+};
+
 export type HouseholdBudgetView = {
   monthKey: string;
   monthLabel: string;
   previousMonthKey: string;
   nextMonthKey: string;
   previousPlanExists: boolean;
-  plan: {
-    id: string;
-    revision: string;
-    calculation: BudgetCalculation;
-    destinations: Record<string, BudgetDestinationView | null>;
-    destinationOptions: BudgetDestinationView[];
-    destinationUseCounts: Record<string, number>;
-    allocationRevisions: Record<string, string>;
-    excludedAllocationCount: number;
-  } | null;
+  plan: BudgetPlanView | null;
 };
 
-export async function getHouseholdBudgetView({
-  householdId,
-  month
-}: {
+export type HouseholdBudgetDetailView = Omit<HouseholdBudgetView, "plan"> & {
+  plan:
+    | (BudgetPlanView & {
+        movementEvidence: Record<string, BudgetMovementEvidenceView>;
+      })
+    | null;
+};
+
+type HouseholdBudgetViewArgs = {
   householdId: string;
   month: Date;
-}): Promise<HouseholdBudgetView> {
+};
+
+type HouseholdBudgetProjection = "SUMMARY" | "BUDGET_DETAIL";
+
+function movementCurrencyIsUsd(movement: HouseholdMovement) {
+  return movement.legs.some(
+    (leg) =>
+      leg.amount.currency.kind === "ISO" && leg.amount.currency.code === "USD"
+  );
+}
+
+function movementView(movement: HouseholdMovement): BudgetMovementView {
+  return {
+    id: movement.id,
+    kind: movement.kind,
+    description: movement.description,
+    canonicalDate: movement.canonicalDate,
+    pending: movement.pending,
+    legs: movement.legs.map((leg) => ({
+      transactionId: leg.transactionId,
+      role: leg.role,
+      direction: leg.direction,
+      accountName: leg.account.name,
+      accountMask: leg.account.mask,
+      effectiveDate: leg.effectiveDate,
+      pending: leg.pending,
+      amount: leg.amount.value,
+      currencyKind: leg.amount.currency.kind,
+      currencyCode: leg.amount.currency.code,
+      description: leg.merchantName ?? leg.bankDescription ?? leg.name
+    }))
+  };
+}
+
+export function getHouseholdBudgetView(
+  args: HouseholdBudgetViewArgs & { projection: "BUDGET_DETAIL" }
+): Promise<HouseholdBudgetDetailView>;
+export function getHouseholdBudgetView(
+  args: HouseholdBudgetViewArgs & { projection?: "SUMMARY" }
+): Promise<HouseholdBudgetView>;
+export async function getHouseholdBudgetView({
+  householdId,
+  month,
+  projection = "SUMMARY"
+}: HouseholdBudgetViewArgs & {
+  projection?: HouseholdBudgetProjection;
+}): Promise<HouseholdBudgetView | HouseholdBudgetDetailView> {
   const previousMonth = shiftBudgetMonth(month, -1);
   const nextMonth = shiftBudgetMonth(month, 1);
   const [budgetMonth, previousPlan, movements, destinationAccounts] =
@@ -215,6 +303,110 @@ export async function getHouseholdBudgetView({
     },
     {}
   );
+  const categoryMovements = new Map<string, HouseholdMovement[]>();
+  const transfersByDestination = new Map<string, HouseholdMovement[]>();
+  for (const movement of movements) {
+    if (!movementCurrencyIsUsd(movement)) continue;
+    if (movement.kind === "TRANSACTION" && movement.category) {
+      const categoryRows = categoryMovements.get(movement.category.id) ?? [];
+      categoryRows.push(movement);
+      categoryMovements.set(movement.category.id, categoryRows);
+      continue;
+    }
+    if (movement.kind === "TRANSFER") {
+      const incoming =
+        movement.legs.find((leg) => leg.role === "INCOMING") ??
+        movement.legs[1];
+      if (
+        incoming.direction === "INFLOW" &&
+        incoming.amount.currency.kind === "ISO" &&
+        incoming.amount.currency.code === "USD"
+      ) {
+        const destinationRows =
+          transfersByDestination.get(incoming.account.id) ?? [];
+        destinationRows.push(movement);
+        transfersByDestination.set(incoming.account.id, destinationRows);
+      }
+    }
+  }
+  const movementEvidence =
+    projection === "BUDGET_DETAIL"
+      ? Object.fromEntries(
+          validAllocations.map((allocation) => {
+            const section = allocation.category.section;
+            const persistedDestination =
+              allocation.destinationAccount?.householdId === householdId
+                ? allocation.destinationAccount
+                : null;
+            const categoryActivity =
+              categoryMovements.get(allocation.category.id) ?? [];
+            const destinationIsUnique =
+              persistedDestination !== null &&
+              destinationUseCounts[persistedDestination.id] === 1;
+            const destinationTransfers = destinationIsUnique
+              ? (transfersByDestination.get(persistedDestination.id) ?? [])
+              : [];
+
+            let evidence: BudgetMovementEvidenceView;
+            if (section === "Needs") {
+              evidence = {
+                activityAssociation: "CATEGORY",
+                activityNote:
+                  categoryActivity.length > 0
+                    ? "These categorized USD transactions make up this row’s paid activity."
+                    : "No categorized USD transaction contributes paid activity to this row this month.",
+                activityMovements: categoryActivity.map(movementView),
+                relatedTransferNote:
+                  destinationTransfers.length > 0
+                    ? "These matched transfers reached this row’s saved destination. They are shown as related evidence and are not counted as Needs category activity."
+                    : null,
+                relatedTransfers: destinationTransfers.map(movementView)
+              };
+            } else if (section === "Debt" || section === "Savings") {
+              if (!persistedDestination) {
+                evidence = {
+                  activityAssociation: "UNAVAILABLE",
+                  activityNote:
+                    "Movement detail unavailable because this row has no saved destination.",
+                  activityMovements: [],
+                  relatedTransferNote: null,
+                  relatedTransfers: []
+                };
+              } else if (!destinationIsUnique) {
+                evidence = {
+                  activityAssociation: "UNAVAILABLE",
+                  activityNote:
+                    "Movement detail unavailable because this saved destination is reused. Matched transfers cannot be assigned honestly to one allocation row.",
+                  activityMovements: [],
+                  relatedTransferNote: null,
+                  relatedTransfers: []
+                };
+              } else {
+                evidence = {
+                  activityAssociation: "DESTINATION",
+                  activityNote:
+                    destinationTransfers.length > 0
+                      ? "These matched transfers into the saved destination make up this row’s moved activity."
+                      : "No matched USD transfer reached this row’s saved destination this month.",
+                  activityMovements: destinationTransfers.map(movementView),
+                  relatedTransferNote: null,
+                  relatedTransfers: []
+                };
+              }
+            } else {
+              evidence = {
+                activityAssociation: "UNAVAILABLE",
+                activityNote:
+                  "Movement evidence is not shown for Flex category progress.",
+                activityMovements: [],
+                relatedTransferNote: null,
+                relatedTransfers: []
+              };
+            }
+            return [allocation.id, evidence];
+          })
+        )
+      : null;
 
   return {
     monthKey: budgetMonthKey(month),
@@ -238,6 +430,7 @@ export async function getHouseholdBudgetView({
           destinations,
           destinationOptions,
           destinationUseCounts,
+          ...(movementEvidence ? { movementEvidence } : {}),
           allocationRevisions: Object.fromEntries(
             validAllocations.map((allocation) => [
               allocation.id,

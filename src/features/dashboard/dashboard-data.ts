@@ -56,7 +56,11 @@ export async function getHouseholdDashboard({
       to: pace.periodEnd
     }),
     comparisonMovementsPromise,
-    getHouseholdBudgetView({ householdId, month }),
+    getHouseholdBudgetView({
+      householdId,
+      month,
+      projection: "SUMMARY"
+    }),
     getHouseholdNetWorthHistory({
       householdId,
       windowStart: comparison.periodStart,

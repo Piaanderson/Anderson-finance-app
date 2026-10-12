@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { PageHeader } from "@/components/shell/page-header";
 import { getHouseholdBudgetView } from "@/features/budget/budget-data";
 import { BudgetExperience } from "@/features/budget/budget-experience";
-import { parseBudgetMonthKey } from "@/features/budget/budget-domain";
+import {
+  budgetMonthKey,
+  parseBudgetMonthKey
+} from "@/features/budget/budget-domain";
 import { currentUtcMonth, getMonthPace } from "@/lib/month";
 import { requireHousehold } from "@/server/households";
 
@@ -21,18 +23,17 @@ export default async function BudgetPage({
     currentUtcMonth(now);
   const budget = await getHouseholdBudgetView({
     householdId: owner.householdId,
-    month: selectedMonth
+    month: selectedMonth,
+    projection: "BUDGET_DETAIL"
   });
 
   return (
-    <>
-      <PageHeader title="Budget" />
-      <div className="page-content">
-        <BudgetExperience
-          budget={budget}
-          pace={getMonthPace(selectedMonth, now)}
-        />
-      </div>
-    </>
+    <div className="page-content budget-page-content">
+      <BudgetExperience
+        budget={budget}
+        pace={getMonthPace(selectedMonth, now)}
+        todayMonthKey={budgetMonthKey(currentUtcMonth(now))}
+      />
+    </div>
   );
 }

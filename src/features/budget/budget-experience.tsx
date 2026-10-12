@@ -5,14 +5,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AllocationBar } from "@/components/ui/allocation-bar";
 import { signedUsd, usd } from "@/lib/money";
-import type { BudgetDestinationView, HouseholdBudgetView } from "./budget-data";
+import type {
+  BudgetDestinationView,
+  HouseholdBudgetDetailView,
+  BudgetMovementEvidenceView,
+  BudgetMovementLegView,
+  BudgetMovementView
+} from "./budget-data";
 import type {
   BudgetCalculationAllocationRow,
   BudgetSectionCalculation
 } from "./budget-domain";
 import { BudgetMonthControls } from "./budget-month-controls";
 
-type BudgetPlan = NonNullable<HouseholdBudgetView["plan"]>;
+type BudgetPlan = NonNullable<HouseholdBudgetDetailView["plan"]>;
 
 type EditResponse = {
   error?: string;
@@ -33,6 +39,62 @@ function amount(value: string) {
 
 function destinationLabel(destination: BudgetDestinationView) {
   return `${destination.name}${destination.mask ? ` · ${destination.mask}` : ""}`;
+}
+
+function movementDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC"
+  }).format(new Date(value));
+}
+
+function movementLegAmount(leg: BudgetMovementLegView) {
+  const formatted =
+    leg.currencyKind === "ISO" && leg.currencyCode === "USD"
+      ? amount(leg.amount)
+      : `${leg.amount} ${leg.currencyCode ?? "currency unknown"}`;
+  if (leg.direction === "OUTFLOW") return `−${formatted}`;
+  if (leg.direction === "INFLOW") return `+${formatted}`;
+  return formatted;
+}
+
+function MovementEvidence({ movement }: { movement: BudgetMovementView }) {
+  return (
+    <article
+      className="budget-evidence-movement"
+      aria-label={movement.description}
+    >
+      <div className="budget-evidence-heading">
+        <strong>{movement.description}</strong>
+        <span className="muted">
+          {movementDate(movement.canonicalDate)}
+          {movement.pending ? " · Pending" : ""}
+        </span>
+      </div>
+      <ul className="budget-evidence-legs">
+        {movement.legs.map((leg) => (
+          <li key={leg.transactionId}>
+            <span>
+              {movementDate(leg.effectiveDate)} · {leg.accountName}
+              {leg.accountMask ? ` · ${leg.accountMask}` : ""}
+            </span>
+            <span>{leg.description}</span>
+            <strong>{movementLegAmount(leg)}</strong>
+            <span className="muted">
+              {leg.role === "OUTGOING"
+                ? "Outgoing leg"
+                : leg.role === "INCOMING"
+                  ? "Incoming leg"
+                  : "Source transaction"}
+              {leg.pending ? " · Pending" : ""}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </article>
+  );
 }
 
 function IncomeEditor({
@@ -131,11 +193,9 @@ function IncomeEditor({
 
 function DestinationContext({
   destination,
-  remaining,
   section
 }: {
   destination: BudgetDestinationView | null;
-  remaining: string;
   section: BudgetSectionCalculation["section"];
 }) {
   if (!destination) {
@@ -152,21 +212,16 @@ function DestinationContext({
     destination.currentBalance === null
       ? null
       : Number(destination.currentBalance);
-  const showProjection =
-    balance !== null &&
-    (section === "Debt" || section === "Savings" || section === "Needs");
   return (
     <div className="budget-destination-context">
       <span>
         {balance === null
           ? "Balance unavailable"
-          : `${destination.classification === "DEBT" ? "Owed" : "Balance today"} ${signedUsd(balance)}`}
+          : `${destination.classification === "DEBT" ? "Owed today" : "Balance today"} ${signedUsd(balance)}`}
       </span>
-      {showProjection && Number(remaining) > 0 ? (
-        <span className="muted">
-          After remaining plan {signedUsd(balance + Number(remaining))}
-        </span>
-      ) : null}
+      <span className="muted">
+        Expected date unavailable · no payment schedule is stored
+      </span>
       {section === "Needs" &&
       destination.classification === "DEBT" &&
       destination.relatedProperties.length > 0 ? (
@@ -189,12 +244,78 @@ function DestinationContext({
   );
 }
 
+function MovementDetail({
+  row,
+  calculation,
+  evidence
+}: {
+  row: BudgetCalculationAllocationRow;
+  calculation: BudgetSectionCalculation;
+  evidence: BudgetMovementEvidenceView;
+}) {
+  const transferEvidence = [
+    ...evidence.activityMovements,
+    ...evidence.relatedTransfers
+  ].some((movement) => movement.kind === "TRANSFER");
+  return (
+    <details className="budget-movement-detail">
+      <summary>
+        {Number(row.activity) > 0
+          ? `View ${calculation.activityLabel} movement detail`
+          : "View movement availability"}
+      </summary>
+      <div
+        className="budget-movement-panel"
+        role="region"
+        aria-label={`${row.categoryName} movement detail`}
+      >
+        <div>
+          <span>Row activity this month</span>
+          <strong>
+            {amount(row.activity)} {calculation.activityLabel}
+          </strong>
+        </div>
+        <p>{evidence.activityNote}</p>
+        {evidence.activityMovements.length > 0 ? (
+          <div className="budget-evidence-group">
+            <h3>
+              {evidence.activityAssociation === "DESTINATION"
+                ? "Matched transfer legs"
+                : "Activity transactions"}
+            </h3>
+            {evidence.activityMovements.map((movement) => (
+              <MovementEvidence key={movement.id} movement={movement} />
+            ))}
+          </div>
+        ) : null}
+        {evidence.relatedTransferNote ? (
+          <div className="budget-evidence-group">
+            <h3>Related matched transfers</h3>
+            <p>{evidence.relatedTransferNote}</p>
+            {evidence.relatedTransfers.map((movement) => (
+              <MovementEvidence key={movement.id} movement={movement} />
+            ))}
+          </div>
+        ) : null}
+        {transferEvidence ? (
+          <p className="muted">
+            Balance movement unavailable — the source contains both transfer
+            legs, but no pre-movement balance snapshot.
+          </p>
+        ) : null}
+        <Link href="/transactions">See source movement in Transactions</Link>
+      </div>
+    </details>
+  );
+}
+
 function AllocationEditor({
   row,
   calculation,
   destination,
   destinationOptions,
   destinationUseCounts,
+  movementEvidence,
   revision
 }: {
   row: BudgetCalculationAllocationRow;
@@ -202,6 +323,7 @@ function AllocationEditor({
   destination: BudgetDestinationView | null;
   destinationOptions: BudgetDestinationView[];
   destinationUseCounts: Record<string, number>;
+  movementEvidence: BudgetMovementEvidenceView;
   revision: string;
 }) {
   const router = useRouter();
@@ -293,6 +415,133 @@ function AllocationEditor({
       : Number(row.activity) > 0
         ? 100
         : 0;
+
+  if (calculation.section === "Flex") {
+    return (
+      <li className="budget-flex-row">
+        <form
+          className="budget-flex-form"
+          data-dirty={dirty ? "true" : "false"}
+          onSubmit={submit}
+          noValidate
+        >
+          <div className="budget-flex-category">
+            <strong>{row.categoryName}</strong>
+            {row.categoryArchived ? (
+              <span className="warning">
+                Archived category · this existing allocation is retained
+              </span>
+            ) : null}
+          </div>
+          <label className="budget-flex-budget" htmlFor={inputId}>
+            <span>Budget</span>
+            <span className="budget-inline-edit">
+              <span aria-hidden="true">$</span>
+              <input
+                ref={inputRef}
+                className="input budget-money-input"
+                id={inputId}
+                name="planned"
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                required
+                aria-label="Planned USD"
+                value={planned}
+                aria-invalid={plannedError || error ? "true" : undefined}
+                aria-describedby={plannedError || error ? errorId : undefined}
+                onChange={(event) => setPlanned(event.target.value)}
+              />
+            </span>
+          </label>
+          <div className="budget-flex-progress">
+            <span>Progress</span>
+            <progress
+              max={100}
+              value={progress}
+              aria-label={`${row.categoryName}: ${amount(row.activity)} spent. ${
+                row.over !== "0.00"
+                  ? `${amount(row.over)} over.`
+                  : `${amount(row.remaining)} left.`
+              }`}
+            />
+          </div>
+          <div className="budget-flex-amount">
+            <span>Spent</span>
+            <strong>{amount(row.activity)}</strong>
+          </div>
+          <div className="budget-flex-amount">
+            <span>Left · over</span>
+            <strong className={row.over !== "0.00" ? "danger" : ""}>
+              {row.over !== "0.00"
+                ? `${amount(row.over)} over`
+                : `${amount(row.remaining)} left`}
+            </strong>
+          </div>
+          <div className="budget-flex-settings">
+            <label htmlFor={destinationIdValue}>Destination account</label>
+            <select
+              className="input"
+              id={destinationIdValue}
+              name="destinationAccountId"
+              value={destinationId}
+              aria-invalid={destinationError ? "true" : undefined}
+              aria-describedby={
+                `${reuseWarning ? warningId : ""}${destinationError ? ` ${errorId}` : ""}`.trim() ||
+                undefined
+              }
+              onChange={(event) => {
+                setDestinationId(event.target.value);
+                setServerWarning("");
+              }}
+            >
+              <option value="">No destination selected</option>
+              {destination && !destination.active ? (
+                <option value={destination.id} disabled>
+                  {destinationLabel(destination)} · unavailable
+                </option>
+              ) : null}
+              {destinationOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {destinationLabel(option)}
+                </option>
+              ))}
+            </select>
+            <DestinationContext
+              destination={selectedDestination}
+              section={calculation.section}
+            />
+            <button
+              ref={saveButtonRef}
+              className="button secondary budget-save"
+              type="submit"
+              disabled={pending}
+            >
+              {pending ? "Saving…" : `Save ${row.categoryName}`}
+            </button>
+          </div>
+          {reuseWarning ? (
+            <p className="budget-reuse-warning" id={warningId}>
+              Warning: {reuseWarning}
+            </p>
+          ) : null}
+          {error ? (
+            <p
+              className="review-error budget-edit-error"
+              id={errorId}
+              role="alert"
+            >
+              {plannedError || destinationError || error}
+            </p>
+          ) : null}
+          <p className="visually-hidden" role="status" aria-live="polite">
+            {status}
+          </p>
+        </form>
+      </li>
+    );
+  }
+
   return (
     <li className="budget-paired-row">
       <form
@@ -362,7 +611,6 @@ function AllocationEditor({
           </select>
           <DestinationContext
             destination={selectedDestination}
-            remaining={row.remaining}
             section={calculation.section}
           />
         </div>
@@ -377,20 +625,12 @@ function AllocationEditor({
                 : `${amount(row.remaining)} ${calculation.remainingLabel}`}
             </strong>
           </div>
-          {calculation.section === "Flex" ? (
-            <div
-              className="flex-progress"
-              role="img"
-              aria-label={`${row.categoryName}: ${amount(row.activity)} spent. ${
-                row.over !== "0.00"
-                  ? `${amount(row.over)} over.`
-                  : `${amount(row.remaining)} left.`
-              }`}
-            >
-              <span style={{ width: `${progress}%` }} />
-            </div>
-          ) : null}
         </div>
+        <MovementDetail
+          row={row}
+          calculation={calculation}
+          evidence={movementEvidence}
+        />
         <button
           ref={saveButtonRef}
           className="button secondary budget-save"
@@ -433,88 +673,121 @@ function BudgetSection({
     calculation.over !== "0.00"
       ? `${amount(calculation.over)} over`
       : `${amount(calculation.remaining)} left`;
+  const isFlex = calculation.section === "Flex";
   return (
     <section
-      className={`card budget-section budget-section-${calculation.section.toLowerCase()}`}
+      className={`budget-section budget-section-${calculation.section.toLowerCase()}`}
       aria-labelledby={headingId}
     >
-      <div className="budget-section-heading">
-        <div>
-          <span className="eyebrow">
-            {calculation.section === "Savings"
-              ? "To savings"
-              : calculation.section === "Debt"
-                ? "Debt budget"
-                : calculation.section === "Flex"
-                  ? "Remaining for flex"
-                  : "Needs"}
+      <h2 className="visually-hidden" id={headingId}>
+        {calculation.section}
+      </h2>
+      <details open>
+        <summary className="budget-section-heading">
+          <span className="budget-disclosure-caret" aria-hidden="true">
+            ▾
           </span>
-          <h2 id={headingId}>{calculation.section}</h2>
-        </div>
-        <div className="budget-section-summary">
-          <strong>
-            {calculation.section === "Flex"
-              ? flexAvailable
-              : amount(calculation.planned)}
-          </strong>
-          <span className="muted">
-            {amount(calculation.activity)} {calculation.activityLabel} ·{" "}
-            {calculation.over !== "0.00"
-              ? `${amount(calculation.over)} over`
-              : `${amount(calculation.remaining)} ${calculation.remainingLabel}`}
+          <span className="budget-section-title">
+            <span className="eyebrow">
+              {calculation.section === "Savings"
+                ? "To savings"
+                : calculation.section === "Debt"
+                  ? "Debt budget"
+                  : calculation.section === "Flex"
+                    ? "Remaining for flex"
+                    : "Needs"}
+            </span>
+            <span className="budget-section-name">{calculation.section}</span>
           </span>
-        </div>
-      </div>
-      {calculation.rows.length > 0 ? (
-        <ul className="budget-paired-rows">
-          {calculation.rows.map((row) =>
-            row.kind === "REVIEW" ? (
-              <li className="budget-paired-row budget-review-row" key={row.id}>
-                <div className="budget-review-content">
-                  <div className="budget-plan-cell">
-                    <strong>{row.categoryName}</strong>
-                    <span className="warning">
-                      Uncategorized spending · temporary
-                    </span>
-                  </div>
-                  <div className="budget-row-status">
-                    <span>{amount(row.activity)} spent</span>
-                    <strong>Counts against shared Flex</strong>
-                  </div>
-                  <Link
-                    className="button secondary budget-save"
-                    href="/transactions"
+          <span className="budget-section-summary">
+            <strong>
+              {isFlex ? flexAvailable : amount(calculation.planned)}
+            </strong>
+            <span className="muted">
+              {amount(calculation.activity)} {calculation.activityLabel} ·{" "}
+              {calculation.over !== "0.00"
+                ? `${amount(calculation.over)} over`
+                : `${amount(calculation.remaining)} ${calculation.remainingLabel}`}
+            </span>
+          </span>
+        </summary>
+        <div className="budget-section-body">
+          {!isFlex && calculation.rows.length > 0 ? (
+            <div className="budget-paired-labels" aria-hidden="true">
+              <span>Budget this month</span>
+              <span />
+              <span>Destination · balance · expected</span>
+            </div>
+          ) : null}
+          {isFlex && calculation.rows.length > 0 ? (
+            <div className="budget-flex-labels" aria-hidden="true">
+              <span>Category</span>
+              <span>Budget</span>
+              <span>Progress</span>
+              <span>Spent</span>
+              <span>Left · over</span>
+            </div>
+          ) : null}
+          {calculation.rows.length > 0 ? (
+            <ul className={isFlex ? "budget-flex-rows" : "budget-paired-rows"}>
+              {calculation.rows.map((row) =>
+                row.kind === "REVIEW" ? (
+                  <li
+                    className="budget-flex-row budget-review-row"
+                    key={row.id}
                   >
-                    Review uncategorized transactions
-                  </Link>
-                </div>
-              </li>
-            ) : (
-              <AllocationEditor
-                key={row.id}
-                row={row}
-                calculation={calculation}
-                destination={plan.destinations[row.id]}
-                destinationOptions={plan.destinationOptions}
-                destinationUseCounts={plan.destinationUseCounts}
-                revision={plan.allocationRevisions[row.id]}
-              />
-            )
+                    <div className="budget-review-content">
+                      <div className="budget-plan-cell">
+                        <strong>{row.categoryName}</strong>
+                        <span className="warning">
+                          Uncategorized spending · temporary
+                        </span>
+                      </div>
+                      <div className="budget-row-status">
+                        <span>{amount(row.activity)} spent</span>
+                        <strong>Counts against shared Flex</strong>
+                      </div>
+                      <Link
+                        className="button secondary budget-save"
+                        href="/transactions"
+                      >
+                        Review uncategorized transactions
+                      </Link>
+                    </div>
+                  </li>
+                ) : (
+                  <AllocationEditor
+                    key={row.id}
+                    row={row}
+                    calculation={calculation}
+                    destination={plan.destinations[row.id]}
+                    destinationOptions={plan.destinationOptions}
+                    destinationUseCounts={plan.destinationUseCounts}
+                    movementEvidence={plan.movementEvidence[row.id]}
+                    revision={plan.allocationRevisions[row.id]}
+                  />
+                )
+              )}
+            </ul>
+          ) : (
+            <p className="muted budget-empty-section">
+              No allocations in this section.
+            </p>
           )}
-        </ul>
-      ) : (
-        <p className="muted">No allocations in this section.</p>
-      )}
+        </div>
+      </details>
     </section>
   );
 }
 
 export function BudgetExperience({
   budget,
-  pace
+  pace,
+  todayMonthKey
 }: {
-  budget: HouseholdBudgetView;
+  budget: HouseholdBudgetDetailView;
   pace: { day: number; daysInMonth: number; label: string };
+  todayMonthKey: string;
 }) {
   const plan = budget.plan;
   const calculation = plan?.calculation;
@@ -526,69 +799,49 @@ export function BudgetExperience({
       })) ?? [],
     [calculation]
   );
+  const headerContext = `${budget.monthLabel} · ${pace.label.toLowerCase()} · ${
+    calculation
+      ? `income ${amount(calculation.incomePlan)}`
+      : "income plan unavailable"
+  }`;
 
   return (
-    <>
-      <BudgetMonthControls
-        monthLabel={budget.monthLabel}
-        monthKey={budget.monthKey}
-        previousMonthKey={budget.previousMonthKey}
-        nextMonthKey={budget.nextMonthKey}
-        planExists={plan !== null}
-        previousPlanExists={budget.previousPlanExists}
-      />
+    <div className="budget-experience">
+      <div className="budget-integrated-header">
+        <BudgetMonthControls
+          monthLabel={budget.monthLabel}
+          monthKey={budget.monthKey}
+          previousMonthKey={budget.previousMonthKey}
+          nextMonthKey={budget.nextMonthKey}
+          todayMonthKey={todayMonthKey}
+          context={headerContext}
+          planExists={plan !== null}
+          previousPlanExists={budget.previousPlanExists}
+        />
+        {calculation ? (
+          <div className="budget-left">
+            <span className="eyebrow">Left to budget</span>
+            <strong
+              className={
+                Number(calculation.leftToBudget) < 0 ? "danger" : "positive"
+              }
+            >
+              {signedUsd(Number(calculation.leftToBudget))}
+            </strong>
+          </div>
+        ) : null}
+      </div>
       {calculation && plan ? (
         <>
           <section
-            className="card budget-summary"
+            className="budget-summary"
             aria-labelledby="budget-summary-title"
           >
-            <div className="budget-summary-heading">
-              <div>
-                <span className="eyebrow">Budget · {budget.monthLabel}</span>
-                <h2 id="budget-summary-title" tabIndex={-1}>
-                  {budget.monthLabel}
-                </h2>
-                <p className="muted">
-                  {pace.label} · observed income{" "}
-                  {amount(calculation.observedIncome)}
-                </p>
-              </div>
-              <div className="budget-left">
-                <span className="eyebrow">Left to budget</span>
-                <strong
-                  className={
-                    Number(calculation.leftToBudget) < 0 ? "danger" : "positive"
-                  }
-                >
-                  {signedUsd(Number(calculation.leftToBudget))}
-                </strong>
-              </div>
-            </div>
-            <div className="budget-summary-edit">
-              <IncomeEditor
-                budgetMonthId={plan.id}
-                income={calculation.incomePlan}
-                observedIncome={calculation.observedIncome}
-                revision={plan.revision}
-              />
-              <div className="budget-pace">
-                <div>
-                  <span className="eyebrow">Month pace</span>
-                  <strong>
-                    Day {pace.day} of {pace.daysInMonth}
-                  </strong>
-                </div>
-                <meter
-                  min={0}
-                  max={pace.daysInMonth}
-                  value={pace.day}
-                  aria-label={`Month pace: day ${pace.day} of ${pace.daysInMonth}`}
-                />
-              </div>
-            </div>
             <div className="budget-allocation-summary">
-              <div>
+              <div className="budget-allocation-visual">
+                <h2 id="budget-summary-title" tabIndex={-1}>
+                  Where it goes
+                </h2>
                 <AllocationBar
                   income={Number(calculation.incomePlan)}
                   segments={segmentTotals}
@@ -598,23 +851,37 @@ export function BudgetExperience({
                   {amount(calculation.incomePlan)} income.
                 </p>
               </div>
-              <div className="where-it-goes">
-                <h3>Where it goes</h3>
-                <dl>
+              <div className="budget-summary-stats">
+                <span className="eyebrow">This month</span>
+                <dl aria-label="Budget movement summary">
                   {calculation.sections.map((section) => (
                     <div key={section.section}>
                       <dt>{section.section}</dt>
                       <dd>
-                        {amount(section.activity)} {section.activityLabel} ·{" "}
-                        {section.over !== "0.00"
-                          ? `${amount(section.over)} over`
-                          : `${amount(section.remaining)} ${section.remainingLabel}`}
+                        <span>
+                          {amount(section.activity)} {section.activityLabel}
+                        </span>
+                        <strong aria-hidden="true"> / </strong>
+                        <span>
+                          {section.over !== "0.00"
+                            ? `${amount(section.over)} over`
+                            : `${amount(section.remaining)} ${section.remainingLabel}`}
+                        </span>
                       </dd>
                     </div>
                   ))}
                 </dl>
               </div>
             </div>
+            <details className="budget-income-editor">
+              <summary>Edit income plan</summary>
+              <IncomeEditor
+                budgetMonthId={plan.id}
+                income={calculation.incomePlan}
+                observedIncome={calculation.observedIncome}
+                revision={plan.revision}
+              />
+            </details>
             {calculation.unassignedSpending !== "0.00" ? (
               <p className="review-warning">
                 {amount(calculation.unassignedSpending)} is tracked in Flex
@@ -645,7 +912,7 @@ export function BudgetExperience({
         </>
       ) : (
         <section
-          className="card empty-state"
+          className="empty-state budget-empty-state"
           aria-labelledby="budget-summary-title"
         >
           <h2 id="budget-summary-title" tabIndex={-1}>
@@ -658,6 +925,6 @@ export function BudgetExperience({
           </p>
         </section>
       )}
-    </>
+    </div>
   );
 }

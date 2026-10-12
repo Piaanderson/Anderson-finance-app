@@ -2007,6 +2007,78 @@ Remaining risks:
   the shared shell's longer `Partial net worth by currency` label does not make
   the existing browser test ambiguous.
 
+### Issue #27 Budget visual-parity evidence — 2026-10-12
+
+Implementation:
+
+- Replaced the separate Budget page header/card stack with the integrated
+  month controls, production month/income context, Today action, left-to-budget
+  emphasis, allocation bar/legend, and adjacent four-stat movement summary from
+  the approved `prototype/Finance App.dc.html` hierarchy.
+- Debt, Savings, and Needs now use semantic section disclosures and the paired
+  planned-to-destination grid. Flex uses labelled planned, progress, spent, and
+  left/over columns. The same DOM reflows to labelled stacks at tablet, 512px
+  practical 200% reflow, and mobile widths.
+- Existing income/allocation editing, optimistic-conflict errors, destination
+  reuse warnings, previous-month copy, read-only Needs review, archived
+  allocations, empty plans, section order, and mortgage/property context remain
+  intact.
+- Budget does not infer a balance bridge or expected payment date. Rows show
+  current stored balances and explicit schedule-unavailable copy. Debt and
+  Savings disclosures show persisted matched transfer legs only where a unique
+  saved destination proves the association; reused destinations are explicitly
+  ambiguous. Needs disclosures show categorized source transactions separately
+  and may label destination transfers as related rather than counted activity.
+  Unsaved destination edits never change movement evidence. Transfer disclosures
+  label the unsupported pre-movement balance snapshot unavailable.
+- The household-scoped Budget read model defaults to the summary projection
+  used by Home. Only the Budget route requests the `BUDGET_DETAIL` projection,
+  so serialized movement evidence is not added to the Home dashboard payload.
+- Native `details` keeps the bounded monthly disclosure content server-rendered
+  while closed. This preserves browser-managed semantics and avoids per-row
+  hydration state solely to mount disclosure content.
+- Native headings, links, buttons, inputs, selects, `details`/`summary`, and
+  `progress` semantics provide keyboard operation, labels, announced statuses
+  and errors, visible focus, 44px targets, 16px mobile inputs, non-color status,
+  and reduced-motion handling.
+
+Verification:
+
+- `npm run typecheck`, `npm run lint`, and `npm run format:check` passed.
+- Required Budget Vitest run passed: 2 files and 16 tests.
+- `npm run build` passed on Next.js 16.3.8, including all 21 static generation
+  tasks.
+- Focused Budget Playwright passed on desktop Chromium and mobile: 2 tests.
+  It covers real totals, moved/due language, semantic progress and disclosure,
+  edit validation/conflicts/persistence, reused destinations, review state,
+  mortgage context, truthful persisted transfer legs, unsaved-destination
+  isolation, copy previous month, axe, keyboard focus, 44px targets, reduced
+  motion, paired desktop layout, mobile stacking, and overflow. Populated-state
+  axe, overflow, touch-target, input-size, expanded-detail, and layout assertions
+  run at 375, 390, 512, 768, 1280, and 1920 CSS pixels.
+- The complete Phase 7 desktop/mobile audit passed: 10 tests across route axe,
+  headings, skip link, touch targets, responsive widths from 320 through 1920,
+  and reduced motion.
+- `git diff --check` passed.
+
+Visual evidence:
+
+- Authenticated database-backed captures are in
+  `docs/visual-evidence/issue-27/` at 1280, 1920, 512, and 390 CSS pixels.
+- Captures are taken before unsaved destination mutations, preserving the
+  persisted mortgage/property pairing without a dirty reuse warning.
+- A stable authenticated pre-change fixture could not be recreated honestly
+  after implementation, so no before image was fabricated. The preserved
+  prototype HTML remains the exact reference and was not modified.
+
+Remaining risks:
+
+- Automated axe, reflow, keyboard, and screenshot checks do not replace a
+  manual screen-reader pass or review on every physical high-zoom device.
+- Budget can expose persisted transaction and matched-transfer legs, but does
+  not retain the historical position snapshot needed to display the
+  prototype's numeric before/after balance bridge.
+
 ## Next handoff
 
 Two independent tracks can proceed:

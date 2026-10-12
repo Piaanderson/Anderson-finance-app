@@ -35,7 +35,10 @@ const ids = {
   september: `${key}-september`,
   vacationAllocation: `${key}-vacation-allocation`,
   debtAllocation: `${key}-debt-allocation`,
-  mortgageAllocation: `${key}-mortgage-allocation`
+  mortgageAllocation: `${key}-mortgage-allocation`,
+  savingsTransferOut: `${key}-savings-transfer-out`,
+  savingsTransferIn: `${key}-savings-transfer-in`,
+  mortgageActivity: `${key}-mortgage-activity`
 };
 
 function copyRequest(sourceMonth: string, targetMonth: string) {
@@ -188,6 +191,49 @@ beforeAll(async () => {
       }
     }
   });
+  await prisma.transaction.createMany({
+    data: [
+      {
+        id: ids.savingsTransferOut,
+        householdId: ids.household,
+        accountId: ids.mortgageAccount,
+        plaidTransactionId: `${key}-plaid-savings-transfer-out`,
+        name: "TRANSFER TO SAVINGS",
+        amount: "75.00",
+        isoCurrencyCode: "USD",
+        date: new Date("2026-09-05T00:00:00.000Z")
+      },
+      {
+        id: ids.savingsTransferIn,
+        householdId: ids.household,
+        accountId: ids.account,
+        plaidTransactionId: `${key}-plaid-savings-transfer-in`,
+        name: "SAVINGS DEPOSIT",
+        amount: "-75.00",
+        isoCurrencyCode: "USD",
+        date: new Date("2026-09-06T00:00:00.000Z")
+      },
+      {
+        id: ids.mortgageActivity,
+        householdId: ids.household,
+        accountId: ids.account,
+        plaidTransactionId: `${key}-plaid-mortgage-activity`,
+        name: "MORTGAGE PAYMENT ACTIVITY",
+        amount: "125.00",
+        isoCurrencyCode: "USD",
+        categoryId: ids.mortgageCategory,
+        date: new Date("2026-09-07T00:00:00.000Z")
+      }
+    ]
+  });
+  await prisma.transferMatch.create({
+    data: {
+      id: `${key}-savings-transfer-match`,
+      householdId: ids.household,
+      outgoingTransactionId: ids.savingsTransferOut,
+      incomingTransactionId: ids.savingsTransferIn
+    }
+  });
 });
 
 afterAll(async () => {
@@ -259,10 +305,20 @@ describe("previous-month budget copy", () => {
 });
 
 describe("household budget read", () => {
-  it("provides dynamic month identity and copy availability", async () => {
-    const september = await getHouseholdBudgetView({
+  it("defaults to a summary projection without movement evidence", async () => {
+    const summary = await getHouseholdBudgetView({
       householdId: ids.household,
       month: new Date("2026-09-01T00:00:00.000Z")
+    });
+    expect(summary.plan).not.toBeNull();
+    expect(summary.plan).not.toHaveProperty("movementEvidence");
+  });
+
+  it("provides dynamic month identity and Budget detail evidence", async () => {
+    const september = await getHouseholdBudgetView({
+      householdId: ids.household,
+      month: new Date("2026-09-01T00:00:00.000Z"),
+      projection: "BUDGET_DETAIL"
     });
     expect(september).toMatchObject({
       monthKey: "2026-09",
@@ -279,6 +335,48 @@ describe("household budget read", () => {
         {
           name: "Primary home",
           currentBalance: "412000.00"
+        }
+      ]
+    });
+    expect(
+      september.plan?.movementEvidence[ids.vacationAllocation]
+    ).toMatchObject({
+      activityAssociation: "DESTINATION",
+      activityMovements: [
+        {
+          kind: "TRANSFER",
+          legs: [
+            {
+              transactionId: ids.savingsTransferOut,
+              role: "OUTGOING",
+              accountName: "Home mortgage",
+              amount: "75.00"
+            },
+            {
+              transactionId: ids.savingsTransferIn,
+              role: "INCOMING",
+              accountName: "Active savings",
+              amount: "75.00"
+            }
+          ]
+        }
+      ]
+    });
+    expect(
+      september.plan?.movementEvidence[ids.mortgageAllocation]
+    ).toMatchObject({
+      activityAssociation: "CATEGORY",
+      activityMovements: [
+        {
+          kind: "TRANSACTION",
+          legs: [
+            {
+              transactionId: ids.mortgageActivity,
+              role: "SINGLE",
+              accountName: "Active savings",
+              amount: "125.00"
+            }
+          ]
         }
       ]
     });
@@ -368,6 +466,23 @@ describe("budget editing", () => {
     });
     expect(saved.planned.toFixed(2)).toBe("999.99");
     expect(saved.destinationAccountId).toBe(ids.account);
+    const reusedDestinationView = await getHouseholdBudgetView({
+      householdId: ids.household,
+      month: new Date("2026-09-01T00:00:00.000Z"),
+      projection: "BUDGET_DETAIL"
+    });
+    expect(
+      reusedDestinationView.plan?.movementEvidence[ids.debtAllocation]
+    ).toMatchObject({
+      activityAssociation: "UNAVAILABLE",
+      activityNote: expect.stringContaining("reused")
+    });
+    expect(
+      reusedDestinationView.plan?.movementEvidence[ids.vacationAllocation]
+    ).toMatchObject({
+      activityAssociation: "UNAVAILABLE",
+      activityNote: expect.stringContaining("reused")
+    });
 
     const conflict = await updateAllocation(
       editRequest({

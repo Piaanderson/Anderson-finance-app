@@ -353,6 +353,7 @@ describe("household Home dashboard read", () => {
       state: "in-progress",
       day: 12
     });
+    expect(september.budget.plan).not.toHaveProperty("movementEvidence");
     expect(september.movementCount).toBe(107);
     expect(september.recentMovements).toHaveLength(5);
     expect(september.cashFlow).toMatchObject([
