@@ -294,7 +294,9 @@ test("Accounts reconciles grouped positions and exposes honest accessible detail
       ]
     });
     await page.reload();
-    await expect(page.getByText("Partial net worth")).toBeVisible();
+    await expect(
+      page.getByText("Partial net worth", { exact: true })
+    ).toBeVisible();
     await expect(
       page.getByText(/Missing values are not treated as zero/)
     ).toBeVisible();

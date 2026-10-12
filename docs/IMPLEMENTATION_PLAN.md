@@ -1,6 +1,6 @@
 # Currents implementation plan
 
-Last updated: 2026-10-09
+Last updated: 2026-10-12
 
 ## Current status
 
@@ -21,10 +21,11 @@ Last updated: 2026-10-09
   Categories direction is recorded in `prototype/Categories.html`. Shared
   Nocturne foundation issue
   [#29](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/29)
-  is complete. Shared shell issue
+  and shared shell issue
   [#22](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/22)
-  is implemented locally and ready for review; page-specific parity remains
-  out of scope until that shell slice is accepted.
+  are committed on `main`. Page-specific parity proceeds serially in issue
+  order, beginning with
+  [#27](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/27).
 - Roadmap issue:
   [#1](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/1)
 - Milestone:
@@ -1991,6 +1992,21 @@ Remaining risks:
   screenshot capture; its status semantics and framing were verified directly,
   while the four stable shell states carry the visual evidence.
 
+### Phase 9 pushed-baseline verification — 2026-10-12
+
+- The pushed issue #29 and issue #22 commits were reverified together before
+  page parity began.
+- Two newly published production dependency advisories had made pipelines #37
+  and #38 fail at `npm audit --omit=dev` before tests. Explicit transitive
+  overrides now hold `sharp` at `0.35.5` and `source-map-js` at `1.2.2`; the
+  production audit reports zero vulnerabilities.
+- Typecheck, lint, formatting, all 198 Vitest tests, the production build, and
+  all 35 applicable desktop/mobile Playwright checks pass. The mobile duplicate
+  of the Chromium-only passkey case remains intentionally skipped.
+- The Accounts partial-net-worth assertion now selects the exact status text so
+  the shared shell's longer `Partial net worth by currency` label does not make
+  the existing browser test ambiguous.
+
 ## Next handoff
 
 Two independent tracks can proceed:
@@ -1999,10 +2015,10 @@ Two independent tracks can proceed:
    staging before any separately authorized production credential or
    environment change. Keep issue #18, roadmap issue #1, and the Currents goal
    open until that evidence exists.
-2. UI parity exact next action: review the local issue #22 commit and its
-   desktop/mobile/wide/reflow evidence, then explicitly authorize its GitLab
-   push. Do not start
-   [#27 Budget visual parity](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/27)
-   or another page-specific parity issue until the shell slice is accepted.
+2. UI parity exact next action: restore a green dependency-audit baseline for
+   the pushed shared-foundation commits, then implement
+   [#27 Budget visual parity](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/27).
+   Continue one independently verified page slice at a time in the Phase 9
+   order.
 
 Do not start commercialization work.
