@@ -73,6 +73,8 @@ export function TransactionDetailDrawer({
   const closeRef = useRef<HTMLButtonElement>(null);
   const saveRef = useRef<HTMLButtonElement>(null);
   const reactId = useId().replaceAll(":", "");
+  const movementId = movement?.id ?? null;
+  const [editorMovementId, setEditorMovementId] = useState(movementId);
   const [selectedCategoryId, setSelectedCategoryId] = useState(
     movement?.kind === "TRANSACTION" ? (movement.category?.id ?? "") : ""
   );
@@ -88,6 +90,19 @@ export function TransactionDetailDrawer({
     existingRule?.merchantKey ?? defaultRuleKey
   );
   const [assignmentError, setAssignmentError] = useState("");
+  const [closeAfterCategoryId, setCloseAfterCategoryId] = useState<
+    string | null
+  >(null);
+  if (movementId !== editorMovementId) {
+    setEditorMovementId(movementId);
+    setSelectedCategoryId(
+      movement?.kind === "TRANSACTION" ? (movement.category?.id ?? "") : ""
+    );
+    setRuleAction("PRESERVE");
+    setRuleKeyInput(existingRule?.merchantKey ?? defaultRuleKey);
+    setAssignmentError("");
+    setCloseAfterCategoryId(null);
+  }
   const normalizedRuleKey = normalizeMerchantRuleKey(ruleKeyInput);
   const ruleUnavailable = defaultRuleKey.length === 0;
 
@@ -100,6 +115,20 @@ export function TransactionDetailDrawer({
     }
     if (!movement && dialog?.open) dialog.close();
   }, [movement]);
+
+  useEffect(() => {
+    if (!movement || movement.kind !== "TRANSACTION" || busy) return;
+    if (assignmentError) {
+      saveRef.current?.focus();
+      return;
+    }
+    if (
+      closeAfterCategoryId &&
+      movement.category?.id === closeAfterCategoryId
+    ) {
+      dialogRef.current?.close();
+    }
+  }, [assignmentError, busy, closeAfterCategoryId, movement]);
 
   if (!movement) return null;
   const firstLeg = movement.legs[0];
@@ -385,9 +414,8 @@ export function TransactionDetailDrawer({
                         setAssignmentError(
                           "Category was not saved. Review the error and try again."
                         );
-                        requestAnimationFrame(() => saveRef.current?.focus());
                       } else {
-                        close();
+                        setCloseAfterCategoryId(selectedCategory.id);
                       }
                     }
                   }}

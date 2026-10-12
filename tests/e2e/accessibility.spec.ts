@@ -980,6 +980,7 @@ test("transfer review ties and unties one movement accessibly", async ({
     await expect(
       drawer.getByRole("alert").filter({ hasText: "Category was not saved" })
     ).toBeVisible();
+    await expect(drawerSave).toBeEnabled();
     await expect(drawerSave).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(drawer).toHaveCount(0);
@@ -1671,6 +1672,12 @@ test("category review supports grouped keyboard assignment and optional merchant
     await expect(drawer).toHaveCount(0);
     await expect(groceryDetail).toBeFocused();
     await expect(
+      prisma.transaction.findUniqueOrThrow({ where: { id: groceryId } })
+    ).resolves.toMatchObject({ categoryId: diningId });
+    await expect(
+      groceryRow.getByRole("button", { name: "Dining" })
+    ).toBeVisible();
+    await expect(
       prisma.merchantRule.findUnique({
         where: {
           householdId_merchantKey: {
@@ -1690,13 +1697,47 @@ test("category review supports grouped keyboard assignment and optional merchant
       "PRESERVE"
     );
     await page.keyboard.press("Escape");
+    await expect(refreshedDrawer).toHaveCount(0);
+    await expect(groceryDetail).toBeFocused();
+
+    const coffeeMovementRow = page.locator(`#movement-transaction-${coffeeId}`);
+    const coffeeDetail = coffeeMovementRow.getByRole("button", {
+      name: "Coffee Shop"
+    });
+    await coffeeDetail.click();
+    const coffeeDrawer = page.getByRole("dialog", { name: "Coffee Shop" });
+    await expect(
+      coffeeDrawer.getByRole("combobox", { name: "Category" })
+    ).toHaveAttribute("placeholder", "Vacation · Savings");
+    await expect(coffeeDrawer.getByLabel("Exact merchant rule")).toHaveValue(
+      "PRESERVE"
+    );
+    await expect(
+      coffeeDrawer.getByRole("option", {
+        name: "Keep existing rule → Vacation"
+      })
+    ).toBeAttached();
+    await expect(
+      coffeeDrawer.getByLabel("Exact normalized merchant key")
+    ).toHaveValue("coffee shop");
+    await page.keyboard.press("Escape");
+    await expect(coffeeDrawer).toHaveCount(0);
+    await expect(coffeeDetail).toBeFocused();
 
     await page.reload();
     await expect(page.locator('[data-review-order="categories"]')).toHaveCount(
       0
     );
-    await expect(page.getByText("Dining", { exact: true })).toBeVisible();
-    await expect(page.getByText("Vacation", { exact: true })).toBeVisible();
+    await expect(
+      page
+        .locator(`#movement-transaction-${groceryId}`)
+        .getByRole("button", { name: "Dining" })
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(`#movement-transaction-${coffeeId}`)
+        .getByRole("button", { name: "Vacation" })
+    ).toBeVisible();
     const viewport = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
       innerWidth: window.innerWidth

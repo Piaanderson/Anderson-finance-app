@@ -187,8 +187,7 @@ export function TransactionsWorkspace({
   const [selectedMovementIds, setSelectedMovementIds] = useState<Set<string>>(
     new Set()
   );
-  const [detailMovement, setDetailMovement] =
-    useState<HouseholdMovement | null>(null);
+  const [detailMovementId, setDetailMovementId] = useState<string | null>(null);
   const [detailReturnFocus, setDetailReturnFocus] =
     useState<HTMLElement | null>(null);
   const [focusTarget, setFocusTarget] = useState<
@@ -205,6 +204,9 @@ export function TransactionsWorkspace({
   }
   const displayMovements = movementOverride ?? movements;
   const displayRules = rulesOverride ?? rules;
+  const detailMovement =
+    displayMovements.find((movement) => movement.id === detailMovementId) ??
+    null;
   const accounts = useMemo(() => {
     const byId = new Map<
       string,
@@ -448,8 +450,8 @@ export function TransactionsWorkspace({
         revision: string | null;
       };
     };
-    setMovementOverride(
-      displayMovements.map((entry) =>
+    setMovementOverride((currentOverride) =>
+      (currentOverride ?? displayMovements).map((entry) =>
         entry.kind === "TRANSACTION" &&
         entry.legs[0].transactionId === transactionId
           ? {
@@ -504,12 +506,10 @@ export function TransactionsWorkspace({
     announce(
       unresolvedCategoryQueue.length === 1
         ? `Category assigned to ${category.name}. Category review complete.`
-        : `Category assigned to ${category.name}.`,
-      true
+        : `Category assigned to ${category.name}.`
     );
     setBusy(false);
-    if (focusAfter) moveFocus(focusAfter, true);
-    window.setTimeout(() => router.refresh(), 1000);
+    if (focusAfter) moveFocus(focusAfter);
     return true;
   }
 
@@ -668,7 +668,7 @@ export function TransactionsWorkspace({
               onClick={() => {
                 setReviewFilter((value) => !value);
                 setSelectedMovementIds(new Set());
-                setDetailMovement(null);
+                setDetailMovementId(null);
               }}
             >
               Review
@@ -851,7 +851,7 @@ export function TransactionsWorkspace({
                   }
                   onOpenDetail={(trigger) => {
                     setDetailReturnFocus(trigger);
-                    setDetailMovement(movement);
+                    setDetailMovementId(movement.id);
                   }}
                   onUntie={movement.kind === "TRANSFER" ? untie : undefined}
                   categories={categories}
@@ -896,7 +896,7 @@ export function TransactionsWorkspace({
             type="button"
             onClick={(event) => {
               setDetailReturnFocus(event.currentTarget);
-              setDetailMovement(selectedMovements[0]);
+              setDetailMovementId(selectedMovements[0].id);
             }}
           >
             Open first selected
@@ -923,7 +923,6 @@ export function TransactionsWorkspace({
         </aside>
       ) : null}
       <TransactionDetailDrawer
-        key={detailMovement?.id ?? "closed"}
         movement={detailMovement}
         categories={categories}
         existingRule={
@@ -940,7 +939,7 @@ export function TransactionsWorkspace({
         }
         busy={busy}
         returnFocus={detailReturnFocus}
-        onClose={() => setDetailMovement(null)}
+        onClose={() => setDetailMovementId(null)}
         onAssignCategory={assignCategoryFromLedger}
         onUntie={untie}
       />
