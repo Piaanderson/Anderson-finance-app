@@ -34,6 +34,7 @@ function leg({
     revision: "2026-09-12T00:00:00.000Z",
     role,
     direction,
+    category: null,
     account: {
       id: accountId,
       name: accountId,

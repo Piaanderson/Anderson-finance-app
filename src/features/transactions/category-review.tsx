@@ -12,6 +12,7 @@ import {
 } from "@/features/categories/merchant-rule";
 import { formatMovementAmount } from "@/lib/money";
 import type { TransactionMovement } from "./movements";
+import type { MerchantRuleAction } from "./transactions-workspace";
 
 function movementDate(value: string) {
   return new Date(value).toLocaleDateString("en-US", {
@@ -46,7 +47,7 @@ export function CategoryReview({
   busy: boolean;
   onAssign: (
     category: CategoryReviewChoice,
-    createRule: boolean,
+    ruleAction: MerchantRuleAction,
     merchantKey: string,
     expectedRuleRevision: string | null
   ) => void;
@@ -55,7 +56,7 @@ export function CategoryReview({
   const reactId = useId().replaceAll(":", "");
   const headingId = `category-review-${reactId}`;
   const [selectedId, setSelectedId] = useState(existingRule?.category.id ?? "");
-  const [createRule, setCreateRule] = useState(Boolean(existingRule));
+  const [ruleAction, setRuleAction] = useState<MerchantRuleAction>("PRESERVE");
   const defaultRuleKey = merchantRuleKey({
     merchantName: movement.legs[0].merchantName,
     name: movement.legs[0].name
@@ -81,6 +82,16 @@ export function CategoryReview({
         </div>
         <span className="review-status">Choose one category</span>
       </div>
+      <div className="review-progress">
+        <span>
+          {queueCount} transaction{queueCount === 1 ? "" : "s"} remaining
+        </span>
+        <span className="review-progress-track" aria-hidden="true">
+          {Array.from({ length: Math.min(queueCount, 8) }, (_, index) => (
+            <i key={index} />
+          ))}
+        </span>
+      </div>
 
       <div className="category-review-transaction">
         <div>
@@ -102,23 +113,44 @@ export function CategoryReview({
         hint="Use arrow keys and Enter, or choose by touch."
       />
 
-      <label className="merchant-rule-choice">
-        <input
-          type="checkbox"
-          checked={createRule}
-          disabled={ruleUnavailable}
-          onChange={(event) => setCreateRule(event.target.checked)}
-        />
-        <span>
-          <strong>Use this category for future exact merchant matches</strong>
-          <span>
-            Exact matches only; no fuzzy or substring matching.
+      <div className="field merchant-rule-action-field">
+        <label htmlFor={`review-merchant-rule-action-${reactId}`}>
+          Exact merchant rule
+        </label>
+        <select
+          className="input"
+          id={`review-merchant-rule-action-${reactId}`}
+          value={ruleAction}
+          onChange={(event) =>
+            setRuleAction(event.target.value as MerchantRuleAction)
+          }
+        >
+          <option value="PRESERVE">
             {existingRule
-              ? ` Existing rule: ${existingRule.category.name}. Uncheck to remove it.`
-              : " Optional; leave unchecked for this transaction only."}
-          </span>
-        </span>
-      </label>
+              ? `Keep existing rule → ${existingRule.category.name}`
+              : "Do not create a rule"}
+          </option>
+          {!ruleUnavailable ? (
+            <option value="UPSERT">
+              {existingRule
+                ? "Retarget existing rule"
+                : "Create exact merchant rule"}
+            </option>
+          ) : null}
+          {existingRule ? (
+            <option value="DELETE">Delete existing rule</option>
+          ) : null}
+        </select>
+        <p className="muted">
+          {ruleAction === "PRESERVE"
+            ? existingRule
+              ? `The existing “${existingRule.merchantKey}” rule stays assigned to ${existingRule.category.name}.`
+              : "Only this transaction will be assigned."
+            : ruleAction === "DELETE"
+              ? `The existing “${existingRule?.merchantKey}” rule will be deleted.`
+              : "The exact key below will be assigned to the selected category."}
+        </p>
+      </div>
       <div className="field merchant-rule-key-field">
         <label htmlFor={`merchant-rule-key-${reactId}`}>
           Exact normalized merchant key
@@ -128,8 +160,8 @@ export function CategoryReview({
           id={`merchant-rule-key-${reactId}`}
           type="text"
           value={ruleKeyInput}
-          readOnly={!createRule || ruleUnavailable}
-          required={createRule}
+          readOnly={ruleAction !== "UPSERT" || ruleUnavailable}
+          required={ruleAction === "UPSERT"}
           maxLength={120}
           aria-describedby={`merchant-rule-key-hint-${reactId}`}
           onChange={(event) => setRuleKeyInput(event.target.value)}
@@ -138,7 +170,11 @@ export function CategoryReview({
         <p className="muted" id={`merchant-rule-key-hint-${reactId}`}>
           {ruleUnavailable
             ? "No usable merchant text is available, so only this transaction can be assigned."
-            : `Will save exactly as “${normalizedRuleKey}”. You can edit this key before assignment.`}
+            : ruleAction === "UPSERT"
+              ? `Will save exactly as “${normalizedRuleKey}”. You can edit this key before assignment.`
+              : ruleAction === "DELETE"
+                ? "The existing exact rule will be deleted."
+                : "The existing exact rule, if any, will be preserved unchanged."}
         </p>
       </div>
 
@@ -146,13 +182,17 @@ export function CategoryReview({
         <button
           className="button"
           type="button"
-          disabled={!selected || busy}
+          disabled={
+            !selected ||
+            busy ||
+            (ruleAction === "UPSERT" && normalizedRuleKey.length === 0)
+          }
           data-category-primary-action
           onClick={() => {
             if (selected) {
               onAssign(
                 selected,
-                createRule,
+                ruleAction,
                 normalizedRuleKey,
                 existingRule?.revision ?? null
               );

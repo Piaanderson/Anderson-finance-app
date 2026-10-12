@@ -612,7 +612,7 @@ describe("transaction category mutation isolation", () => {
     const response = await categorizeTransaction(
       jsonRequest("PUT", {
         categoryId: ids.categoryB,
-        createRule: true,
+        ruleAction: "UPSERT",
         merchantKey: "merchant a",
         expectedTransactionRevision: transaction.updatedAt.toISOString(),
         expectedRuleRevision: null
@@ -639,7 +639,7 @@ describe("transaction category mutation isolation", () => {
     const response = await categorizeTransaction(
       jsonRequest("PUT", {
         categoryId: ids.categoryA,
-        createRule: true,
+        ruleAction: "UPSERT",
         merchantKey: "merchant b",
         expectedTransactionRevision: transaction.updatedAt.toISOString(),
         expectedRuleRevision: null

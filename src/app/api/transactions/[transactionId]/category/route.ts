@@ -11,7 +11,7 @@ import { requireApiHousehold } from "@/server/households";
 
 const categoryRequest = z.object({
   categoryId: z.string().min(1),
-  createRule: z.boolean().default(false),
+  ruleAction: z.enum(["PRESERVE", "UPSERT", "DELETE"]).default("PRESERVE"),
   merchantKey: z.string().max(120).optional(),
   expectedTransactionRevision: z.string().datetime({ offset: true }),
   expectedRuleRevision: z.string().datetime({ offset: true }).nullable()
@@ -44,7 +44,14 @@ export async function PUT(
   const { transactionId } = await params;
 
   try {
-    let result: { savedRuleKey: string | null } | undefined;
+    let result:
+      | {
+          savedRuleKey: string | null;
+          ruleRevision: string | null;
+          transactionRevision: string;
+          ruleActive: boolean;
+        }
+      | undefined;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
         result = await prisma.$transaction(
@@ -117,7 +124,8 @@ export async function PUT(
             }
 
             let savedRuleKey = defaultRuleKey;
-            if (parsed.data.createRule) {
+            let savedRuleId = existingRule?.id ?? null;
+            if (parsed.data.ruleAction === "UPSERT") {
               savedRuleKey = normalizeMerchantRuleKey(
                 parsed.data.merchantKey ?? ""
               );
@@ -164,15 +172,17 @@ export async function PUT(
                   );
                 }
               } else {
-                await tx.merchantRule.create({
+                const createdRule = await tx.merchantRule.create({
                   data: {
                     householdId: owner.householdId,
                     categoryId: category.id,
                     merchantKey: savedRuleKey
-                  }
+                  },
+                  select: { id: true }
                 });
+                savedRuleId = createdRule.id;
               }
-            } else if (existingRule) {
+            } else if (parsed.data.ruleAction === "DELETE" && existingRule) {
               const deletedRule = await tx.merchantRule.deleteMany({
                 where: {
                   id: existingRule.id,
@@ -187,6 +197,7 @@ export async function PUT(
                   "MERCHANT_RULE_STALE"
                 );
               }
+              savedRuleId = null;
             }
 
             const updatedTransaction = await tx.transaction.updateMany({
@@ -205,7 +216,33 @@ export async function PUT(
                 "CATEGORY_ASSIGNMENT_CONFLICT"
               );
             }
-            return { savedRuleKey };
+            const [persistedTransaction, persistedRule] = await Promise.all([
+              tx.transaction.findFirstOrThrow({
+                where: {
+                  id: transaction.id,
+                  householdId: owner.householdId,
+                  removedAt: null
+                },
+                select: { updatedAt: true }
+              }),
+              savedRuleId
+                ? tx.merchantRule.findFirst({
+                    where: {
+                      id: savedRuleId,
+                      householdId: owner.householdId
+                    },
+                    select: { updatedAt: true, merchantKey: true }
+                  })
+                : null
+            ]);
+            return {
+              savedRuleKey:
+                persistedRule?.merchantKey ??
+                (parsed.data.ruleAction === "DELETE" ? defaultRuleKey : null),
+              ruleRevision: persistedRule?.updatedAt.toISOString() ?? null,
+              transactionRevision: persistedTransaction.updatedAt.toISOString(),
+              ruleActive: Boolean(persistedRule)
+            };
           },
           { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
         );
@@ -230,9 +267,12 @@ export async function PUT(
     }
     return NextResponse.json({
       categorized: true,
+      transactionRevision: result.transactionRevision,
       rule: {
-        active: parsed.data.createRule,
-        merchantKey: result.savedRuleKey
+        action: parsed.data.ruleAction,
+        active: result.ruleActive,
+        merchantKey: result.savedRuleKey,
+        revision: result.ruleRevision
       }
     });
   } catch (error) {

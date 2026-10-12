@@ -27,6 +27,8 @@ const ids = {
   outgoingB: `${key}-outgoing-b`,
   incomingB: `${key}-incoming-b`,
   crossB: `${key}-cross-b`,
+  outgoingCategoryA: `${key}-outgoing-category-a`,
+  incomingCategoryA: `${key}-incoming-category-a`,
   matchA: `${key}-match-a`,
   matchB: `${key}-match-b`
 };
@@ -130,6 +132,22 @@ async function createFixtures() {
       }
     ]
   });
+  await prisma.category.createMany({
+    data: [
+      {
+        id: ids.outgoingCategoryA,
+        householdId: ids.householdA,
+        name: "Debt payment",
+        section: "Debt"
+      },
+      {
+        id: ids.incomingCategoryA,
+        householdId: ids.householdA,
+        name: "Card payment",
+        section: "Needs"
+      }
+    ]
+  });
   await prisma.transaction.createMany({
     data: [
       {
@@ -146,6 +164,7 @@ async function createFixtures() {
         transactionCode: "transfer",
         amount: "400.00",
         isoCurrencyCode: "USD",
+        categoryId: ids.outgoingCategoryA,
         date: new Date("2026-09-09T00:00:00.000Z"),
         authorizedDate: new Date("2026-09-08T00:00:00.000Z")
       },
@@ -159,6 +178,7 @@ async function createFixtures() {
         referenceNumber: "REF-B",
         amount: "-400.00",
         isoCurrencyCode: "USD",
+        categoryId: ids.incomingCategoryA,
         date: new Date("2026-09-10T00:00:00.000Z")
       },
       {
@@ -282,12 +302,20 @@ describe("household movement reads", () => {
           bankDescription: "ACH PAYMENT CARD 2222",
           paymentMemo: "Monthly payment",
           referenceNumber: "REF-A",
+          category: {
+            id: ids.outgoingCategoryA,
+            name: "Debt payment"
+          },
           account: { name: "A checking" }
         },
         {
           transactionId: ids.incomingA,
           bankDescription: "THANK YOU PAYMENT",
           referenceNumber: "REF-B",
+          category: {
+            id: ids.incomingCategoryA,
+            name: "Card payment"
+          },
           account: { name: "A card" }
         }
       ]

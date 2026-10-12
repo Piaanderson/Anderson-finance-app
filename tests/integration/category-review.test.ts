@@ -41,7 +41,7 @@ const ids = {
 async function request(
   transactionId: string,
   categoryId: string,
-  createRule: boolean,
+  ruleAction: "PRESERVE" | "UPSERT" | "DELETE",
   merchantKeyOverride?: string
 ) {
   const transaction = await prisma.transaction.findUnique({
@@ -70,7 +70,7 @@ async function request(
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         categoryId,
-        createRule,
+        ruleAction,
         merchantKey: merchantKeyOverride ?? defaultKey,
         expectedTransactionRevision:
           transaction?.updatedAt.toISOString() ?? "2026-09-12T00:00:00.000Z",
@@ -302,18 +302,70 @@ describe("household category review data", () => {
 });
 
 describe("category assignment boundary", () => {
-  it("assigns one transaction and removes an existing rule when unchecked", async () => {
-    const response = await request(ids.transaction, ids.flex, false);
+  it("assigns one transaction while preserving an existing rule by default", async () => {
+    const response = await request(ids.transaction, ids.flex, "PRESERVE");
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
       categorized: true,
-      rule: { active: false, merchantKey: "café market" }
+      transactionRevision: expect.any(String),
+      rule: {
+        action: "PRESERVE",
+        active: true,
+        merchantKey: "café market",
+        revision: expect.any(String)
+      }
     });
     await expect(
       prisma.transaction.findUniqueOrThrow({
         where: { id: ids.transaction }
       })
     ).resolves.toMatchObject({ categoryId: ids.flex });
+    await expect(
+      prisma.merchantRule.findUniqueOrThrow({
+        where: {
+          householdId_merchantKey: {
+            householdId: ids.householdA,
+            merchantKey: "café market"
+          }
+        }
+      })
+    ).resolves.toMatchObject({ categoryId: ids.needs });
+  });
+
+  it("retargets an existing exact rule only when explicitly requested", async () => {
+    const response = await request(ids.transaction, ids.flex, "UPSERT");
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      rule: {
+        action: "UPSERT",
+        active: true,
+        merchantKey: "café market",
+        revision: expect.any(String)
+      }
+    });
+    await expect(
+      prisma.merchantRule.findUniqueOrThrow({
+        where: {
+          householdId_merchantKey: {
+            householdId: ids.householdA,
+            merchantKey: "café market"
+          }
+        }
+      })
+    ).resolves.toMatchObject({ categoryId: ids.flex });
+  });
+
+  it("deletes an existing exact rule only when explicitly requested", async () => {
+    const response = await request(ids.transaction, ids.needs, "DELETE");
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      rule: {
+        action: "DELETE",
+        active: false,
+        merchantKey: "café market",
+        revision: null
+      }
+    });
     await expect(
       prisma.merchantRule.findUnique({
         where: {
@@ -327,8 +379,12 @@ describe("category assignment boundary", () => {
   });
 
   it("creates and deterministically updates one exact merchant rule", async () => {
-    expect((await request(ids.transaction, ids.needs, true)).status).toBe(200);
-    expect((await request(ids.transaction, ids.flex, true)).status).toBe(200);
+    expect((await request(ids.transaction, ids.needs, "UPSERT")).status).toBe(
+      200
+    );
+    expect((await request(ids.transaction, ids.flex, "UPSERT")).status).toBe(
+      200
+    );
 
     const rules = await prisma.merchantRule.findMany({
       where: {
@@ -340,11 +396,52 @@ describe("category assignment boundary", () => {
     expect(rules[0].categoryId).toBe(ids.flex);
   });
 
+  it("rejects a stale rule revision without partially assigning the transaction", async () => {
+    const transaction = await prisma.transaction.findUniqueOrThrow({
+      where: { id: ids.transaction },
+      select: { updatedAt: true, categoryId: true }
+    });
+    const rule = await prisma.merchantRule.findUniqueOrThrow({
+      where: {
+        householdId_merchantKey: {
+          householdId: ids.householdA,
+          merchantKey: "café market"
+        }
+      },
+      select: { id: true, updatedAt: true }
+    });
+    await prisma.merchantRule.update({
+      where: { id: rule.id },
+      data: { categoryId: ids.needs }
+    });
+    const response = await categorizeTransaction(
+      new Request("http://currents.test/api/transactions/category", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          categoryId: ids.flex,
+          ruleAction: "DELETE",
+          merchantKey: "café market",
+          expectedTransactionRevision: transaction.updatedAt.toISOString(),
+          expectedRuleRevision: rule.updatedAt.toISOString()
+        })
+      }),
+      { params: Promise.resolve({ transactionId: ids.transaction }) }
+    );
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "MERCHANT_RULE_STALE"
+    });
+    await expect(
+      prisma.transaction.findUniqueOrThrow({ where: { id: ids.transaction } })
+    ).resolves.toMatchObject({ categoryId: transaction.categoryId });
+  });
+
   it("edits the visible normalized rule key and rejects a conflicting exact key", async () => {
     const edited = await request(
       ids.transaction,
       ids.needs,
-      true,
+      "UPSERT",
       "  CAFÉ\u00a0 MARKET   EXPLICIT "
     );
     expect(edited.status).toBe(200);
@@ -372,7 +469,7 @@ describe("category assignment boundary", () => {
     const conflict = await request(
       ids.transaction,
       ids.needs,
-      true,
+      "UPSERT",
       "already claimed"
     );
     expect(conflict.status).toBe(409);
@@ -409,7 +506,7 @@ describe("category assignment boundary", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           categoryId: ids.flex,
-          createRule: false,
+          ruleAction: "PRESERVE",
           merchantKey: "café market",
           expectedTransactionRevision: transaction.updatedAt.toISOString(),
           expectedRuleRevision: null
@@ -432,7 +529,7 @@ describe("category assignment boundary", () => {
     ["an archived category", ids.transaction, ids.archived],
     ["a removed transaction", ids.removedTransaction, ids.needs]
   ])("returns 404 for %s", async (_label, transactionId, categoryId) => {
-    const response = await request(transactionId, categoryId, true);
+    const response = await request(transactionId, categoryId, "UPSERT");
     expect(response.status).toBe(404);
   });
 });

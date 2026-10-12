@@ -2079,6 +2079,102 @@ Remaining risks:
   not retain the historical position snapshot needed to display the
   prototype's numeric before/after balance bridge.
 
+### Issue #24 Transactions visual-parity evidence — 2026-10-12
+
+Implementation:
+
+- Replaced the generic Transactions page header/card stack with the integrated
+  Nocturne month context, truthful movement count, search, review control,
+  account chips, result summary, compact ledger columns, and labelled mobile
+  row stack. Month and account filtering use only household-scoped movements
+  already returned by the production read model.
+- Transfer and category review remain independently conditional and ordered
+  transfers first. The Review control filters the ledger to review-relevant
+  source rows without collapsing either queue. Both use truthful remaining-work
+  status treatments; each panel disappears only when its own queue is empty,
+  while skipped work remains counted and is labelled deferred until resumed.
+  The no-work state appears only when no unresolved work remains. Category
+  review retains the shared grouped keyboard/touch picker and visible, editable
+  exact normalized merchant key. Transfer suggestions are scoped by stable
+  source transaction IDs to the selected month and search result ledger.
+- A transfer remains one movement with a truthful source-to-destination
+  subline. Its disclosure retains both unchanged source legs, raw bank
+  description, memo, reference, pending state, unavailable balance-movement
+  explanation, and plain untie behavior.
+- Ledger category controls reuse `GroupedCategoryPicker` for inline assignment.
+  Inline and drawer assignment also expose the exact merchant-rule choice and
+  normalized key. Existing rules default to preservation and can be explicitly
+  preserved, retargeted, or deleted with household-scoped revision checks.
+  Failed saves keep the picker open with a nearby announced error. Successful
+  drawer saves close and restore focus, while the API response supplies the
+  persisted transaction and rule revisions used by the next open. The Category
+  column uses only the persisted movement category; raw bank transaction codes
+  remain in detail metadata.
+  Row selection is local and the bulk bar exposes only a supported detail
+  action and clear-selection action. Unsupported batch category persistence is
+  disabled and explained; no batch result is implied.
+- The transaction detail surface is a native modal `dialog` sized as the
+  integrated right drawer on desktop and a full-height sheet on mobile. Native
+  modality plus explicit Tab-boundary handling contains focus and blocks
+  background interaction; Escape closes it and `onClose` restores the row
+  trigger. Its `h2` title contains `h3` transfer-leg headings, while row
+  expansion retains `h4` leg headings. Bank data stays read-only, category
+  assignment uses the existing API, and unsupported custom display-name/note
+  fields are explicitly unavailable.
+- Month or query changes remount the view workspace so account/review filters,
+  skipped queues, selection, row disclosures, and drawer state cannot leak
+  across views. Untie reconstructs each source transaction with its persisted
+  source category instead of clearing category state optimistically.
+- Production adaptations retain one `h1`, logical headings, native controls,
+  visible focus, live status/error announcements, 44px targets, 16px mobile
+  text inputs, non-color status text, WCAG 2.1 AA contrast, no page overflow,
+  bottom-navigation content clearance, and the shared 0.01ms reduced-motion
+  override.
+
+Verification:
+
+- `npm run typecheck`, `npm run lint`, and `npm run format:check` passed.
+- Expanded movement, transfer-suggestion, movement integration, transfer
+  review, category assignment, and household-isolation Vitest files passed:
+  6 files and 65 tests.
+- `npm run build` passed on Next.js 16.3.8 with all 21 static generation tasks.
+- Focused Transactions Playwright passed in desktop Chromium and mobile:
+  4 tests covering header/account filtering, review ordering and queue states,
+  ledger filtering, view-state reset, grouped picker behavior, explicit exact
+  merchant-rule preserve/retarget/delete outcomes and stale revisions, failed
+  inline/drawer assignment, successful drawer close/fresh reopen, scoped
+  month/search queues, deferred review resumption, preserved untie categories,
+  expanded legs, selection/bulk truthfulness, native drawer Tab/Shift+Tab
+  containment, background blocking, Escape/restoration, heading hierarchy,
+  axe, touch targets, mobile labels and fixed-navigation clearance, input
+  sizing, overflow, and reduced motion.
+- Populated-state checks run at 375, 390, 512, 768, 1280, and 1920 CSS pixels.
+  The complete Phase 7 desktop/mobile audit also passed: 10 tests.
+- `git diff --check` and edited-file IDE diagnostics passed with no findings.
+
+Visual evidence:
+
+- Database-backed after captures and a factual capture note are in
+  `docs/visual-evidence/issue-24/`.
+- Clean zero-review captures cover 1280, 1920, 512, and 390 CSS pixels.
+  Representative 1280px captures cover review, expanded-transfer, and modal
+  detail-drawer states, plus the explicit zero-work treatment.
+- No before image was fabricated because a pre-change authenticated capture
+  was not available.
+
+Intentional production adaptations and remaining risks:
+
+- The current data model has no custom transaction display-name or personal
+  note fields. The drawer keeps those approved surfaces legible with explicit
+  unavailable copy instead of accepting edits that cannot persist.
+- Current positions and snapshots are not transaction-aligned, so numeric
+  before/after balance movement remains explicitly unavailable.
+- The current APIs have no batch category mutation. The bulk category action
+  is disabled with an explanation; selection, detail inspection, and clearing
+  remain fully operable.
+- Automated axe, emulated reflow, keyboard checks, and screenshots do not
+  replace a manual screen-reader pass or testing on every physical device.
+
 ## Next handoff
 
 Two independent tracks can proceed:

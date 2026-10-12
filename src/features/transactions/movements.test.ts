@@ -46,15 +46,31 @@ function transaction(
 
 describe("household movement construction", () => {
   it("represents a matched transfer once while retaining both source legs", () => {
+    const outgoingCategory = {
+      id: "debt-payment",
+      householdId,
+      name: "Debt payment",
+      section: "Debt",
+      archivedAt: null
+    };
+    const incomingCategory = {
+      id: "card-payment",
+      householdId,
+      name: "Card payment",
+      section: "Needs",
+      archivedAt: null
+    };
     const outgoing = transaction("outgoing", {
       amount: "125.00",
       merchantName: "Card payment",
-      bankDescription: "ONLINE PAYMENT REF 123"
+      bankDescription: "ONLINE PAYMENT REF 123",
+      category: outgoingCategory
     });
     const incoming = transaction("incoming", {
       amount: "-125.00",
       date: new Date("2026-09-11T00:00:00.000Z"),
-      paymentMemo: "September payment"
+      paymentMemo: "September payment",
+      category: incomingCategory
     });
 
     const movements = buildHouseholdMovements({
@@ -84,11 +100,21 @@ describe("household movement construction", () => {
     ]);
     expect(movements[0].legs[0]).toMatchObject({
       bankDescription: "ONLINE PAYMENT REF 123",
-      plaidAmount: "125.00"
+      plaidAmount: "125.00",
+      category: {
+        id: outgoingCategory.id,
+        name: outgoingCategory.name,
+        section: outgoingCategory.section
+      }
     });
     expect(movements[0].legs[1]).toMatchObject({
       paymentMemo: "September payment",
-      plaidAmount: "-125.00"
+      plaidAmount: "-125.00",
+      category: {
+        id: incomingCategory.id,
+        name: incomingCategory.name,
+        section: incomingCategory.section
+      }
     });
   });
 

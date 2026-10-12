@@ -175,6 +175,16 @@ export function TransferReview({
             : "Suggested pair · confirmation required"}
         </span>
       </div>
+      <div className="review-progress">
+        <span>
+          {queueCount} transfer{queueCount === 1 ? "" : "s"} remaining
+        </span>
+        <span className="review-progress-track" aria-hidden="true">
+          {Array.from({ length: Math.min(queueCount, 8) }, (_, index) => (
+            <i key={index} />
+          ))}
+        </span>
+      </div>
       <p className="muted">
         These unmatched legs may be one movement. Currents never ties them
         without your confirmation.

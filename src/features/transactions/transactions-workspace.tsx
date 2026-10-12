@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type {
   CategoryReviewChoice,
@@ -14,6 +15,7 @@ import type {
   TransferMovement
 } from "./movements";
 import { CategoryReview } from "./category-review";
+import { TransactionDetailDrawer } from "./transaction-detail-drawer";
 import { TransactionRow } from "./transaction-row";
 import { TransferReview } from "./transfer-review";
 import type {
@@ -24,11 +26,41 @@ import type {
 const ANNOUNCEMENT_STORAGE_KEY = "currents:transactions:announcement";
 const FOCUS_STORAGE_KEY = "currents:transactions:focus";
 
+function monthLabel(month: string) {
+  return new Date(`${month}-01T00:00:00.000Z`).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC"
+  });
+}
+
+function shiftMonth(month: string, amount: number) {
+  const [year, index] = month.split("-").map(Number);
+  const value = new Date(Date.UTC(year, index - 1 + amount, 1));
+  return value.toISOString().slice(0, 7);
+}
+
+function transactionHref(month: string, query: string) {
+  return {
+    pathname: "/transactions" as const,
+    query: query.trim() ? { month, query: query.trim() } : { month }
+  };
+}
+
+export type CategoryAssignmentOptions = {
+  ruleAction: MerchantRuleAction;
+  merchantKey: string;
+  expectedRuleRevision: string | null;
+};
+
+export type MerchantRuleAction = "PRESERVE" | "UPSERT" | "DELETE";
+
 function focusElement(target: string) {
   if (target === "review") {
     return (
       document.querySelector<HTMLElement>("[data-transfer-primary-action]") ??
       document.querySelector<HTMLElement>(".category-combobox input") ??
+      document.querySelector<HTMLElement>("[data-resume-deferred]") ??
       document.querySelector<HTMLElement>(".category-review-action") ??
       document.getElementById("ledger-title")
     );
@@ -96,7 +128,7 @@ function optimisticTransaction(leg: MovementLeg): TransactionMovement {
     id: `transaction:${leg.transactionId}`,
     kind: "TRANSACTION",
     direction: leg.direction,
-    category: null,
+    category: leg.category,
     canonicalDate: leg.effectiveDate,
     description:
       leg.merchantName?.trim() ||
@@ -120,12 +152,16 @@ export function TransactionsWorkspace({
   movements,
   suggestions,
   categories,
-  rules
+  rules,
+  month,
+  query
 }: {
   movements: HouseholdMovement[];
   suggestions: TransferSuggestion[];
   categories: CategoryReviewChoice[];
   rules: MerchantRuleReview[];
+  month: string;
+  query: string;
 }) {
   const router = useRouter();
   const [movementOverride, setMovementOverride] = useState<
@@ -146,6 +182,15 @@ export function TransactionsWorkspace({
   const [busy, setBusy] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const [error, setError] = useState("");
+  const [reviewFilter, setReviewFilter] = useState(false);
+  const [accountFilter, setAccountFilter] = useState("all");
+  const [selectedMovementIds, setSelectedMovementIds] = useState<Set<string>>(
+    new Set()
+  );
+  const [detailMovement, setDetailMovement] =
+    useState<HouseholdMovement | null>(null);
+  const [detailReturnFocus, setDetailReturnFocus] =
+    useState<HTMLElement | null>(null);
   const [focusTarget, setFocusTarget] = useState<
     "review" | "ledger" | string | null
   >(null);
@@ -160,7 +205,18 @@ export function TransactionsWorkspace({
   }
   const displayMovements = movementOverride ?? movements;
   const displayRules = rulesOverride ?? rules;
-
+  const accounts = useMemo(() => {
+    const byId = new Map<
+      string,
+      { id: string; name: string; mask: string | null; active: boolean }
+    >();
+    for (const movement of displayMovements) {
+      for (const leg of movement.legs) byId.set(leg.account.id, leg.account);
+    }
+    return [...byId.values()].sort((left, right) =>
+      left.name.localeCompare(right.name)
+    );
+  }, [displayMovements]);
   useEffect(() => {
     const retainedAnnouncement = sessionStorage.getItem(
       ANNOUNCEMENT_STORAGE_KEY
@@ -178,12 +234,11 @@ export function TransactionsWorkspace({
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  const visibleSuggestions = useMemo(
+  const unresolvedSuggestions = useMemo(
     () =>
       suggestions
         .filter(
           (suggestion) =>
-            !skippedSuggestionIds.has(suggestion.id) &&
             !locallyMatchedTransactionIds.has(suggestion.outgoingTransactionId)
         )
         .map((suggestion) => ({
@@ -199,18 +254,61 @@ export function TransactionsWorkspace({
           )
         }))
         .filter((suggestion) => suggestion.candidates.length > 0),
-    [locallyMatchedTransactionIds, skippedSuggestionIds, suggestions]
+    [locallyMatchedTransactionIds, suggestions]
   );
-  const categoryQueue = useMemo(
+  const visibleSuggestions = useMemo(
+    () =>
+      unresolvedSuggestions.filter(
+        (suggestion) => !skippedSuggestionIds.has(suggestion.id)
+      ),
+    [skippedSuggestionIds, unresolvedSuggestions]
+  );
+  const unresolvedCategoryQueue = useMemo(
     () =>
       displayMovements.filter(
         (movement): movement is TransactionMovement =>
-          movement.kind === "TRANSACTION" &&
-          movement.category === null &&
+          movement.kind === "TRANSACTION" && movement.category === null
+      ),
+    [displayMovements]
+  );
+  const categoryQueue = useMemo(
+    () =>
+      unresolvedCategoryQueue.filter(
+        (movement) =>
           !skippedCategoryTransactionIds.has(movement.legs[0].transactionId)
       ),
-    [displayMovements, skippedCategoryTransactionIds]
+    [skippedCategoryTransactionIds, unresolvedCategoryQueue]
   );
+  const filteredMovements = useMemo(() => {
+    const accountMovements =
+      accountFilter === "all"
+        ? displayMovements
+        : displayMovements.filter((movement) =>
+            movement.legs.some((leg) => leg.account.id === accountFilter)
+          );
+    if (!reviewFilter) return accountMovements;
+    const reviewTransactionIds = new Set([
+      ...unresolvedCategoryQueue.map(
+        (movement) => movement.legs[0].transactionId
+      ),
+      ...unresolvedSuggestions.flatMap((suggestion) => [
+        suggestion.outgoingTransactionId,
+        ...suggestion.candidates.flatMap((candidate) => [
+          candidate.outgoing.transactionId,
+          candidate.incoming.transactionId
+        ])
+      ])
+    ]);
+    return accountMovements.filter((movement) =>
+      movement.legs.some((leg) => reviewTransactionIds.has(leg.transactionId))
+    );
+  }, [
+    accountFilter,
+    displayMovements,
+    reviewFilter,
+    unresolvedCategoryQueue,
+    unresolvedSuggestions
+  ]);
 
   useEffect(() => {
     if (!focusTarget) return;
@@ -311,9 +409,10 @@ export function TransactionsWorkspace({
   async function assignCategory(
     movement: TransactionMovement,
     category: CategoryReviewChoice,
-    createRule: boolean,
+    ruleAction: MerchantRuleAction,
     merchantKey: string,
-    expectedRuleRevision: string | null
+    expectedRuleRevision: string | null,
+    focusAfter: "category-review" | "ledger" | null = "category-review"
   ) {
     setBusy(true);
     setError("");
@@ -325,7 +424,7 @@ export function TransactionsWorkspace({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           categoryId: category.id,
-          createRule,
+          ruleAction,
           merchantKey,
           expectedTransactionRevision: movement.legs[0].revision,
           expectedRuleRevision
@@ -339,8 +438,16 @@ export function TransactionsWorkspace({
           : "The category could not be assigned. Check your connection and try again."
       );
       setBusy(false);
-      return;
+      return false;
     }
+    const payload = (await response.json()) as {
+      transactionRevision: string;
+      rule: {
+        active: boolean;
+        merchantKey: string | null;
+        revision: string | null;
+      };
+    };
     setMovementOverride(
       displayMovements.map((entry) =>
         entry.kind === "TRANSACTION" &&
@@ -352,7 +459,19 @@ export function TransactionsWorkspace({
                 name: category.name,
                 section: category.section,
                 archived: false
-              }
+              },
+              legs: [
+                {
+                  ...entry.legs[0],
+                  category: {
+                    id: category.id,
+                    name: category.name,
+                    section: category.section,
+                    archived: false
+                  },
+                  revision: payload.transactionRevision
+                }
+              ]
             }
           : entry
       )
@@ -363,29 +482,50 @@ export function TransactionsWorkspace({
     });
     setRulesOverride((currentOverride) => {
       const current = currentOverride ?? displayRules;
+      if (ruleAction === "PRESERVE") return current;
       const withoutCurrent = current.filter(
         (rule) => rule.merchantKey !== ruleKey
       );
-      if (!createRule) return withoutCurrent;
+      if (ruleAction === "DELETE" || !payload.rule.active) {
+        return withoutCurrent;
+      }
       return [
         ...withoutCurrent,
         {
-          id: `local:${merchantKey}`,
-          merchantKey,
-          revision: new Date().toISOString(),
+          id:
+            current.find((rule) => rule.merchantKey === ruleKey)?.id ??
+            `local:${payload.rule.merchantKey}`,
+          merchantKey: payload.rule.merchantKey ?? merchantKey,
+          revision: payload.rule.revision ?? new Date().toISOString(),
           category: { id: category.id, name: category.name }
         }
       ];
     });
     announce(
-      categoryQueue.length === 1
+      unresolvedCategoryQueue.length === 1
         ? `Category assigned to ${category.name}. Category review complete.`
         : `Category assigned to ${category.name}.`,
       true
     );
     setBusy(false);
-    moveFocus("category-review", true);
+    if (focusAfter) moveFocus(focusAfter, true);
     window.setTimeout(() => router.refresh(), 1000);
+    return true;
+  }
+
+  function assignCategoryFromLedger(
+    movement: TransactionMovement,
+    category: CategoryReviewChoice,
+    options: CategoryAssignmentOptions
+  ) {
+    return assignCategory(
+      movement,
+      category,
+      options.ruleAction,
+      options.merchantKey,
+      options.expectedRuleRevision,
+      null
+    );
   }
 
   function skipCategory() {
@@ -434,8 +574,29 @@ export function TransactionsWorkspace({
     window.setTimeout(() => router.refresh(), 1000);
   }
 
+  const selectedMovements = filteredMovements.filter((movement) =>
+    selectedMovementIds.has(movement.id)
+  );
+  const deferredSuggestionCount = unresolvedSuggestions.filter((suggestion) =>
+    skippedSuggestionIds.has(suggestion.id)
+  ).length;
+  const deferredCategoryCount = unresolvedCategoryQueue.filter((movement) =>
+    skippedCategoryTransactionIds.has(movement.legs[0].transactionId)
+  ).length;
+  const deferredCount = deferredSuggestionCount + deferredCategoryCount;
+  const reviewCount =
+    unresolvedSuggestions.length + unresolvedCategoryQueue.length;
+  const todayMonth = new Date().toISOString().slice(0, 7);
+  const resultNote = `${
+    filteredMovements.length === displayMovements.length
+      ? `${displayMovements.length} movement${
+          displayMovements.length === 1 ? "" : "s"
+        } in ${monthLabel(month)}`
+      : `${filteredMovements.length} of ${displayMovements.length} movements shown`
+  }${reviewFilter ? " · Review filter on" : ""}`;
+
   return (
-    <>
+    <div className="transactions-experience">
       <div
         ref={liveRegionRef}
         className="visually-hidden"
@@ -445,13 +606,117 @@ export function TransactionsWorkspace({
       >
         {announcement}
       </div>
+      <header className="transactions-header">
+        <div className="transactions-header-main">
+          <div className="transactions-period">
+            <nav
+              className="transactions-month-nav"
+              aria-label="Transaction month"
+            >
+              <Link
+                href={transactionHref(shiftMonth(month, -1), query)}
+                aria-label={`Previous month, ${monthLabel(shiftMonth(month, -1))}`}
+              >
+                <span aria-hidden="true">‹</span>
+              </Link>
+              <Link
+                href={transactionHref(shiftMonth(month, 1), query)}
+                aria-label={`Next month, ${monthLabel(shiftMonth(month, 1))}`}
+              >
+                <span aria-hidden="true">›</span>
+              </Link>
+            </nav>
+            <div>
+              <span className="eyebrow">{monthLabel(month)}</span>
+              <h1>Transactions</h1>
+              <span className="transactions-movement-count">
+                {displayMovements.length} movement
+                {displayMovements.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            <Link
+              className="transactions-today"
+              href={transactionHref(todayMonth, query)}
+              aria-current={month === todayMonth ? "date" : undefined}
+            >
+              Today
+            </Link>
+          </div>
+          <div className="transactions-header-actions">
+            <form method="get" role="search" className="transactions-search">
+              <input type="hidden" name="month" value={month} />
+              <label className="visually-hidden" htmlFor="transaction-search">
+                Search transactions
+              </label>
+              <input
+                className="input"
+                id="transaction-search"
+                type="search"
+                name="query"
+                defaultValue={query}
+                placeholder="Search merchant, amount, memo"
+              />
+              <button className="button secondary" type="submit">
+                Search
+              </button>
+            </form>
+            <button
+              className="transactions-review-toggle"
+              type="button"
+              aria-pressed={reviewFilter}
+              aria-controls="movement-ledger"
+              onClick={() => {
+                setReviewFilter((value) => !value);
+                setSelectedMovementIds(new Set());
+                setDetailMovement(null);
+              }}
+            >
+              Review
+              <span>
+                {reviewCount} item{reviewCount === 1 ? "" : "s"}
+              </span>
+            </button>
+          </div>
+        </div>
+        <div className="transactions-filter-row">
+          <div
+            className="transactions-account-filters"
+            aria-label="Filter by account"
+          >
+            <button
+              type="button"
+              aria-pressed={accountFilter === "all"}
+              onClick={() => setAccountFilter("all")}
+            >
+              All accounts
+            </button>
+            {accounts.map((account) => (
+              <button
+                type="button"
+                aria-pressed={accountFilter === account.id}
+                key={account.id}
+                onClick={() => setAccountFilter(account.id)}
+              >
+                {account.name}
+                {account.mask ? ` · ${account.mask}` : ""}
+                {!account.active ? " · inactive" : ""}
+              </button>
+            ))}
+          </div>
+          <p className="transactions-result-note" role="status">
+            {resultNote}
+            {query ? ` · Search: “${query}”` : ""}
+          </p>
+        </div>
+      </header>
       {error ? (
         <div className="review-error" role="alert">
           {error}
         </div>
       ) : null}
-      {visibleSuggestions.length > 0 || categoryQueue.length > 0 ? (
+      {reviewCount > 0 ? (
         <section
+          id="transaction-review-stack"
           className="review-stack"
           aria-label="Transaction review queues"
         >
@@ -459,7 +724,7 @@ export function TransactionsWorkspace({
             <TransferReview
               key={visibleSuggestions[0].id}
               suggestion={visibleSuggestions[0]}
-              queueCount={visibleSuggestions.length}
+              queueCount={unresolvedSuggestions.length}
               busy={busy}
               onTie={tie}
               onSkip={skipSuggestion}
@@ -480,18 +745,18 @@ export function TransactionsWorkspace({
                     })
                 ) ?? null
               }
-              queueCount={categoryQueue.length}
+              queueCount={unresolvedCategoryQueue.length}
               busy={busy}
               onAssign={(
                 category,
-                createRule,
+                ruleAction,
                 merchantKey,
                 expectedRuleRevision
               ) =>
                 assignCategory(
                   categoryQueue[0],
                   category,
-                  createRule,
+                  ruleAction,
                   merchantKey,
                   expectedRuleRevision
                 )
@@ -499,35 +764,186 @@ export function TransactionsWorkspace({
               onSkip={skipCategory}
             />
           ) : null}
+          {deferredCount > 0 ? (
+            <div className="transaction-review-deferred" role="status">
+              <div>
+                <strong>
+                  {deferredCount} review item{deferredCount === 1 ? "" : "s"}{" "}
+                  deferred for now.
+                </strong>
+                <span>
+                  {deferredSuggestionCount
+                    ? `${deferredSuggestionCount} transfer suggestion${deferredSuggestionCount === 1 ? "" : "s"}`
+                    : ""}
+                  {deferredSuggestionCount && deferredCategoryCount
+                    ? " · "
+                    : ""}
+                  {deferredCategoryCount
+                    ? `${deferredCategoryCount} category assignment${deferredCategoryCount === 1 ? "" : "s"}`
+                    : ""}
+                  {deferredCount === 1
+                    ? " remains unresolved."
+                    : " remain unresolved."}
+                </span>
+              </div>
+              <button
+                className="button secondary"
+                type="button"
+                data-resume-deferred
+                onClick={() => {
+                  setSkippedSuggestionIds(new Set());
+                  setSkippedCategoryTransactionIds(new Set());
+                  announce("Deferred review items are available again.");
+                  moveFocus("review");
+                }}
+              >
+                Resume deferred review
+              </button>
+            </div>
+          ) : null}
         </section>
       ) : null}
-      <section className="card movement-ledger" aria-labelledby="ledger-title">
-        <div className="section-heading">
+      {reviewFilter && reviewCount === 0 ? (
+        <div className="transaction-review-clear" role="status">
+          <strong>Nothing to review.</strong>
+          <span>
+            Every transfer in this view is tied and every transaction has a
+            category.
+          </span>
+        </div>
+      ) : null}
+      <section
+        className="movement-ledger"
+        id="movement-ledger"
+        aria-labelledby="ledger-title"
+      >
+        <div className="movement-ledger-heading">
           <h2 id="ledger-title" tabIndex={-1}>
             Movement ledger
           </h2>
-          <span className="muted">{displayMovements.length} movements</span>
+          <span className="muted">{resultNote}</span>
         </div>
-        {displayMovements.length ? (
-          <div className="movement-list">
-            {displayMovements.map((movement) => (
-              <TransactionRow
-                key={movement.id}
-                movement={movement}
-                untieBusy={busy}
-                onUntie={movement.kind === "TRANSFER" ? untie : undefined}
-              />
-            ))}
-          </div>
+        {filteredMovements.length ? (
+          <>
+            <div className="movement-table-header" aria-hidden="true">
+              <span />
+              <span>Date</span>
+              <span>Description</span>
+              <span>Category</span>
+              <span>Account</span>
+              <span>Amount</span>
+              <span />
+            </div>
+            <div className="movement-list" role="list">
+              {filteredMovements.map((movement) => (
+                <TransactionRow
+                  key={movement.id}
+                  movement={movement}
+                  selected={selectedMovementIds.has(movement.id)}
+                  untieBusy={busy}
+                  onSelect={(selected) =>
+                    setSelectedMovementIds((current) => {
+                      const next = new Set(current);
+                      if (selected) next.add(movement.id);
+                      else next.delete(movement.id);
+                      return next;
+                    })
+                  }
+                  onOpenDetail={(trigger) => {
+                    setDetailReturnFocus(trigger);
+                    setDetailMovement(movement);
+                  }}
+                  onUntie={movement.kind === "TRANSFER" ? untie : undefined}
+                  categories={categories}
+                  existingRule={
+                    movement.kind === "TRANSACTION"
+                      ? (displayRules.find(
+                          (rule) =>
+                            rule.merchantKey ===
+                            merchantRuleKey({
+                              merchantName: movement.legs[0].merchantName,
+                              name: movement.legs[0].name
+                            })
+                        ) ?? null)
+                      : null
+                  }
+                  onAssignCategory={assignCategoryFromLedger}
+                />
+              ))}
+            </div>
+          </>
         ) : (
           <div className="empty-state">
-            <h3>No transactions yet</h3>
+            <h3>No movements match this view</h3>
             <p className="muted">
-              Connect an account and start the sync worker to fill this ledger.
+              {displayMovements.length
+                ? reviewFilter
+                  ? "Turn off Review or choose another account to see more activity."
+                  : "Choose another account or clear the search to see more activity."
+                : `No transaction activity is available for ${monthLabel(month)}.`}
             </p>
           </div>
         )}
       </section>
-    </>
+      {selectedMovements.length > 0 ? (
+        <aside
+          className="transactions-bulk-bar"
+          aria-label="Selected movement actions"
+        >
+          <strong>{selectedMovements.length} selected</strong>
+          <button
+            className="button secondary"
+            type="button"
+            onClick={(event) => {
+              setDetailReturnFocus(event.currentTarget);
+              setDetailMovement(selectedMovements[0]);
+            }}
+          >
+            Open first selected
+          </button>
+          <button
+            className="button secondary"
+            type="button"
+            disabled
+            aria-describedby="bulk-category-unavailable"
+          >
+            Assign category to selected
+          </button>
+          <span id="bulk-category-unavailable">
+            Bulk persistence is not supported by the current API. No changes
+            have been made.
+          </span>
+          <button
+            className="transactions-clear-selection"
+            type="button"
+            onClick={() => setSelectedMovementIds(new Set())}
+          >
+            Clear selection
+          </button>
+        </aside>
+      ) : null}
+      <TransactionDetailDrawer
+        key={detailMovement?.id ?? "closed"}
+        movement={detailMovement}
+        categories={categories}
+        existingRule={
+          detailMovement?.kind === "TRANSACTION"
+            ? (displayRules.find(
+                (rule) =>
+                  rule.merchantKey ===
+                  merchantRuleKey({
+                    merchantName: detailMovement.legs[0].merchantName,
+                    name: detailMovement.legs[0].name
+                  })
+              ) ?? null)
+            : null
+        }
+        busy={busy}
+        returnFocus={detailReturnFocus}
+        onClose={() => setDetailMovement(null)}
+        onAssignCategory={assignCategoryFromLedger}
+        onUntie={untie}
+      />
+    </div>
   );
 }

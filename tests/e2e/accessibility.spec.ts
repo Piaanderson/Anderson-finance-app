@@ -5,13 +5,26 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { prisma } from "../../src/server/db";
 
+async function prepareTransactionScreenshot(page: Page) {
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  });
+  await page.waitForFunction(() => {
+    const skipLink = document.querySelector<HTMLElement>(".skip-link");
+    return !skipLink || skipLink.getBoundingClientRect().bottom <= 0;
+  });
+}
+
 async function captureBudgetEvidence(page: Page, projectName: string) {
   const directory = process.env.ISSUE27_SCREENSHOT_DIR;
   if (!directory || projectName !== "chromium") return;
   const originalViewport = page.viewportSize();
   await mkdir(directory, { recursive: true });
   await page.addStyleTag({
-    content: "nextjs-portal { display: none !important; }"
+    content:
+      "nextjs-portal { display: none !important; } .skip-link { visibility: hidden !important; }"
   });
   for (const width of [1280, 1920, 512, 390]) {
     await page.setViewportSize({ width, height: width < 600 ? 844 : 1080 });
@@ -20,6 +33,201 @@ async function captureBudgetEvidence(page: Page, projectName: string) {
       fullPage: true
     });
   }
+  if (originalViewport) await page.setViewportSize(originalViewport);
+}
+
+async function captureTransactionState(
+  page: Page,
+  projectName: string,
+  name: string
+) {
+  const directory = process.env.ISSUE24_SCREENSHOT_DIR;
+  if (!directory || projectName !== "chromium") return;
+  await mkdir(directory, { recursive: true });
+  await page.addStyleTag({
+    content:
+      "nextjs-portal { display: none !important; } .skip-link { visibility: hidden !important; }"
+  });
+  const viewportAligned = name === "drawer-1280";
+  if (viewportAligned) {
+    await expect(
+      page.locator(".transaction-detail-dialog h2")
+    ).toBeInViewport();
+  }
+  await prepareTransactionScreenshot(page);
+  await page.screenshot({
+    path: join(directory, `transactions-${name}.png`),
+    fullPage: !viewportAligned
+  });
+}
+
+async function verifyAndCaptureTransactionsAtRequiredWidths(
+  page: Page,
+  projectName: string
+) {
+  const originalViewport = page.viewportSize();
+  const directory = process.env.ISSUE24_SCREENSHOT_DIR;
+  if (directory && projectName === "chromium") {
+    await mkdir(directory, { recursive: true });
+  }
+  for (const width of [375, 390, 512, 768, 1280, 1920]) {
+    await page.setViewportSize({ width, height: width < 600 ? 844 : 1080 });
+    const layout = await page.evaluate(() => {
+      const inputs = [
+        ...document.querySelectorAll<HTMLElement>(
+          ".transactions-experience input:not([type='hidden']):not([type='checkbox']):not([type='radio']), .transactions-experience select"
+        )
+      ].filter((element) => element.getBoundingClientRect().width > 0);
+      const targets = [
+        ...document.querySelectorAll<HTMLElement>(
+          ".transactions-experience a[href], .transactions-experience button:not([disabled]), .transactions-experience input:not([type='hidden']):not([type='checkbox']):not([type='radio']):not([disabled]), .transactions-experience select:not([disabled]), .transactions-experience label:has(input[type='checkbox']:not([disabled])), .transactions-experience label:has(input[type='radio']:not([disabled])), .transactions-experience summary"
+        )
+      ].filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      });
+      const mobileDate = document.querySelector<HTMLElement>(
+        ".movement-row-integrated .movement-date"
+      );
+      return {
+        bodyWidth: document.body.scrollWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        viewportWidth: window.innerWidth,
+        inputFontSizes: inputs.map((element) =>
+          Number.parseFloat(getComputedStyle(element).fontSize)
+        ),
+        undersizedTargets: targets
+          .map((element) => ({
+            name:
+              element.getAttribute("aria-label") ||
+              element.textContent?.trim() ||
+              element.tagName,
+            width: element.getBoundingClientRect().width,
+            height: element.getBoundingClientRect().height
+          }))
+          .filter((target) => target.width < 44 || target.height < 44),
+        mobileDateLabel: mobileDate
+          ? getComputedStyle(mobileDate, "::before").content
+          : null,
+        ledgerHeaderDisplay: getComputedStyle(
+          document.querySelector<HTMLElement>(".movement-table-header")!
+        ).display
+      };
+    });
+    expect(layout.bodyWidth, `body overflow at ${width}px`).toBeLessThanOrEqual(
+      layout.viewportWidth
+    );
+    expect(
+      layout.documentWidth,
+      `document overflow at ${width}px`
+    ).toBeLessThanOrEqual(layout.viewportWidth);
+    expect(layout.undersizedTargets, `touch targets at ${width}px`).toEqual([]);
+    if (width <= 512) {
+      expect(layout.inputFontSizes.every((size) => size >= 16)).toBe(true);
+      expect(layout.mobileDateLabel).toBe('"Date"');
+      expect(layout.ledgerHeaderDisplay).toBe("none");
+    }
+    if (width >= 1280) expect(layout.ledgerHeaderDisplay).toBe("grid");
+    const results = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(results.violations, `axe at ${width}px`).toEqual([]);
+    if (width <= 512) {
+      await page.evaluate(() =>
+        window.scrollTo({ top: document.documentElement.scrollHeight })
+      );
+      const clearance = await page.evaluate(() => {
+        const navigation = document.querySelector<HTMLElement>(
+          ".mobile-bottom-navigation"
+        );
+        const controls = [
+          ...document.querySelectorAll<HTMLElement>(
+            ".movement-ledger button:not([disabled]), .movement-ledger input:not([disabled])"
+          )
+        ].filter((element) => element.getClientRects().length > 0);
+        return {
+          navigationTop:
+            navigation?.getBoundingClientRect().top ?? window.innerHeight,
+          lastControlBottom:
+            controls.at(-1)?.getBoundingClientRect().bottom ?? 0
+        };
+      });
+      expect(
+        clearance.lastControlBottom,
+        `bottom navigation clearance at ${width}px`
+      ).toBeLessThanOrEqual(clearance.navigationTop);
+      await page.evaluate(() => window.scrollTo({ top: 0 }));
+    }
+    if (
+      directory &&
+      projectName === "chromium" &&
+      [390, 512, 1280, 1920].includes(width)
+    ) {
+      await prepareTransactionScreenshot(page);
+      const fixedPositions =
+        width <= 512
+          ? await page.evaluate(() => {
+              const header =
+                document.querySelector<HTMLElement>(".mobile-header");
+              const navigation = document.querySelector<HTMLElement>(
+                ".mobile-bottom-navigation"
+              );
+              const previous = {
+                header: header?.getAttribute("style") ?? null,
+                navigation: navigation?.getAttribute("style") ?? null
+              };
+              if (header) {
+                header.style.position = "static";
+                header.style.inset = "auto";
+              }
+              if (navigation) {
+                navigation.style.position = "absolute";
+                navigation.style.inset = `${
+                  document.documentElement.scrollHeight -
+                  navigation.getBoundingClientRect().height
+                }px 0 auto`;
+              }
+              return previous;
+            })
+          : null;
+      await page.screenshot({
+        path: join(directory, `transactions-after-${width}.png`),
+        fullPage: true
+      });
+      if (fixedPositions) {
+        await page.evaluate((previous) => {
+          const header = document.querySelector<HTMLElement>(".mobile-header");
+          const navigation = document.querySelector<HTMLElement>(
+            ".mobile-bottom-navigation"
+          );
+          if (header) {
+            if (previous.header === null) header.removeAttribute("style");
+            else header.setAttribute("style", previous.header);
+          }
+          if (navigation) {
+            if (previous.navigation === null) {
+              navigation.removeAttribute("style");
+            } else {
+              navigation.setAttribute("style", previous.navigation);
+            }
+          }
+        }, fixedPositions);
+      }
+    }
+  }
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const reducedMotion = await page
+    .locator(".movement-row-integrated")
+    .first()
+    .evaluate((element) => ({
+      animation: Number.parseFloat(getComputedStyle(element).animationDuration),
+      transition: Number.parseFloat(
+        getComputedStyle(element).transitionDuration
+      )
+    }));
+  expect(reducedMotion.animation).toBeLessThanOrEqual(0.00001);
+  expect(reducedMotion.transition).toBeLessThanOrEqual(0.00001);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   if (originalViewport) await page.setViewportSize(originalViewport);
 }
 
@@ -599,6 +807,7 @@ test("transfer review ties and unties one movement accessibly", async ({
           referenceNumber: "REF-OUT",
           paymentChannel: "online",
           transactionCode: "transfer",
+          categoryId,
           amount: "400.00",
           isoCurrencyCode: "USD",
           date: new Date("2026-09-09T00:00:00.000Z"),
@@ -612,6 +821,7 @@ test("transfer review ties and unties one movement accessibly", async ({
           name: "PAYMENT RECEIVED",
           bankDescription: "THANK YOU PAYMENT",
           referenceNumber: "REF-IN",
+          categoryId,
           amount: "-400.00",
           isoCurrencyCode: "USD",
           date: new Date("2026-09-10T00:00:00.000Z")
@@ -627,6 +837,27 @@ test("transfer review ties and unties one movement accessibly", async ({
           isoCurrencyCode: "USD",
           date: new Date("2026-09-11T00:00:00.000Z"),
           pending: true
+        },
+        {
+          id: `${fixture}-aug-outgoing`,
+          householdId,
+          accountId: checkingId,
+          plaidTransactionId: `${fixture}-plaid-aug-outgoing`,
+          name: "AUGUST CARD PAYMENT",
+          merchantName: "August card payment",
+          amount: "777.00",
+          isoCurrencyCode: "USD",
+          date: new Date("2026-08-08T00:00:00.000Z")
+        },
+        {
+          id: `${fixture}-aug-incoming`,
+          householdId,
+          accountId: cardId,
+          plaidTransactionId: `${fixture}-plaid-aug-incoming`,
+          name: "AUGUST PAYMENT RECEIVED",
+          amount: "-777.00",
+          isoCurrencyCode: "USD",
+          date: new Date("2026-08-09T00:00:00.000Z")
         }
       ]
     });
@@ -634,11 +865,217 @@ test("transfer review ties and unties one movement accessibly", async ({
     await expect(
       page.getByRole("heading", { level: 1, name: "Transactions" })
     ).toBeVisible();
-
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Transactions" })
+    ).toHaveCount(1);
+    await expect(
+      page.getByText("September 2026", { exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("searchbox", { name: "Search transactions" })
+    ).toHaveAttribute("placeholder", "Search merchant, amount, memo");
+    const reviewToggle = page.getByRole("button", {
+      name: /Review \d+ items?/
+    });
     const transferReview = page.locator('[data-review-order="transfers"]');
     const categoryReview = page.locator('[data-review-order="categories"]');
+    await expect(reviewToggle).toHaveAttribute("aria-pressed", "false");
+    await expect(reviewToggle).toContainText("2 items");
+    await page.goto("/transactions?month=2026-09&query=coffee");
+    await expect(reviewToggle).toContainText("1 item");
+    await expect(transferReview).toHaveCount(0);
+    await expect(categoryReview).toBeVisible();
+    await page.goto("/transactions?month=2026-09");
+    await expect(reviewToggle).toContainText("2 items");
+    const accountFilters = page.getByLabel("Filter by account");
+    await expect(
+      accountFilters.getByRole("button", { name: "All accounts" })
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      accountFilters.getByRole("button", {
+        name: "Fixture checking · 1111"
+      })
+    ).toBeVisible();
+    const cardFilter = accountFilters.getByRole("button", {
+      name: "Fixture card · 2222"
+    });
+    await cardFilter.click();
+    await expect(cardFilter).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      page.getByRole("status").filter({ hasText: "1 of 3 movements shown" })
+    ).toBeVisible();
+    await accountFilters.getByRole("button", { name: "All accounts" }).click();
+
+    const coffeeRow = page.locator(`#movement-transaction-${fixture}-coffee`);
+    const detailTrigger = coffeeRow.getByRole("button", {
+      name: "Coffee shop"
+    });
+    if (testInfo.project.name === "chromium") {
+      await page.setViewportSize({ width: 1280, height: 1080 });
+    }
+    await detailTrigger.click();
+    const drawer = page.getByRole("dialog", { name: "Coffee shop" });
+    await expect(drawer).toBeVisible();
+    await expect(
+      drawer.getByText(
+        "Personal notes are not stored by the current data model."
+      )
+    ).toBeVisible();
+    await expect(drawer.getByRole("button", { name: /Close/ })).toBeFocused();
+    await expect(drawer.getByLabel("Exact merchant rule")).toHaveValue(
+      "PRESERVE"
+    );
+    await expect(
+      drawer.getByLabel("Exact normalized merchant key")
+    ).toHaveAttribute("readonly", "");
+    await page.keyboard.press("Shift+Tab");
+    await expect
+      .poll(() =>
+        drawer.evaluate((element) => element.contains(document.activeElement))
+      )
+      .toBe(true);
+    for (let index = 0; index < 8; index += 1) {
+      await page.keyboard.press("Tab");
+      await expect
+        .poll(() =>
+          drawer.evaluate((element) => element.contains(document.activeElement))
+        )
+        .toBe(true);
+    }
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const background = document.querySelector<HTMLElement>(
+            ".transactions-review-toggle"
+          );
+          background?.focus();
+          return {
+            modal: document
+              .querySelector<HTMLDialogElement>(".transaction-detail-dialog")
+              ?.matches(":modal"),
+            backgroundFocused: document.activeElement === background
+          };
+        })
+      )
+      .toEqual({ modal: true, backgroundFocused: false });
+    await captureTransactionState(page, testInfo.project.name, "drawer-1280");
+    const drawerCategory = drawer.getByRole("combobox", { name: "Category" });
+    await drawerCategory.fill("fixture");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await page.route(
+      "**/api/transactions/*/category",
+      async (route) => {
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "Controlled drawer failure." })
+        });
+      },
+      { times: 1 }
+    );
+    const drawerSave = drawer.getByRole("button", { name: "Save category" });
+    await drawerSave.click();
+    await expect(drawer).toBeVisible();
+    await expect(
+      drawer.getByRole("alert").filter({ hasText: "Category was not saved" })
+    ).toBeVisible();
+    await expect(drawerSave).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(drawer).toHaveCount(0);
+    await expect(detailTrigger).toBeFocused();
+
+    const inlineCategory = coffeeRow.getByRole("button", {
+      name: "Uncategorized"
+    });
+    await inlineCategory.click();
+    const inlinePicker = coffeeRow.getByRole("combobox", {
+      name: "Choose a category"
+    });
+    await expect(inlinePicker).toBeVisible();
+    await expect(coffeeRow.getByLabel("Exact merchant rule")).toHaveValue(
+      "PRESERVE"
+    );
+    await expect(
+      coffeeRow.getByLabel("Exact normalized merchant key")
+    ).toHaveAttribute("readonly", "");
+    await inlinePicker.fill("fixture");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await page.route(
+      "**/api/transactions/*/category",
+      async (route) => {
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "Controlled assignment failure." })
+        });
+      },
+      { times: 1 }
+    );
+    const inlineSave = coffeeRow.getByRole("button", {
+      name: "Save category"
+    });
+    await inlineSave.click();
+    await expect(
+      coffeeRow.getByRole("alert").filter({ hasText: "Category was not saved" })
+    ).toBeVisible();
+    await expect(inlinePicker).toBeVisible();
+    await expect(inlineSave).toBeFocused();
+    await expect(
+      prisma.merchantRule.count({ where: { householdId } })
+    ).resolves.toBe(0);
+    await coffeeRow.getByRole("button", { name: "Cancel" }).click();
+    await expect(inlineCategory).toBeFocused();
+
+    const selectCoffee = coffeeRow.getByRole("checkbox", {
+      name: "Select Coffee shop"
+    });
+    await selectCoffee.check();
+    const bulkActions = page.getByRole("complementary", {
+      name: "Selected movement actions"
+    });
+    await expect(bulkActions.getByText("1 selected")).toBeVisible();
+    await expect(
+      bulkActions.getByRole("button", {
+        name: "Assign category to selected"
+      })
+    ).toBeDisabled();
+    await expect(
+      bulkActions.getByText(/Bulk persistence is not supported/)
+    ).toBeVisible();
+    await reviewToggle.click();
+    await expect(reviewToggle).toHaveAttribute("aria-pressed", "true");
     await expect(transferReview).toBeVisible();
     await expect(categoryReview).toBeVisible();
+    const checkingFilter = accountFilters.getByRole("button", {
+      name: "Fixture checking · 1111"
+    });
+    await checkingFilter.click();
+    await detailTrigger.click();
+    await expect(
+      page.getByRole("dialog", { name: "Coffee shop" })
+    ).toBeVisible();
+    await page.goto("/transactions?month=2026-10");
+    await page
+      .getByRole("link", { name: "Previous month, September 2026" })
+      .click();
+    await expect(
+      page.getByRole("button", { name: /Review \d+ items?/ })
+    ).toHaveAttribute("aria-pressed", "false");
+    await expect(
+      page
+        .getByLabel("Filter by account")
+        .getByRole("button", { name: "All accounts" })
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      page.getByRole("complementary", { name: "Selected movement actions" })
+    ).toHaveCount(0);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    await expect(transferReview).toBeVisible();
+    await expect(categoryReview).toBeVisible();
+    await captureTransactionState(page, testInfo.project.name, "review-1280");
     await expect(transferReview.getByText("1 to review")).toBeVisible();
     const transferBox = await transferReview.boundingBox();
     const categoryBox = await categoryReview.boundingBox();
@@ -690,11 +1127,31 @@ test("transfer review ties and unties one movement accessibly", async ({
         .filter({ hasText: "Transfer suggestion skipped for now" })
     ).toBeAttached();
     await expect(transferReview).toHaveCount(0);
+    await expect(reviewToggle).toContainText("2 items");
+    await expect(
+      page.getByText("1 review item deferred for now.")
+    ).toBeVisible();
+    await expect(
+      page.getByText("1 transfer suggestion remains unresolved.")
+    ).toBeVisible();
     await expect(
       categoryReview.getByRole("combobox", {
         name: "Search and choose a category"
       })
     ).toBeFocused();
+    await page.getByRole("button", { name: "Resume deferred review" }).click();
+    await expect(transferReview).toBeVisible();
+    await expect(page.getByText("1 review item deferred for now.")).toHaveCount(
+      0
+    );
+    await categoryReview.getByRole("button", { name: "Skip for now" }).click();
+    await expect(categoryReview).toHaveCount(0);
+    await expect(reviewToggle).toContainText("2 items");
+    await expect(
+      page.getByText("1 category assignment remains unresolved.")
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Resume deferred review" }).click();
+    await expect(categoryReview).toBeVisible();
     await page.reload();
     await expect(transferReview).toBeVisible();
 
@@ -734,7 +1191,7 @@ test("transfer review ties and unties one movement accessibly", async ({
       })
     ).toBeFocused();
 
-    await expect(page.getByText("2 movements")).toBeVisible();
+    await expect(page.getByText("2 movements", { exact: true })).toBeVisible();
     const movementLedger = page.locator(".movement-ledger");
     await expect(
       movementLedger.getByRole("heading", {
@@ -755,24 +1212,48 @@ test("transfer review ties and unties one movement accessibly", async ({
       movementLedger.getByText("Pending", { exact: false })
     ).toBeVisible();
 
+    const transferRow = movementLedger.locator('[id^="movement-transfer-"]');
+    const transferDrawerTrigger = transferRow.getByRole("button", {
+      name: "Card payment"
+    });
+    await transferDrawerTrigger.click();
+    const transferDrawer = page.getByRole("dialog", { name: "Card payment" });
+    await expect(
+      transferDrawer.getByRole("heading", {
+        level: 2,
+        name: "Card payment"
+      })
+    ).toBeVisible();
+    await expect(
+      transferDrawer.getByRole("heading", {
+        level: 3,
+        name: "Fixture checking · 1111"
+      })
+    ).toBeVisible();
+    await expect(
+      transferDrawer.getByRole("heading", {
+        level: 3,
+        name: "Fixture card · 2222"
+      })
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(transferDrawer).toHaveCount(0);
+    await expect(transferDrawerTrigger).toBeFocused();
+
     const disclosure = page.locator(".movement-ledger .movement-disclosure");
     await expect(disclosure).toHaveAccessibleName("View both transfer legs");
     await expect(disclosure).toHaveAttribute("aria-expanded", "false");
     const controlledId = await disclosure.getAttribute("aria-controls");
     expect(controlledId).toBeTruthy();
-    await disclosure.focus();
+    await page.keyboard.press("Tab");
     await expect(disclosure).toBeFocused();
     const target = await disclosure.boundingBox();
     expect(target?.height).toBeGreaterThanOrEqual(44);
-    await expect
-      .poll(() =>
-        disclosure.evaluate((element) => getComputedStyle(element).outlineStyle)
-      )
-      .not.toBe("none");
-    await page.keyboard.press("Enter");
+    await disclosure.press("Enter");
     await expect(disclosure).toHaveAttribute("aria-expanded", "true");
     await expect(disclosure).toHaveAccessibleName("Hide both transfer legs");
     await expect(page.locator(`#${controlledId}`)).toBeVisible();
+    await captureTransactionState(page, testInfo.project.name, "expanded-1280");
     const details = page.getByRole("region", { name: "Card payment" });
     await expect(details.getByText("Fixture checking · 1111")).toBeVisible();
     await expect(details.getByText("Fixture card · 2222")).toBeVisible();
@@ -788,6 +1269,18 @@ test("transfer review ties and unties one movement accessibly", async ({
 
     const legs = details.locator(".transfer-leg");
     await expect(legs).toHaveCount(2);
+    await expect(
+      details.getByRole("heading", {
+        level: 4,
+        name: "Fixture checking · 1111"
+      })
+    ).toBeVisible();
+    await expect(
+      details.getByRole("heading", {
+        level: 4,
+        name: "Fixture card · 2222"
+      })
+    ).toBeVisible();
     const firstLeg = await legs.nth(0).boundingBox();
     const secondLeg = await legs.nth(1).boundingBox();
     if (testInfo.project.name === "mobile") {
@@ -808,13 +1301,23 @@ test("transfer review ties and unties one movement accessibly", async ({
         .getByRole("status")
         .filter({ hasText: "Both unchanged source transactions are restored" })
     ).toBeAttached();
-    await expect(page.getByText("3 movements")).toBeVisible();
+    await expect(page.getByText("3 movements", { exact: true })).toBeVisible();
     await expect(
       movementLedger.getByRole("heading", {
         level: 3,
         name: "Card payment"
       })
     ).toHaveCount(1);
+    await expect(
+      page
+        .locator(`#movement-transaction-${outgoingId}`)
+        .getByRole("button", { name: "Fixture category" })
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(`#movement-transaction-${incomingId}`)
+        .getByRole("button", { name: "Fixture category" })
+    ).toBeVisible();
     await expect(
       movementLedger.getByRole("heading", {
         level: 3,
@@ -839,6 +1342,46 @@ test("transfer review ties and unties one movement accessibly", async ({
     await expect(page.locator('[data-review-order="categories"]')).toHaveCount(
       0
     );
+    await reviewToggle.click();
+    await expect(reviewToggle).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator('[data-review-order="transfers"]')).toBeVisible();
+    await expect(
+      movementLedger.getByText("2 of 3 movements shown · Review filter on", {
+        exact: true
+      })
+    ).toBeVisible();
+    await expect(
+      page.locator(`#movement-transaction-${fixture}-coffee`)
+    ).toHaveCount(0);
+    await page
+      .locator('[data-review-order="transfers"]')
+      .getByRole("button", { name: "Tie as one transfer" })
+      .click();
+    await expect(page.locator('[data-review-order="transfers"]')).toHaveCount(
+      0
+    );
+    await expect(
+      page.getByRole("status").filter({ hasText: "Nothing to review" })
+    ).toBeVisible();
+    await expect(
+      page.getByText("Turn off Review or choose another account")
+    ).toBeVisible();
+    await captureTransactionState(
+      page,
+      testInfo.project.name,
+      "zero-work-1280"
+    );
+    await reviewToggle.click();
+    await expect(reviewToggle).toHaveAttribute("aria-pressed", "false");
+    await expect(
+      page.getByRole("status").filter({ hasText: "Nothing to review" })
+    ).toHaveCount(0);
+    if (testInfo.project.name === "chromium") {
+      await verifyAndCaptureTransactionsAtRequiredWidths(
+        page,
+        testInfo.project.name
+      );
+    }
 
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
@@ -999,7 +1542,9 @@ test("category review supports grouped keyboard assignment and optional merchant
     for (const section of ["Needs", "Flex", "Savings", "Debt"]) {
       await expect(panel.getByRole("group", { name: section })).toBeVisible();
     }
-    await expect(panel.getByText(/Existing rule: Utilities/)).toBeVisible();
+    const existingRuleAction = panel.getByLabel("Exact merchant rule");
+    await expect(existingRuleAction).toHaveValue("PRESERVE");
+    await expect(panel.getByText(/stays assigned to Utilities/)).toBeVisible();
 
     await combobox.focus();
     await combobox.fill("din");
@@ -1012,11 +1557,6 @@ test("category review supports grouped keyboard assignment and optional merchant
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
     await expect(panel.getByText("Selected: Dining · Flex")).toBeVisible();
-    const ruleCheckbox = panel.getByRole("checkbox", {
-      name: /Use this category for future exact merchant matches/
-    });
-    await expect(ruleCheckbox).toBeChecked();
-    await ruleCheckbox.uncheck();
     const assign = panel.getByRole("button", { name: "Assign category" });
     const target = await assign.boundingBox();
     expect(target?.height).toBeGreaterThanOrEqual(44);
@@ -1039,7 +1579,7 @@ test("category review supports grouped keyboard assignment and optional merchant
         .getByText("Dining", { exact: true })
     ).toBeVisible();
     await expect(
-      prisma.merchantRule.findUnique({
+      prisma.merchantRule.findUniqueOrThrow({
         where: {
           householdId_merchantKey: {
             householdId,
@@ -1047,7 +1587,7 @@ test("category review supports grouped keyboard assignment and optional merchant
           }
         }
       })
-    ).resolves.toBeNull();
+    ).resolves.toMatchObject({ categoryId: utilitiesId });
 
     const nextCombobox = panel.getByRole("combobox", {
       name: "Search and choose a category"
@@ -1058,11 +1598,9 @@ test("category review supports grouped keyboard assignment and optional merchant
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
     await expect(panel.getByText("Selected: Vacation · Savings")).toBeVisible();
-    const nextRule = panel.getByRole("checkbox", {
-      name: /Use this category for future exact merchant matches/
-    });
-    await expect(nextRule).not.toBeChecked();
-    await nextRule.check();
+    const nextRuleAction = panel.getByLabel("Exact merchant rule");
+    await expect(nextRuleAction).toHaveValue("PRESERVE");
+    await nextRuleAction.selectOption("UPSERT");
     await panel.getByRole("button", { name: "Assign category" }).focus();
     await page.keyboard.press("Space");
     await expect(
@@ -1089,6 +1627,68 @@ test("category review supports grouped keyboard assignment and optional merchant
         }
       })
     ).resolves.toMatchObject({ categoryId: vacationId });
+
+    const groceryRow = page.locator(`#movement-transaction-${groceryId}`);
+    await groceryRow.getByRole("button", { name: "Dining" }).click();
+    const inlinePicker = groceryRow.getByRole("combobox", {
+      name: "Choose a category"
+    });
+    await inlinePicker.fill("vac");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    const inlineRuleAction = groceryRow.getByLabel("Exact merchant rule");
+    await expect(inlineRuleAction).toHaveValue("PRESERVE");
+    await inlineRuleAction.selectOption("UPSERT");
+    await groceryRow.getByRole("button", { name: "Save category" }).click();
+    await expect(
+      groceryRow.getByRole("button", { name: "Vacation" })
+    ).toBeFocused();
+    await expect(
+      prisma.merchantRule.findUniqueOrThrow({
+        where: {
+          householdId_merchantKey: {
+            householdId,
+            merchantKey: "harris teeter"
+          }
+        }
+      })
+    ).resolves.toMatchObject({ categoryId: vacationId });
+
+    const groceryDetail = groceryRow.getByRole("button", {
+      name: "Harris Teeter"
+    });
+    await groceryDetail.click();
+    const drawer = page.getByRole("dialog", { name: "Harris Teeter" });
+    const drawerCategory = drawer.getByRole("combobox", { name: "Category" });
+    await drawerCategory.fill("din");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    const drawerRuleAction = drawer.getByLabel("Exact merchant rule");
+    await expect(drawerRuleAction).toHaveValue("PRESERVE");
+    await drawerRuleAction.selectOption("DELETE");
+    await drawer.getByRole("button", { name: "Save category" }).click();
+    await expect(drawer).toHaveCount(0);
+    await expect(groceryDetail).toBeFocused();
+    await expect(
+      prisma.merchantRule.findUnique({
+        where: {
+          householdId_merchantKey: {
+            householdId,
+            merchantKey: "harris teeter"
+          }
+        }
+      })
+    ).resolves.toBeNull();
+
+    await groceryDetail.click();
+    const refreshedDrawer = page.getByRole("dialog", { name: "Harris Teeter" });
+    await expect(
+      refreshedDrawer.getByRole("combobox", { name: "Category" })
+    ).toHaveAttribute("placeholder", "Dining · Flex");
+    await expect(refreshedDrawer.getByLabel("Exact merchant rule")).toHaveValue(
+      "PRESERVE"
+    );
+    await page.keyboard.press("Escape");
 
     await page.reload();
     await expect(page.locator('[data-review-order="categories"]')).toHaveCount(

@@ -1224,6 +1224,7 @@
 }
 
 .movement-primary h3,
+.transfer-leg h3,
 .transfer-leg h4 {
   font-size: 1rem;
 }
@@ -2260,7 +2261,8 @@ details[open] > .account-detail-panel,
 @media (max-width: 760px) {
   .app-shell {
     display: block;
-    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+    scroll-padding-bottom: calc(6rem + env(safe-area-inset-bottom));
   }
 
   .sidebar {
@@ -3558,5 +3560,840 @@ details[open] > .account-detail-panel,
 
   .budget-empty-state {
     margin-inline: 16px;
+  }
+}
+
+/* Issue #24 — integrated Transactions screen */
+.transactions-page-content {
+  gap: 0;
+  padding: 0;
+}
+
+.transactions-experience {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.transactions-header {
+  display: grid;
+  gap: 14px;
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--color-neutral-900);
+  background: linear-gradient(180deg, var(--color-surface), var(--color-bg));
+}
+
+.transactions-header-main,
+.transactions-period,
+.transactions-header-actions,
+.transactions-filter-row,
+.transactions-account-filters,
+.transactions-search {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.transactions-header-main {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.transactions-period {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.transactions-period > div:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.transactions-period h1 {
+  font-size: 1.375rem;
+}
+
+.transactions-movement-count {
+  color: var(--color-neutral-400);
+  font-size: 0.8125rem;
+}
+
+.transactions-month-nav {
+  display: flex;
+  gap: 5px;
+}
+
+.transactions-month-nav a,
+.transactions-today,
+.transactions-review-toggle,
+.transactions-account-filters button,
+.transactions-clear-selection,
+.transaction-detail-close,
+.movement-open-detail {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-neutral-300);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.transactions-month-nav a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+
+.transactions-today {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 12px;
+}
+
+.transactions-today[aria-current="date"],
+.transactions-account-filters button[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-900);
+  color: var(--color-accent-200);
+}
+
+.transactions-header-actions {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.transactions-search {
+  align-items: stretch;
+}
+
+.transactions-search .input {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.transactions-review-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-color: var(--color-accent-700);
+  color: var(--color-accent-200);
+}
+
+.transactions-review-toggle[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-900);
+}
+
+.transactions-review-toggle span {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--color-accent-900);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.transactions-filter-row {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.transactions-account-filters {
+  flex-wrap: wrap;
+}
+
+.transactions-account-filters button {
+  padding: 6px 11px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+
+.transactions-result-note {
+  color: var(--color-neutral-500);
+  font-size: 0.75rem;
+}
+
+.review-stack {
+  gap: 0;
+}
+
+.review-stack > .transfer-review,
+.review-stack > .category-review,
+.transaction-review-deferred {
+  margin: 18px 16px 20px;
+  padding: 20px;
+  border-color: var(--color-accent-800);
+  background: linear-gradient(
+    155deg,
+    var(--color-accent-900),
+    var(--color-bg) 68%
+  );
+  animation: transaction-rise 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.review-stack > .transfer-review + .category-review {
+  margin-top: 0;
+}
+
+.transaction-review-deferred {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--color-accent-800);
+  border-radius: var(--radius-lg);
+}
+
+.transaction-review-deferred > div {
+  display: grid;
+  gap: 4px;
+}
+
+.transaction-review-deferred span {
+  color: var(--color-neutral-400);
+}
+
+.merchant-rule-action-field select {
+  min-height: 44px;
+}
+
+.review-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-accent-300);
+  font-size: 0.75rem;
+}
+
+.review-progress-track {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.review-progress-track i {
+  width: 22px;
+  height: 5px;
+  display: block;
+  border-radius: 999px;
+  background: var(--color-accent-500);
+}
+
+.transaction-review-clear {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border-bottom: 1px solid var(--color-neutral-900);
+  color: var(--color-accent-300);
+}
+
+.transaction-review-clear span {
+  color: var(--color-neutral-400);
+}
+
+.movement-ledger {
+  min-width: 0;
+  border-radius: 0;
+  background: var(--color-bg);
+}
+
+.movement-ledger-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px 10px;
+}
+
+.movement-ledger-heading h2 {
+  font-size: 1rem;
+}
+
+.movement-table-header {
+  display: none;
+}
+
+.movement-list {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--color-neutral-900);
+  list-style: none;
+}
+
+.movement-row {
+  min-width: 0;
+  border-bottom: 1px solid var(--color-neutral-900);
+  border-left: 2px solid transparent;
+  transition: background-color 180ms ease;
+}
+
+.movement-row-integrated:has(.movement-select input:checked) {
+  border-left-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent-900) 62%, transparent);
+}
+
+.movement-row-integrated > .movement-summary {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 7px 12px;
+  padding: 12px 16px 12px 12px;
+}
+
+.movement-cell {
+  min-width: 0;
+}
+
+.movement-cell[data-label]::before {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--color-neutral-600);
+  content: attr(data-label);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.movement-select-cell {
+  grid-column: 1;
+  grid-row: 1 / span 6;
+}
+
+.movement-date,
+.movement-description,
+.movement-category-cell,
+.movement-account,
+.movement-amount,
+.movement-row-action {
+  grid-column: 2;
+}
+
+.movement-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-neutral-400);
+}
+
+.movement-state {
+  padding: 2px 7px;
+  border: 1px solid var(--color-warning);
+  border-radius: 999px;
+  color: var(--color-warning);
+  font-size: 0.6875rem;
+}
+
+.movement-select {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.movement-select input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+.movement-description {
+  display: grid;
+  gap: 3px;
+}
+
+.movement-description h3 {
+  min-width: 0;
+  font-size: 0.875rem;
+}
+
+.movement-detail-trigger {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+}
+
+.movement-detail-trigger:hover {
+  text-decoration-color: var(--color-accent);
+}
+
+.movement-description p {
+  margin: 0;
+  font-size: 0.75rem;
+}
+
+.movement-transfer-route {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  color: var(--color-accent-300);
+}
+
+.movement-transfer-route > :last-child {
+  color: var(--color-neutral-500);
+}
+
+.movement-route-line {
+  width: 22px;
+  height: 1px;
+  display: inline-block;
+  background: linear-gradient(
+    90deg,
+    var(--color-accent-700),
+    var(--color-accent-300)
+  );
+  animation: movement-line 2.2s ease-in-out infinite;
+}
+
+.movement-category-button {
+  min-width: 44px;
+  min-height: 44px;
+  background: var(--color-bg);
+  cursor: pointer;
+}
+
+.movement-account {
+  color: var(--color-neutral-400);
+  overflow-wrap: anywhere;
+}
+
+.movement-amount {
+  justify-items: start;
+  color: var(--color-neutral-200);
+  text-align: left;
+}
+
+.movement-row-action .movement-disclosure,
+.movement-open-detail {
+  width: 100%;
+}
+
+.transactions-experience .movement-disclosure:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.movement-open-detail {
+  padding: 7px 12px;
+  color: var(--color-accent-300);
+}
+
+.movement-inline-category,
+.movement-row > .transfer-details {
+  margin: 0 16px 14px;
+}
+
+.movement-inline-category {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--color-accent-800);
+  border-radius: 10px;
+  background: var(--color-bg);
+}
+
+.movement-inline-category-heading,
+.movement-inline-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.transactions-bulk-bar {
+  position: sticky;
+  z-index: 12;
+  bottom: calc(68px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 10px;
+  padding: 13px 16px;
+  border-top: 1px solid var(--color-accent-800);
+  background: linear-gradient(180deg, var(--color-accent-900), var(--color-bg));
+  box-shadow: 0 -10px 30px rgb(0 0 0 / 28%);
+}
+
+.transactions-bulk-bar > span {
+  max-width: 36rem;
+  color: var(--color-neutral-400);
+  font-size: 0.75rem;
+}
+
+.transactions-clear-selection {
+  padding-inline: 12px;
+}
+
+.transaction-detail-dialog {
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--color-accent-800);
+  background: var(--color-bg);
+  color: var(--color-text);
+  box-shadow: -24px 0 60px rgb(0 0 0 / 60%);
+}
+
+.transaction-detail-dialog[open] {
+  animation: transaction-drawer-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.transaction-detail-dialog::backdrop {
+  background: rgb(8 9 18 / 58%);
+}
+
+.transaction-detail-panel {
+  min-width: 0;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.transaction-detail-heading {
+  display: grid;
+  gap: 10px;
+  padding: max(16px, env(safe-area-inset-top)) 18px 16px;
+  border-bottom: 1px solid var(--color-neutral-900);
+  background: linear-gradient(180deg, var(--color-surface), var(--color-bg));
+}
+
+.transaction-detail-heading-row,
+.transaction-detail-title-row {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.transaction-detail-close {
+  padding-inline: 10px;
+}
+
+.transaction-detail-title-row > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.transaction-detail-title-row h2 {
+  font-size: 1.5rem;
+}
+
+.transaction-detail-kind {
+  color: var(--color-accent-300);
+  font-size: 0.75rem;
+}
+
+.transaction-detail-amount {
+  white-space: nowrap;
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.transaction-raw-detail {
+  border-bottom: 1px solid var(--color-neutral-900);
+}
+
+.transaction-raw-detail > summary {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  color: var(--color-accent-300);
+  cursor: pointer;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.transaction-raw-detail > div {
+  display: grid;
+  gap: 12px;
+  padding: 0 18px 18px;
+}
+
+.transaction-raw-primary {
+  padding: 12px 14px;
+  border: 1px solid var(--color-neutral-800);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-family: ui-monospace, Menlo, monospace;
+  overflow-wrap: anywhere;
+}
+
+.transaction-user-fields {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.transaction-user-fields dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.transaction-user-fields dl > div {
+  display: grid;
+  gap: 4px;
+}
+
+.transaction-user-fields dt {
+  color: var(--color-neutral-400);
+  font-size: 0.8125rem;
+}
+
+.transaction-user-fields dd {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+.transaction-user-fields dd span {
+  color: var(--color-neutral-500);
+  font-size: 0.75rem;
+}
+
+.transaction-drawer-category {
+  display: grid;
+  gap: 12px;
+}
+
+.transaction-drawer-transfer {
+  padding: 18px;
+}
+
+.transaction-drawer-transfer .transfer-details {
+  margin: 0;
+}
+
+@keyframes transaction-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes transaction-drawer-in {
+  from {
+    transform: translateX(28px);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes movement-line {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (min-width: 700px) {
+  .transactions-header {
+    padding: 20px 26px 16px;
+  }
+
+  .transactions-header-main {
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-direction: row;
+  }
+
+  .transactions-header-actions {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .transactions-search .input {
+    width: min(25vw, 250px);
+  }
+
+  .transactions-filter-row {
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+  }
+
+  .review-stack > .transfer-review,
+  .review-stack > .category-review {
+    margin-inline: 26px;
+  }
+
+  .movement-ledger-heading {
+    align-items: center;
+    flex-direction: row;
+    padding-inline: 26px;
+  }
+
+  .transactions-bulk-bar {
+    bottom: 0;
+    align-items: center;
+    flex-direction: row;
+    padding-inline: 22px;
+  }
+
+  .transactions-clear-selection {
+    margin-left: auto;
+  }
+
+  .transaction-detail-dialog {
+    width: 520px;
+    max-width: 80vw;
+  }
+}
+
+@media (max-width: 699px) {
+  .transaction-review-deferred {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .transaction-review-deferred .button {
+    width: 100%;
+  }
+}
+
+@media (min-width: 900px) {
+  .movement-table-header,
+  .movement-row-integrated > .movement-summary {
+    display: grid;
+    grid-template-columns:
+      44px 60px minmax(190px, 1.5fr) minmax(130px, 1.15fr)
+      minmax(120px, 1fr) 104px 44px;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .movement-table-header {
+    padding: 9px 26px 9px 20px;
+    border-block: 1px solid var(--color-neutral-900);
+    background: var(--color-surface);
+    color: var(--color-neutral-400);
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .movement-table-header > :nth-child(6) {
+    text-align: right;
+  }
+
+  .movement-row-integrated > .movement-summary {
+    padding: 9px 26px 9px 20px;
+  }
+
+  .movement-select-cell,
+  .movement-date,
+  .movement-description,
+  .movement-category-cell,
+  .movement-account,
+  .movement-amount,
+  .movement-row-action {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .movement-cell[data-label]::before {
+    display: none;
+  }
+
+  .movement-description h3 {
+    overflow: hidden;
+  }
+
+  .movement-detail-trigger {
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .movement-account {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .movement-amount {
+    justify-items: end;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .movement-row-action .movement-disclosure {
+    width: 44px;
+    padding: 0;
+    border-color: transparent;
+  }
+
+  .movement-row-action .movement-disclosure > span:first-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .movement-open-detail {
+    width: 44px;
+    padding: 0;
+    overflow: hidden;
+    color: var(--color-accent-300);
+    font-size: 0;
+  }
+
+  .movement-open-detail::after {
+    color: var(--color-accent-300);
+    content: "›";
+    font-size: 1.25rem;
+  }
+
+  .movement-inline-category,
+  .movement-row > .transfer-details {
+    margin-inline: 20px 22px;
   }
 }

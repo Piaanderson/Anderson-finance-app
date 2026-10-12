@@ -22,6 +22,7 @@ export type MovementLeg = {
   revision: string;
   role: "OUTGOING" | "INCOMING" | "SINGLE";
   direction: MovementDirection;
+  category: MovementCategory | null;
   account: {
     id: string;
     name: string;
@@ -180,13 +181,15 @@ function effectiveDate(transaction: MovementSourceTransaction) {
 
 function legFor(
   transaction: MovementSourceTransaction,
-  role: MovementLeg["role"]
+  role: MovementLeg["role"],
+  householdId: string
 ): MovementLeg {
   return {
     transactionId: transaction.id,
     revision: transaction.updatedAt.toISOString(),
     role,
     direction: directionFor(transaction.amount),
+    category: categoryFor(transaction, householdId),
     account: {
       id: transaction.account.id,
       name: transaction.account.name,
@@ -297,8 +300,8 @@ export function buildHouseholdMovements({
     ) {
       continue;
     }
-    const outgoingLeg = legFor(outgoing, "OUTGOING");
-    const incomingLeg = legFor(incoming, "INCOMING");
+    const outgoingLeg = legFor(outgoing, "OUTGOING", householdId);
+    const incomingLeg = legFor(incoming, "INCOMING", householdId);
     movements.push({
       id: `transfer:${outgoing.id}:${incoming.id}`,
       kind: "TRANSFER",
@@ -317,7 +320,7 @@ export function buildHouseholdMovements({
 
   for (const transaction of ownedTransactions) {
     if (consumed.has(transaction.id)) continue;
-    const leg = legFor(transaction, "SINGLE");
+    const leg = legFor(transaction, "SINGLE", householdId);
     movements.push({
       id: `transaction:${transaction.id}`,
       kind: "TRANSACTION",

@@ -26,12 +26,14 @@ export function TransferDetails({
   id,
   legs,
   labelledBy,
+  headingLevel = 4,
   untieBusy = false,
   onUntie
 }: {
   id: string;
   legs: [MovementLeg, MovementLeg];
   labelledBy: string;
+  headingLevel?: 3 | 4;
   untieBusy?: boolean;
   onUntie?: () => void;
 }) {
@@ -57,10 +59,17 @@ export function TransferDetails({
                 <span className="eyebrow">
                   {leg.role === "OUTGOING" ? "Money out" : "Money in"}
                 </span>
-                <h4 id={`${id}-${leg.role.toLowerCase()}`}>
-                  {leg.account.name}
-                  {leg.account.mask ? ` · ${leg.account.mask}` : ""}
-                </h4>
+                {headingLevel === 3 ? (
+                  <h3 id={`${id}-${leg.role.toLowerCase()}`}>
+                    {leg.account.name}
+                    {leg.account.mask ? ` · ${leg.account.mask}` : ""}
+                  </h3>
+                ) : (
+                  <h4 id={`${id}-${leg.role.toLowerCase()}`}>
+                    {leg.account.name}
+                    {leg.account.mask ? ` · ${leg.account.mask}` : ""}
+                  </h4>
+                )}
               </div>
               <strong className="row-amount">{signedLegAmount(leg)}</strong>
             </div>
