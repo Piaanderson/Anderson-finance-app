@@ -4235,27 +4235,6 @@ details[open] > .account-detail-panel,
     padding: 20px 26px 16px;
   }
 
-  .transactions-header-main {
-    align-items: flex-end;
-    justify-content: space-between;
-    flex-direction: row;
-  }
-
-  .transactions-header-actions {
-    align-items: center;
-    flex-direction: row;
-  }
-
-  .transactions-search .input {
-    width: min(25vw, 250px);
-  }
-
-  .transactions-filter-row {
-    align-items: center;
-    justify-content: space-between;
-    flex-direction: row;
-  }
-
   .review-stack > .transfer-review,
   .review-stack > .category-review {
     margin-inline: 26px;
@@ -4296,6 +4275,27 @@ details[open] > .account-detail-panel,
 }
 
 @media (min-width: 900px) {
+  .transactions-header-main {
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-direction: row;
+  }
+
+  .transactions-header-actions {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .transactions-search .input {
+    width: min(25vw, 250px);
+  }
+
+  .transactions-filter-row {
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+  }
+
   .movement-table-header,
   .movement-row-integrated > .movement-summary {
     display: grid;

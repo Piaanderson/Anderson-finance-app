@@ -1021,6 +1021,7 @@ test("transfer review ties and unties one movement accessibly", async ({
       coffeeRow.getByRole("alert").filter({ hasText: "Category was not saved" })
     ).toBeVisible();
     await expect(inlinePicker).toBeVisible();
+    await expect(inlineSave).toBeEnabled();
     await expect(inlineSave).toBeFocused();
     await expect(
       prisma.merchantRule.count({ where: { householdId } })

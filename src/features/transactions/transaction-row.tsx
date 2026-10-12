@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type {
   CategoryReviewChoice,
   MerchantRuleReview
@@ -103,6 +103,11 @@ export function TransactionRow({
   const assignmentUnchanged =
     selectedCategory?.id === movement.category?.id && ruleAction === "PRESERVE";
 
+  useEffect(() => {
+    if (!categoryOpen || !inlineError || untieBusy) return;
+    saveCategoryRef.current?.focus();
+  }, [categoryOpen, inlineError, untieBusy]);
+
   return (
     <article
       className={`movement-row${onSelect ? " movement-row-integrated" : ""}`}
@@ -183,7 +188,10 @@ export function TransactionRow({
               type="button"
               aria-expanded={categoryOpen}
               aria-controls={categoryId}
-              onClick={() => setCategoryOpen((value) => !value)}
+              onClick={() => {
+                setInlineError("");
+                setCategoryOpen((value) => !value);
+              }}
             >
               {movement.category?.name ?? "Uncategorized"}
             </button>
@@ -347,9 +355,6 @@ export function TransactionRow({
                     setInlineError(
                       "Category was not saved. Review the error and try again."
                     );
-                    requestAnimationFrame(() =>
-                      saveCategoryRef.current?.focus()
-                    );
                   }
                 }
               }}
@@ -360,6 +365,7 @@ export function TransactionRow({
               className="button secondary"
               type="button"
               onClick={() => {
+                setInlineError("");
                 setCategoryOpen(false);
                 requestAnimationFrame(() =>
                   categoryTriggerRef.current?.focus()
