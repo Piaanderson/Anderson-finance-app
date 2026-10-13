@@ -1,6 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef, useState } from "react";
+import {
+  useActionState,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore
+} from "react";
 import { maintainCategoryAction, type CategoryFormState } from "./actions";
 import type {
   CategoryMaintenanceCategory,
@@ -11,6 +18,19 @@ import { GroupedCategoryPicker } from "./grouped-category-picker";
 import { normalizeMerchantRuleKey } from "./merchant-rule";
 
 const initialState: CategoryFormState = {};
+const subscribeToNothing = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
+
+function useClientReady() {
+  // Keep action forms inert until React can own submission after a streamed
+  // navigation; otherwise the browser can start a native POST mid-hydration.
+  return useSyncExternalStore(
+    subscribeToNothing,
+    clientSnapshot,
+    serverSnapshot
+  );
+}
 
 function Feedback({ state }: { state: CategoryFormState }) {
   return (
@@ -142,6 +162,7 @@ function CategoryCard({
     maintainCategoryAction,
     initialState
   );
+  const clientReady = useClientReady();
   const [mergeTargetId, setMergeTargetId] = useState("");
   const cardRef = useRef<HTMLLIElement>(null);
   const reactId = useId().replaceAll(":", "");
@@ -189,7 +210,11 @@ function CategoryCard({
             Historical transactions and allocations remain linked. Preserved
             merchant rules are paused until restore.
           </p>
-          <button className="button secondary" type="submit" disabled={pending}>
+          <button
+            className="button secondary"
+            type="submit"
+            disabled={!clientReady || pending}
+          >
             {pending ? "Restoring…" : `Restore ${category.name}`}
           </button>
         </form>
@@ -233,7 +258,7 @@ function CategoryCard({
             <button
               className="button secondary"
               type="submit"
-              disabled={pending}
+              disabled={!clientReady || pending}
             >
               Save name
             </button>
@@ -253,7 +278,7 @@ function CategoryCard({
               <button
                 className="button secondary"
                 type="submit"
-                disabled={pending || first}
+                disabled={!clientReady || pending || first}
               >
                 Move up
               </button>
@@ -268,7 +293,7 @@ function CategoryCard({
               <button
                 className="button secondary"
                 type="submit"
-                disabled={pending || last}
+                disabled={!clientReady || pending || last}
               >
                 Move down
               </button>
@@ -308,7 +333,7 @@ function CategoryCard({
               <button
                 className="button secondary"
                 type="submit"
-                disabled={pending}
+                disabled={!clientReady || pending}
               >
                 Move group
               </button>
@@ -342,7 +367,7 @@ function CategoryCard({
                 <button
                   className="button secondary"
                   type="submit"
-                  disabled={pending}
+                  disabled={!clientReady || pending}
                 >
                   Archive category
                 </button>
@@ -388,7 +413,7 @@ function CategoryCard({
                 <button
                   className="button danger-button"
                   type="submit"
-                  disabled={pending || !mergeTarget}
+                  disabled={!clientReady || pending || !mergeTarget}
                 >
                   Merge and archive
                 </button>

@@ -24,13 +24,15 @@ reflow, and 390px mobile.
 
 ## Local completion status
 
-Implementation is complete locally and remains pending orchestrator review and
-CI. No issue status was changed. Final targeted verification:
+Implementation and independent review are complete locally and remain pending
+CI. Final verification:
 
 - Accounts Vitest: 49 tests passed across 8 files.
 - Accounts desktop/mobile Playwright: 2 tests passed.
 - Recovery and manual-account accessibility flows: 4 tests passed.
 - Phase 7 desktop/mobile audit: 10 tests passed.
+- Full orchestrator gate: 214 unit/integration tests and 35 applicable
+  desktop/mobile Playwright tests passed; three project skips were intentional.
 - Typecheck, lint, format check, production build, and `git diff --check`
   passed.
 

@@ -125,6 +125,9 @@ export function TransactionDetailDrawer({
 
   function close() {
     dialogRef.current?.close();
+    if (returnFocus?.isConnected) {
+      returnFocus.focus({ preventScroll: true });
+    }
   }
 
   return (
@@ -132,13 +135,13 @@ export function TransactionDetailDrawer({
       ref={dialogRef}
       className="transaction-detail-dialog"
       aria-labelledby={`transaction-detail-title-${reactId}`}
+      onCancel={(event) => {
+        // Own Escape's close once so native restoration cannot race a second
+        // focus call from the dialog's close event.
+        event.preventDefault();
+        close();
+      }}
       onKeyDownCapture={(event) => {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          event.stopPropagation();
-          close();
-          return;
-        }
         if (event.key !== "Tab") return;
         const focusable = [
           ...event.currentTarget.querySelectorAll<HTMLElement>(
@@ -167,10 +170,7 @@ export function TransactionDetailDrawer({
       onClick={(event) => {
         if (event.target === event.currentTarget) close();
       }}
-      onClose={() => {
-        onClose();
-        returnFocus?.focus();
-      }}
+      onClose={onClose}
     >
       <div className="transaction-detail-panel">
         <header className="transaction-detail-heading">

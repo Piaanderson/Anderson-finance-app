@@ -2605,12 +2605,30 @@ test("category maintenance preserves dependencies and supports accessible exact 
     ).toBeVisible();
     await page.goto("/categories");
     diningRow = page.locator(`[data-category-id="${diningId}"]`);
-    await diningRow.getByRole("button", { name: "Restore Dining" }).click();
+    const restoreDining = diningRow.getByRole("button", {
+      name: "Restore Dining"
+    });
+    await expect(restoreDining).toBeEnabled();
+    const restoreResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname === "/categories"
+    );
+    await restoreDining.click();
+    const restoreResponse = await restoreResponsePromise;
+    expect(restoreResponse.ok()).toBe(true);
+    expect(await restoreResponse.finished()).toBeNull();
     await expect(
       page
         .getByRole("status")
         .filter({ hasText: "preserved merchant rules are active again" })
     ).toBeAttached();
+    await expect(
+      prisma.category.findUniqueOrThrow({ where: { id: diningId } })
+    ).resolves.toMatchObject({ archivedAt: null });
+    await expect(
+      prisma.merchantRule.findUniqueOrThrow({ where: { id: ruleId } })
+    ).resolves.toMatchObject({ categoryId: diningId });
 
     const coffeeRow = page.locator(`[data-category-id="${coffeeId}"]`);
     await coffeeRow.getByText("Archive or merge", { exact: true }).click();
