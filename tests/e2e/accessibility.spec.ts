@@ -478,12 +478,22 @@ test("account recovery controls are labelled, keyboard-operable, and announced",
     });
     await expect(reconnectCard.getByText("Reconnect required")).toBeVisible();
     await expect(
+      page
+        .getByRole("article", { name: "Reconnect checking" })
+        .getByText(/Reconnect required · last sync/)
+    ).toBeVisible();
+    await expect(
       reconnectCard.getByRole("button", {
         name: "Reconnect Fixture reconnect bank",
         exact: true
       })
     ).toBeVisible();
     await expect(errorCard.getByText("Sync stopped")).toBeVisible();
+    await expect(
+      page
+        .getByRole("article", { name: "Error checking" })
+        .getByText(/Sync stopped · last sync/)
+    ).toBeVisible();
 
     const retry = errorCard.getByRole("button", {
       name: "Try sync again for Fixture error bank",
@@ -548,7 +558,7 @@ test("manual accounts expose accessible validation, valuation, linking, and arch
     householdId = membership.householdId;
 
     const createForm = page
-      .getByRole("heading", { level: 3, name: "Account details" })
+      .getByRole("heading", { level: 3, name: "Add a manual account" })
       .locator("..");
     await createForm.getByLabel("Account name").fill("X");
     await createForm.getByLabel("Account type").selectOption("DEBT");
@@ -590,8 +600,7 @@ test("manual accounts expose accessible validation, valuation, linking, and arch
     );
     await expect(
       page
-        .getByRole("heading", { level: 3, name: "Manual mortgage" })
-        .locator("..")
+        .getByRole("article", { name: "Manual mortgage" })
         .getByText("−$250,000.00")
         .first()
     ).toBeVisible();
@@ -621,25 +630,26 @@ test("manual accounts expose accessible validation, valuation, linking, and arch
     await expect(
       page.getByRole("status").filter({ hasText: "Property and debt linked." })
     ).toBeVisible();
-    const propertyCard = page
-      .getByRole("heading", { level: 3, name: "Primary home" })
-      .locator("..");
-    await propertyCard.getByText("View account details").click();
+    const propertyCard = page.getByRole("article", { name: "Primary home" });
+    await propertyCard
+      .getByText("Property source and maintenance for Primary home")
+      .click();
     await expect(propertyCard.getByText("Derived equity:")).toBeVisible();
     await expect(
       propertyCard.locator(".property-pair").getByText("$150,000.00")
     ).toBeVisible();
 
-    const mortgageHeading = page.getByRole("heading", {
-      level: 3,
-      name: "Manual mortgage"
-    });
-    const mortgageCard = mortgageHeading.locator("..");
-    const accountDisclosure = mortgageCard.getByText("View account details");
+    const mortgageCard = propertyCard;
+    const accountDisclosure = mortgageCard.getByText(
+      "Debt source and maintenance for Manual mortgage"
+    );
     await accountDisclosure.focus();
     await page.keyboard.press("Enter");
     await expect(accountDisclosure).toBeFocused();
-    const disclosure = mortgageCard.getByText("Edit or archive");
+    const mortgageSourceDetails = accountDisclosure.locator("..");
+    const disclosure = mortgageSourceDetails.getByText(
+      "Edit valuation, name, or archive"
+    );
     await disclosure.focus();
     await page.keyboard.press("Enter");
     const editForm = mortgageCard
@@ -655,37 +665,34 @@ test("manual accounts expose accessible validation, valuation, linking, and arch
         .getByRole("status")
     ).toContainText("Updated mortgage was updated.");
     await expect(
-      page
-        .getByRole("heading", { level: 3, name: "Updated mortgage" })
-        .locator("..")
-        .getByText("−$240,000.00")
-        .first()
+      propertyCard.getByText("Debt source and maintenance for Updated mortgage")
     ).toBeVisible();
 
-    const updatedMortgageCard = page
-      .getByRole("heading", {
-        level: 3,
-        name: "Updated mortgage"
-      })
+    const updatedMortgageCard = page.getByRole("article", {
+      name: "Primary home"
+    });
+    const updatedDetails = updatedMortgageCard
+      .getByText("Debt source and maintenance for Updated mortgage")
       .locator("..");
-    const updatedDetails = updatedMortgageCard.locator(
-      "details.account-details"
-    );
     if ((await updatedDetails.getAttribute("open")) === null) {
-      await updatedMortgageCard.getByText("View account details").click();
+      await updatedMortgageCard
+        .getByText("Debt source and maintenance for Updated mortgage")
+        .click();
     }
-    const editDetails = updatedMortgageCard
-      .getByText("Edit or archive")
+    const editDetails = updatedDetails
+      .getByText("Edit valuation, name, or archive")
       .locator("..");
     if ((await editDetails.getAttribute("open")) === null) {
-      await updatedMortgageCard.getByText("Edit or archive").click();
+      await updatedMortgageCard
+        .getByText("Edit valuation, name, or archive")
+        .click();
     }
     page.once("dialog", (dialog) => dialog.accept());
     await updatedMortgageCard
       .getByRole("button", { name: "Archive Updated mortgage" })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Updated mortgage" })
+      page.getByText("Debt source and maintenance for Updated mortgage")
     ).toHaveCount(0);
 
     const archived = await prisma.financialAccount.findFirstOrThrow({

@@ -3,7 +3,8 @@ import { prisma } from "@/server/db";
 import {
   deriveNetWorthHistory,
   derivePropertyEquity,
-  eightMonthWindowStart
+  eightMonthWindowStart,
+  summarizeAccountLedger
 } from "./accounts-experience";
 import { summarizePositions } from "./position-summary";
 
@@ -87,6 +88,9 @@ export async function getAccountOverview(
   householdId: string,
   now = new Date()
 ) {
+  const budgetMonth = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+  );
   const [items, accounts, links] = await Promise.all([
     prisma.plaidItem.findMany({
       where: { householdId, status: { not: "REMOVED" } },
@@ -165,6 +169,20 @@ export async function getAccountOverview(
             pending: true
           }
         },
+        budgetDestinations: {
+          where: {
+            budgetMonth: { householdId, month: budgetMonth },
+            category: { householdId }
+          },
+          select: {
+            planned: true,
+            category: { select: { name: true, section: true } }
+          },
+          orderBy: [
+            { category: { section: "asc" } },
+            { category: { sortOrder: "asc" } }
+          ]
+        },
         _count: {
           select: {
             transactions: { where: { householdId, removedAt: null } }
@@ -197,7 +215,7 @@ export async function getAccountOverview(
           }
         }
       },
-      orderBy: { createdAt: "asc" }
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }]
     })
   ]);
 
@@ -234,6 +252,11 @@ export async function getAccountOverview(
       displayAmount: transaction.amount.negated().toFixed(2)
     })),
     activityCount: account._count.transactions,
+    budgetRole: account.budgetDestinations.map((allocation) => ({
+      category: allocation.category.name,
+      section: allocation.category.section,
+      planned: allocation.planned.toFixed(2)
+    })),
     connection: account.plaidItem
       ? {
           id: account.plaidItem.id,
@@ -244,6 +267,10 @@ export async function getAccountOverview(
       : null
   }));
 
+  const debtLinkCounts = links.reduce<Map<string, number>>((counts, link) => {
+    counts.set(link.debtAccountId, (counts.get(link.debtAccountId) ?? 0) + 1);
+    return counts;
+  }, new Map());
   const propertyGroups = Object.values(
     links.reduce<
       Record<
@@ -284,10 +311,25 @@ export async function getAccountOverview(
       });
       return groups;
     }, {})
-  ).map((group) => ({
-    ...group,
-    equity: derivePropertyEquity(group.property, group.debts)
-  }));
+  ).map((group) => {
+    const duplicateDebts = group.debts.filter(
+      (debt) => (debtLinkCounts.get(debt.id) ?? 0) > 1
+    );
+    return {
+      ...group,
+      combineInLedger: duplicateDebts.length === 0,
+      equity: duplicateDebts.length
+        ? {
+            status: "unavailable" as const,
+            reason: `${duplicateDebts
+              .map((debt) => debt.name)
+              .join(
+                ", "
+              )} is linked to multiple properties. Equity is unavailable until the duplicate link is removed.`
+          }
+        : derivePropertyEquity(group.property, group.debts)
+    };
+  });
 
   const positionSummary = summarizePositions(
     accounts.map((account) => ({
@@ -297,6 +339,16 @@ export async function getAccountOverview(
       isoCurrencyCode: account.isoCurrencyCode,
       isActive: true
     }))
+  );
+  const ledgerSummary = summarizeAccountLedger(
+    accounts.map((account) => ({
+      id: account.id,
+      classification: account.classification,
+      currentBalance: account.currentBalance,
+      isoCurrencyCode: account.isoCurrencyCode,
+      isActive: true
+    })),
+    propertyGroups
   );
 
   return {
@@ -310,6 +362,7 @@ export async function getAccountOverview(
     })),
     accounts: mappedAccounts,
     positionSummary,
+    ledgerSummary,
     propertyGroups,
     netWorthHistory,
     historyWindow: { start: historyStart, end: now }

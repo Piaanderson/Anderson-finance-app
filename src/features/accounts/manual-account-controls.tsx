@@ -62,6 +62,7 @@ export function PropertyDebtLinkForm({
     ManualAccountFormState,
     FormData
   >(linkPropertyDebtAction, {});
+  const unavailable = debts.length === 0;
 
   return (
     <form className="property-link-form" action={action}>
@@ -72,6 +73,7 @@ export function PropertyDebtLinkForm({
           id="property-link-property"
           name="propertyAccountId"
           required
+          disabled={unavailable}
         >
           <option value="">Choose a property</option>
           {properties.map((property) => (
@@ -88,6 +90,7 @@ export function PropertyDebtLinkForm({
           id="property-link-debt"
           name="debtAccountId"
           required
+          disabled={unavailable}
         >
           <option value="">Choose a debt</option>
           {debts.map((debt) => (
@@ -107,7 +110,17 @@ export function PropertyDebtLinkForm({
           {state.success}
         </p>
       ) : null}
-      <button className="button" type="submit" disabled={pending}>
+      {unavailable ? (
+        <p className="muted">
+          Every active debt is already linked. Unlink a debt from its property
+          before linking it elsewhere.
+        </p>
+      ) : null}
+      <button
+        className="button"
+        type="submit"
+        disabled={pending || unavailable}
+      >
         {pending ? "Linking…" : "Link property and debt"}
       </button>
     </form>

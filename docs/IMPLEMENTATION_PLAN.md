@@ -408,7 +408,7 @@ Page parity:
 
 - [ ] [#27 Match the integrated Budget screen](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/27)
 - [ ] [#24 Match the integrated Transactions screen](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/24)
-- [ ] [#28 Match the integrated Accounts screen](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/28)
+- [ ] [#28 Match the integrated Accounts screen](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/28) — implemented locally on `feat/parity-28-accounts`; pending orchestrator review and CI
 - [ ] [#23 Match the integrated Home screen](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/23)
 - [ ] [#26 Implement the approved Categories maintenance direction](https://gitlab.com/piaanderson-group/anderson-finance-app/-/issues/26)
 
@@ -2174,6 +2174,95 @@ Intentional production adaptations and remaining risks:
   remain fully operable.
 - Automated axe, emulated reflow, keyboard checks, and screenshots do not
   replace a manual screen-reader pass or testing on every physical device.
+
+### Issue #28 Accounts visual-parity evidence — 2026-10-12
+
+Status:
+
+- Implementation and targeted local verification are complete on
+  `feat/parity-28-accounts`. Issue #28 remains open pending orchestrator review,
+  integration, and CI; this entry does not claim a pushed or green pipeline.
+
+Implementation:
+
+- Replaced the maintenance-first Accounts card stack with the approved
+  integrated month/account header, truthful connection/manual status line,
+  five-column ledger, Cash → Invested → Debt → Property order, compact group
+  totals and add-account links, combined property/equity row, and final
+  Cash + Invested + Home equity − Debt equation.
+- Account rows use native `details`/`summary` disclosures. The primary 240ms
+  reveal preserves the approved Scheduled before month end and Its role in the
+  budget columns, ending-balance bridge, projected-by-next-paycheck treatment,
+  floor meter, and action placement. Source status, available balance, recent
+  activity, recovery, classification, manual valuation/archive, and related
+  source-record maintenance remain reachable through a secondary disclosure
+  without expanding the approved primary composition.
+- The property line derives same-currency equity from separate property and
+  linked-debt source records, keeps both records independently maintainable,
+  and exposes a labelled owed/equity graphic alternative. Linked mortgage
+  positions are not double-counted in the visual Debt subtotal or equation.
+- Global refresh is visibly disabled because no household-wide refresh
+  operation exists. Historical/future account-month navigation, schedules,
+  projections, paycheck dates, balance floors, reconciliation, and monthly
+  equity/net-worth movement remain explicitly unavailable rather than being
+  inferred from current balances.
+- Exact Decimal arithmetic remains in the household-scoped server read model.
+  Missing balances/currencies render equation terms unavailable rather than
+  zero; partial totals are labelled as known subtotals. Unlike currencies stay
+  separate and no exchange rate is implied.
+- Desktop keeps the five-column ledger. The same DOM reflows to labelled
+  two-column and single-column rows at tablet/mobile widths with no page
+  overflow. Native controls, one `h1`, logical headings, visible focus, 44px
+  targets, 16px mobile inputs, text statuses, live announcements, chart text
+  alternatives, and the shared 0.01ms reduced-motion override are preserved.
+
+Verification:
+
+- Targeted Accounts Vitest passed: 8 files and 39 tests covering arithmetic,
+  property equity, equation availability, connection state, manual accounts,
+  generalized account models, snapshots, maintenance, and household
+  isolation.
+- Focused Accounts Playwright passed in desktop Chromium and mobile: 2 tests.
+  It covers the integrated header, disabled global refresh, five-column ledger,
+  exact group order/equation, native keyboard disclosures, approved expanded
+  composition, secondary maintenance reachability, property traceability,
+  classification persistence, incomplete/multi-currency truth, labelled
+  history, responsive reflow, focus, reduced motion, no overflow, no
+  Plaid-host requests, and axe WCAG 2.1 AA scans.
+- Account recovery and manual account accessibility Playwright passed in
+  desktop Chromium and mobile: 4 tests.
+- The complete Phase 7 desktop/mobile audit passed: 10 tests covering shared
+  semantics, route axe/title/heading/skip-link checks, 320–1920px reflow,
+  touch targets, and reduced motion.
+- `npm run typecheck`, `npm run lint`, `npm run format:check`,
+  `git diff --check`, and `npm run build` passed. The production build used
+  Next.js 16.3.8 and generated all 21 static-generation tasks.
+
+Visual evidence:
+
+- `docs/visual-evidence/issue-28/reference-{1280,1920,512,390}.png` preserves
+  the read-only integrated Accounts authority.
+- `docs/visual-evidence/issue-28/after-{1280,1920,512,390}.png` contains fresh
+  authenticated, database-backed production captures.
+- `docs/visual-evidence/issue-28/after-truth-states-{1280,1920,512,390}.png`
+  covers partial positions, mixed currencies, unavailable history, and an
+  unavailable property value without implicit zero or FX.
+- `docs/visual-evidence/issue-28/after-expanded-1280.png` and
+  `after-property-1280.png` isolate the approved account reveal and combined
+  property treatment.
+
+Intentional production adaptations and remaining risks:
+
+- Current production records, dates, balances, and household counts replace
+  prototype-only September figures. The production fixture does not hardcode
+  unsupported prototype claims.
+- A household-wide Plaid refresh, historical/future account-month view,
+  sourced schedule/projection/floor, reconciliation workflow, and monthly
+  property/net-worth movement are not in the current model. Their approved
+  locations remain visible with disabled or unavailable treatment.
+- Automated axe, emulated reflow, keyboard checks, and screenshots do not
+  replace a manual screen-reader pass or testing on every physical high-zoom
+  device.
 
 ## Next handoff
 

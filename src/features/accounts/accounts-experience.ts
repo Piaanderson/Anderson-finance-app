@@ -1,4 +1,8 @@
 import { Prisma } from "@prisma/client";
+import {
+  summarizePositions,
+  type HouseholdPositionSummary
+} from "./position-summary";
 
 export type SnapshotValue = {
   accountId: string;
@@ -26,16 +30,105 @@ export type NetWorthHistory =
       reason: string;
     };
 
+type LedgerPosition = {
+  id: string;
+  classification: "CASH" | "INVESTED" | "PROPERTY" | "DEBT" | "UNCLASSIFIED";
+  currentBalance: Prisma.Decimal.Value | null;
+  isoCurrencyCode: string | null;
+  isActive: boolean;
+};
+
+type LedgerPropertyGroup = {
+  property: { id: string };
+  debts: Array<{ id: string }>;
+  combineInLedger?: boolean;
+  equity:
+    | {
+        status: "available";
+        amount: string;
+        currency: string;
+        propertyAmount: string;
+        debtAmount: string;
+        isUnderwater: boolean;
+      }
+    | { status: "unavailable"; reason: string };
+};
+
 type PositionValue = {
   currentBalance: Prisma.Decimal.Value | null;
   currency: string | null;
 };
 
+export type LedgerEquationClassification =
+  "CASH" | "INVESTED" | "PROPERTY" | "DEBT" | "UNCLASSIFIED";
+
+export function ledgerEquationCurrencies(
+  positions: Array<{ currency: string | null }>
+) {
+  return [
+    ...new Set(
+      positions
+        .map((position) => position.currency)
+        .filter((currency): currency is string => Boolean(currency))
+    )
+  ].sort((left, right) => left.localeCompare(right));
+}
+
+export function ledgerEquationAmount(
+  summary: HouseholdPositionSummary,
+  positions: Array<{
+    id: string;
+    classification: LedgerEquationClassification;
+    currency: string | null;
+  }>,
+  classification: LedgerEquationClassification,
+  currency: string
+) {
+  const incompleteIds = new Set([
+    ...summary.missingBalanceAccountIds,
+    ...summary.missingCurrencyAccountIds
+  ]);
+  const isUnavailable = positions.some(
+    (position) =>
+      incompleteIds.has(position.id) &&
+      position.classification === classification &&
+      (!position.currency || position.currency === currency)
+  );
+  if (isUnavailable) return null;
+  return (
+    summary.totalsByClassification[classification].find(
+      (total) => total.currency === currency
+    )?.amount ?? "0.00"
+  );
+}
+
+export function ledgerEquationHasSource(
+  positions: Array<{
+    classification: LedgerEquationClassification;
+    currency: string | null;
+  }>,
+  classification: LedgerEquationClassification,
+  currency: string
+) {
+  return positions.some(
+    (position) =>
+      position.classification === classification &&
+      position.currency === currency
+  );
+}
+
 export function derivePropertyEquity(
   property: PositionValue,
   debts: PositionValue[]
 ):
-  | { status: "available"; amount: string; currency: string }
+  | {
+      status: "available";
+      amount: string;
+      currency: string;
+      propertyAmount: string;
+      debtAmount: string;
+      isUnderwater: boolean;
+    }
   | { status: "unavailable"; reason: string } {
   if (property.currentBalance === null || !property.currency) {
     return {
@@ -55,14 +148,77 @@ export function derivePropertyEquity(
     };
   }
 
-  const amount = debts.reduce(
+  const propertyAmount = new Prisma.Decimal(property.currentBalance);
+  const debtAmount = debts.reduce(
     (total, debt) => total.plus(debt.currentBalance!),
-    new Prisma.Decimal(property.currentBalance)
+    new Prisma.Decimal(0)
   );
+  const amount = propertyAmount.plus(debtAmount);
   return {
     status: "available",
     amount: amount.toFixed(2),
-    currency: property.currency
+    currency: property.currency,
+    propertyAmount: propertyAmount.toFixed(2),
+    debtAmount: debtAmount.toFixed(2),
+    isUnderwater: amount.isNegative()
+  };
+}
+
+export function summarizeAccountLedger(
+  positions: LedgerPosition[],
+  propertyGroups: LedgerPropertyGroup[]
+) {
+  const combinedPropertyGroups = propertyGroups.filter(
+    (group) =>
+      group.combineInLedger !== false && group.equity.status === "available"
+  );
+  const uncombinedPropertyGroups = propertyGroups.filter(
+    (group) => !combinedPropertyGroups.includes(group)
+  );
+  const conflictingPropertyGroups = propertyGroups.filter(
+    (group) => group.combineInLedger === false
+  );
+  const linkedDebtAccountIds = new Set(
+    combinedPropertyGroups.flatMap((group) =>
+      group.debts.map((debt) => debt.id)
+    )
+  );
+  const uncombinedLinkedDebtAccountIds = new Set(
+    uncombinedPropertyGroups.flatMap((group) =>
+      group.debts.map((debt) => debt.id)
+    )
+  );
+  const ambiguousLinkedDebtAccountIds = new Set(
+    conflictingPropertyGroups.flatMap((group) =>
+      group.debts.map((debt) => debt.id)
+    )
+  );
+  const linkedPropertyAccountIds = new Set(
+    combinedPropertyGroups.map((group) => group.property.id)
+  );
+  const presentationPositions: LedgerPosition[] = positions
+    .filter(
+      (position) =>
+        !linkedDebtAccountIds.has(position.id) &&
+        !linkedPropertyAccountIds.has(position.id)
+    )
+    .concat(
+      combinedPropertyGroups.map((group) => ({
+        id: group.property.id,
+        classification: "PROPERTY" as const,
+        currentBalance:
+          group.equity.status === "available" ? group.equity.amount : null,
+        isoCurrencyCode:
+          group.equity.status === "available" ? group.equity.currency : null,
+        isActive: true
+      }))
+    );
+
+  return {
+    summary: summarizePositions(presentationPositions),
+    linkedDebtAccountIds: [...linkedDebtAccountIds],
+    uncombinedLinkedDebtAccountIds: [...uncombinedLinkedDebtAccountIds],
+    ambiguousLinkedDebtAccountIds: [...ambiguousLinkedDebtAccountIds]
   };
 }
 

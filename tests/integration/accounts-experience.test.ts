@@ -163,7 +163,10 @@ describe("household Accounts experience read", () => {
     expect(overview.propertyGroups[0]?.equity).toEqual({
       status: "available",
       amount: "599.90",
-      currency: "USD"
+      currency: "USD",
+      propertyAmount: "1000.30",
+      debtAmount: "-400.40",
+      isUnderwater: false
     });
     expect(
       overview.accounts.find((account) => account.id === accountIds.cash)
@@ -176,6 +179,258 @@ describe("household Accounts experience read", () => {
         { amount: "910.20", currency: "USD" }
       ]
     });
+  });
+
+  it("excludes hostile cross-household budget relations from account roles", async () => {
+    const householdId = await createHousehold("Budget role owner");
+    const foreignHouseholdId = await createHousehold("Budget role attacker");
+    const prefix = `budget-role-${randomUUID()}`;
+    const account = await prisma.financialAccount.create({
+      data: {
+        id: `${prefix}-account`,
+        householdId,
+        source: "MANUAL",
+        classification: "CASH",
+        name: "Owner checking",
+        currentBalance: "100.00",
+        isoCurrencyCode: "USD"
+      }
+    });
+    await prisma.category.createMany({
+      data: [
+        {
+          id: `${prefix}-owner-category`,
+          householdId,
+          name: "Owner category",
+          section: "Needs"
+        },
+        {
+          id: `${prefix}-foreign-category`,
+          householdId: foreignHouseholdId,
+          name: "Foreign category",
+          section: "Needs"
+        }
+      ]
+    });
+    await prisma.budgetMonth.createMany({
+      data: [
+        {
+          id: `${prefix}-owner-month`,
+          householdId,
+          month: new Date("2026-09-01T00:00:00.000Z"),
+          income: "1000.00"
+        },
+        {
+          id: `${prefix}-foreign-month`,
+          householdId: foreignHouseholdId,
+          month: new Date("2026-09-01T00:00:00.000Z"),
+          income: "1000.00"
+        }
+      ]
+    });
+    await prisma.budgetAllocation.createMany({
+      data: [
+        {
+          budgetMonthId: `${prefix}-owner-month`,
+          categoryId: `${prefix}-owner-category`,
+          planned: "100.00",
+          destinationAccountId: account.id
+        },
+        {
+          budgetMonthId: `${prefix}-foreign-month`,
+          categoryId: `${prefix}-owner-category`,
+          planned: "900.00",
+          destinationAccountId: account.id
+        },
+        {
+          budgetMonthId: `${prefix}-owner-month`,
+          categoryId: `${prefix}-foreign-category`,
+          planned: "800.00",
+          destinationAccountId: account.id
+        }
+      ]
+    });
+
+    const overview = await getAccountOverview(
+      householdId,
+      new Date("2026-09-26T21:00:00.000Z")
+    );
+
+    expect(
+      overview.accounts[0]?.budgetRole.map((role) => role.category)
+    ).toEqual(["Owner category"]);
+    expect(overview.accounts[0]?.budgetRole[0]?.planned).toBe("100.00");
+  });
+
+  it("keeps duplicate-linked debt exact and marks both equities unavailable", async () => {
+    const householdId = await createHousehold("Duplicate property links");
+    const prefix = `duplicate-links-${randomUUID()}`;
+    await prisma.financialAccount.createMany({
+      data: [
+        {
+          id: `${prefix}-home-one`,
+          householdId,
+          source: "MANUAL",
+          classification: "PROPERTY",
+          name: "Home one",
+          currentBalance: "400.00",
+          isoCurrencyCode: "USD"
+        },
+        {
+          id: `${prefix}-home-two`,
+          householdId,
+          source: "MANUAL",
+          classification: "PROPERTY",
+          name: "Home two",
+          currentBalance: "300.00",
+          isoCurrencyCode: "USD"
+        },
+        {
+          id: `${prefix}-mortgage`,
+          householdId,
+          source: "MANUAL",
+          classification: "DEBT",
+          name: "Shared mortgage",
+          currentBalance: "-500.00",
+          isoCurrencyCode: "USD"
+        }
+      ]
+    });
+    await prisma.propertyDebtLink.createMany({
+      data: [
+        {
+          householdId,
+          propertyAccountId: `${prefix}-home-one`,
+          debtAccountId: `${prefix}-mortgage`
+        },
+        {
+          householdId,
+          propertyAccountId: `${prefix}-home-two`,
+          debtAccountId: `${prefix}-mortgage`
+        }
+      ]
+    });
+
+    const overview = await getAccountOverview(
+      householdId,
+      new Date("2026-09-26T21:00:00.000Z")
+    );
+
+    expect(overview.propertyGroups).toHaveLength(2);
+    expect(
+      overview.propertyGroups.every(
+        (group) =>
+          group.combineInLedger === false &&
+          group.equity.status === "unavailable"
+      )
+    ).toBe(true);
+    expect(overview.ledgerSummary.linkedDebtAccountIds).toEqual([]);
+    expect(overview.ledgerSummary.ambiguousLinkedDebtAccountIds).toEqual([
+      `${prefix}-mortgage`
+    ]);
+    expect(overview.ledgerSummary.summary.totals).toEqual([
+      { currency: "USD", amount: "200.00" }
+    ]);
+    expect(overview.positionSummary.totals).toEqual([
+      { currency: "USD", amount: "200.00" }
+    ]);
+  });
+
+  it("preserves mixed-currency and missing linked debt source totals", async () => {
+    const householdId = await createHousehold("Unavailable property equity");
+    const prefix = `unavailable-equity-${randomUUID()}`;
+    const userId = `${prefix}-user`;
+    const itemId = `${prefix}-item`;
+    createdUsers.push(userId);
+    await prisma.user.create({
+      data: { id: userId, email: `${prefix}@example.test` }
+    });
+    await prisma.plaidItem.create({
+      data: {
+        id: itemId,
+        householdId,
+        linkedByUserId: userId,
+        plaidItemId: `${prefix}-plaid-item`,
+        accessTokenCiphertext: "fixture",
+        accessTokenIv: "fixture",
+        accessTokenTag: "fixture"
+      }
+    });
+    await prisma.financialAccount.createMany({
+      data: [
+        {
+          id: `${prefix}-property`,
+          householdId,
+          source: "MANUAL",
+          classification: "PROPERTY",
+          name: "Mixed property",
+          currentBalance: "400.00",
+          isoCurrencyCode: "USD"
+        },
+        {
+          id: `${prefix}-cad-debt`,
+          householdId,
+          source: "MANUAL",
+          classification: "DEBT",
+          name: "CAD mortgage",
+          currentBalance: "-200.00",
+          isoCurrencyCode: "CAD"
+        },
+        {
+          id: `${prefix}-missing-debt`,
+          householdId,
+          plaidItemId: itemId,
+          plaidAccountId: `${prefix}-plaid-missing-debt`,
+          source: "PLAID",
+          classification: "DEBT",
+          name: "Missing mortgage",
+          type: "loan",
+          currentBalance: null,
+          isoCurrencyCode: "USD"
+        }
+      ]
+    });
+    await prisma.propertyDebtLink.createMany({
+      data: [
+        {
+          householdId,
+          propertyAccountId: `${prefix}-property`,
+          debtAccountId: `${prefix}-cad-debt`
+        },
+        {
+          householdId,
+          propertyAccountId: `${prefix}-property`,
+          debtAccountId: `${prefix}-missing-debt`
+        }
+      ]
+    });
+
+    const overview = await getAccountOverview(
+      householdId,
+      new Date("2026-09-26T21:00:00.000Z")
+    );
+
+    expect(overview.propertyGroups[0]?.equity).toMatchObject({
+      status: "unavailable"
+    });
+    expect(overview.ledgerSummary.linkedDebtAccountIds).toEqual([]);
+    expect(overview.ledgerSummary.uncombinedLinkedDebtAccountIds).toEqual([
+      `${prefix}-cad-debt`,
+      `${prefix}-missing-debt`
+    ]);
+    expect(overview.ledgerSummary.summary.totals).toEqual(
+      overview.positionSummary.totals
+    );
+    expect(overview.ledgerSummary.summary.totals).toEqual([
+      { currency: "CAD", amount: "-200.00" },
+      { currency: "USD", amount: "400.00" }
+    ]);
+    expect(
+      overview.ledgerSummary.summary.totalsByClassification.PROPERTY
+    ).toEqual([{ currency: "USD", amount: "400.00" }]);
+    expect(overview.ledgerSummary.summary.totalsByClassification.DEBT).toEqual([
+      { currency: "CAD", amount: "-200.00" }
+    ]);
   });
 
   it("keeps currencies separate and reports missing values and history honestly", async () => {

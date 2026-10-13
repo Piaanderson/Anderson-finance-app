@@ -137,6 +137,13 @@ describe("property and debt relationships", () => {
       isoCurrencyCode: "USD",
       effectiveAt
     });
+    const secondProperty = await createManualAccount(householdA, {
+      name: "Cabin",
+      classification: "PROPERTY",
+      entryBalance: 150000,
+      isoCurrencyCode: "USD",
+      effectiveAt
+    });
     const foreignDebt = await createManualAccount(householdB, {
       name: "Foreign mortgage",
       classification: "DEBT",
@@ -146,6 +153,19 @@ describe("property and debt relationships", () => {
     });
 
     const link = await linkPropertyDebt(householdA, property.id, debt.id);
+    await expect(
+      linkPropertyDebt(householdA, property.id, debt.id)
+    ).resolves.toMatchObject({ id: link.id });
+    await expect(
+      linkPropertyDebt(householdA, secondProperty.id, debt.id)
+    ).rejects.toThrow(
+      "This debt is already linked to another property. Unlink it before linking it again."
+    );
+    expect(
+      await prisma.propertyDebtLink.count({
+        where: { householdId: householdA, debtAccountId: debt.id }
+      })
+    ).toBe(1);
     await expect(
       linkPropertyDebt(householdA, property.id, foreignDebt.id)
     ).rejects.toThrow(ManualAccountError);
@@ -157,7 +177,7 @@ describe("property and debt relationships", () => {
     ).rejects.toThrow(ManualAccountError);
 
     const summary = await getHouseholdPositionSummary(householdA);
-    expect(summary.totals).toEqual([{ currency: "USD", amount: "150000.00" }]);
+    expect(summary.totals).toEqual([{ currency: "USD", amount: "300000.00" }]);
     await expect(unlinkPropertyDebt(householdB, link.id)).rejects.toThrow(
       ManualAccountError
     );

@@ -1,16 +1,22 @@
 import type { Metadata } from "next";
-import { PageHeader } from "@/components/shell/page-header";
 import { requireHousehold } from "@/server/households";
 import { AccountRow } from "@/features/accounts/account-row";
 import { ConnectAccountButton } from "@/features/accounts/connect-account-button";
 import { createManualAccountAction } from "@/features/accounts/actions";
 import { ConnectionControls } from "@/features/accounts/connection-controls";
 import { connectionState } from "@/features/accounts/connection-status";
+import {
+  ledgerEquationAmount,
+  ledgerEquationCurrencies,
+  ledgerEquationHasSource,
+  type LedgerEquationClassification
+} from "@/features/accounts/accounts-experience";
 import { getAccountOverview } from "@/features/accounts/data";
 import { ManualAccountForm } from "@/features/accounts/manual-account-form";
 import { PropertyDebtLinkForm } from "@/features/accounts/manual-account-controls";
 import { NetWorthHistory } from "@/features/accounts/net-worth-history";
 import { PlaidLinkProvider } from "@/features/accounts/plaid-link-provider";
+import { PropertyRow } from "@/features/accounts/property-row";
 import { formatDecimalCurrency } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Accounts" };
@@ -24,24 +30,29 @@ const groups = [
   {
     classification: "CASH",
     label: "Cash",
-    description: "Checking, savings, and other liquid positions"
+    addLabel: "+ Add a cash account"
   },
   {
     classification: "INVESTED",
     label: "Invested",
-    description: "Brokerage, retirement, and other invested positions"
-  },
-  {
-    classification: "PROPERTY",
-    label: "Property",
-    description: "Property values; linked debt remains in Debt"
+    addLabel: "+ Add an investment account"
   },
   {
     classification: "DEBT",
     label: "Debt",
-    description: "Cards, loans, mortgages, and lines of credit"
+    addLabel: "+ Add a card or loan"
   }
 ] as const;
+
+const monthLabel = new Intl.DateTimeFormat("en-US", {
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC"
+});
+
+function absoluteAmount(value: string) {
+  return value.startsWith("-") ? value.slice(1) : value;
+}
 
 function CurrencyTotals({
   totals,
@@ -66,14 +77,16 @@ function CurrencyTotals({
 
 export default async function AccountsPage() {
   const owner = await requireHousehold();
+  const now = new Date();
   const {
     accounts,
     connections,
     positionSummary,
+    ledgerSummary,
     propertyGroups,
     netWorthHistory
-  } = await getAccountOverview(owner.householdId);
-  const today = new Date().toISOString().slice(0, 10);
+  } = await getAccountOverview(owner.householdId, now);
+  const today = now.toISOString().slice(0, 10);
   const properties = accounts.filter(
     (account) => account.classification === "PROPERTY"
   );
@@ -88,206 +101,369 @@ export default async function AccountsPage() {
   const incompleteAccounts = accounts.filter((account) =>
     incompleteIds.has(account.id)
   );
+  const linkedDebtIds = new Set(ledgerSummary.linkedDebtAccountIds);
+  const ambiguousLinkedDebtIds = new Set(
+    ledgerSummary.ambiguousLinkedDebtAccountIds
+  );
+  const uncombinedLinkedDebtIds = new Set(
+    ledgerSummary.uncombinedLinkedDebtAccountIds
+  );
+  const allLinkedDebtIds = new Set(
+    propertyGroups.flatMap((group) => group.debts.map((debt) => debt.id))
+  );
+  const unlinkedDebts = debts.filter(
+    (account) => !allLinkedDebtIds.has(account.id)
+  );
+  const equationCurrencies = ledgerEquationCurrencies(accounts);
+  const uncombinedPropertyGroups = propertyGroups.filter(
+    (group) =>
+      group.combineInLedger === false || group.equity.status === "unavailable"
+  );
+  const uncombinedPropertyCurrencies = new Set(
+    uncombinedPropertyGroups
+      .map((group) => group.property.currency)
+      .filter((currency): currency is string => Boolean(currency))
+  );
+  const hasUncombinedProperties = uncombinedPropertyGroups.length > 0;
+  const equationAmount = (
+    classification: LedgerEquationClassification,
+    currency: string
+  ) => {
+    const amount = ledgerEquationAmount(
+      ledgerSummary.summary,
+      accounts,
+      classification,
+      currency
+    );
+    if (amount === null) return "unavailable";
+    return formatDecimalCurrency(
+      classification === "DEBT" ? absoluteAmount(amount) : amount,
+      currency
+    );
+  };
+  const connectedAccounts = accounts.filter(
+    (account) => account.source === "PLAID"
+  );
+  const manualAccounts = accounts.filter(
+    (account) => account.source === "MANUAL"
+  );
+  const lastSyncedAt = connections
+    .map((connection) => connection.lastSyncedAt)
+    .filter((value): value is Date => value !== null)
+    .sort((left, right) => right.getTime() - left.getTime())[0];
+  const connectionIssues = connections.filter((connection) => {
+    const state = connectionState({
+      status: connection.status,
+      jobStatus: connection.job?.status ?? null,
+      jobAttempts: connection.job?.attempts ?? 0,
+      lastSyncedAt: connection.lastSyncedAt,
+      now
+    });
+    return state.kind === "error" || state.kind === "login-required";
+  });
 
   return (
     <PlaidLinkProvider>
-      <PageHeader
-        title="Accounts"
-        kicker={`${accounts.length} active ${
-          accounts.length === 1 ? "account" : "accounts"
-        } · signed current positions`}
-        actions={
-          <>
-            <ConnectAccountButton />
-            <a className="button secondary" href="#add-manual-account">
-              Add manually
-            </a>
-          </>
-        }
-      />
-      <div className="page-content">
-        <section
-          className="card accounts-balance-sheet"
-          aria-labelledby="balance-sheet-title"
-        >
-          <div className="balance-sheet-heading">
-            <div>
-              <span className="eyebrow">Latest signed positions</span>
-              <h2 id="balance-sheet-title">
-                {positionSummary.totals.length > 1
-                  ? "Net worth by currency"
-                  : "Net worth"}
-              </h2>
+      <div className="accounts-integrated-page">
+        <header className="accounts-integrated-header">
+          <div className="accounts-header-main">
+            <div className="accounts-month-context">
+              <div
+                className="accounts-month-navigation"
+                aria-label="Account month"
+              >
+                <button
+                  type="button"
+                  disabled
+                  aria-label="Previous month unavailable"
+                  title="Historical account-month views are unavailable"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  aria-label="Next month unavailable"
+                  title="Future account-month views are unavailable"
+                >
+                  ›
+                </button>
+              </div>
+              <div>
+                <span className="eyebrow">
+                  {monthLabel.format(now)} · day {now.getUTCDate()} of{" "}
+                  {new Date(
+                    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)
+                  ).getUTCDate()}
+                </span>
+                <h1>Accounts</h1>
+                <strong>
+                  {accounts.length} active{" "}
+                  {accounts.length === 1 ? "account" : "accounts"}
+                </strong>
+              </div>
+              <a className="accounts-today-link" href="/accounts">
+                Today
+              </a>
             </div>
-            <CurrencyTotals
-              totals={positionSummary.totals}
-              unavailable="Net worth unavailable"
-            />
+            <div className="accounts-header-actions">
+              <span className="accounts-refresh-action">
+                <button
+                  className="button secondary"
+                  type="button"
+                  disabled
+                  aria-describedby="refresh-all-unavailable"
+                >
+                  Refresh all
+                </button>
+                <small id="refresh-all-unavailable">
+                  Global refresh unavailable
+                </small>
+              </span>
+              <a className="button" href="#add-account-options">
+                Add account
+              </a>
+            </div>
+          </div>
+          <div className="accounts-status-line" role="status">
+            <span>
+              <i className="is-connected" aria-hidden="true" />
+              {connectedAccounts.length} connected
+              {lastSyncedAt ? (
+                <>
+                  {" "}
+                  · refreshed{" "}
+                  <time dateTime={lastSyncedAt.toISOString()}>
+                    {new Intl.DateTimeFormat("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit"
+                    }).format(lastSyncedAt)}
+                  </time>
+                </>
+              ) : (
+                " · no completed refresh"
+              )}
+            </span>
+            <span className="accounts-status-divider" aria-hidden="true" />
+            <span>
+              <i className="is-manual" aria-hidden="true" />
+              {manualAccounts.length} manual
+            </span>
+            <span className="accounts-status-divider" aria-hidden="true" />
+            <span>
+              {connectionIssues.length
+                ? `${connectionIssues.length} connection ${
+                    connectionIssues.length === 1 ? "needs" : "need"
+                  } attention`
+                : incompleteAccounts.length
+                  ? "Some current positions are incomplete"
+                  : "Schedules and projections are unavailable"}
+            </span>
+          </div>
+        </header>
+
+        <div
+          className="accounts-ledger"
+          role="region"
+          aria-label="Account ledger"
+        >
+          <div className="accounts-ledger-columns" aria-hidden="true">
+            <span>Account</span>
+            <span>Connection</span>
+            <span>Balance today</span>
+            <span>Before month end</span>
+            <span>Projected</span>
           </div>
 
-          <dl className="account-subtotals">
-            {groups.map((group) => {
-              const groupAccounts = accounts.filter(
-                (account) => account.classification === group.classification
-              );
-              const partial = groupAccounts.some((account) =>
-                incompleteIds.has(account.id)
-              );
-              return (
-                <div key={group.classification}>
-                  <dt>
-                    {group.label}
-                    <span>
-                      {groupAccounts.length}{" "}
-                      {groupAccounts.length === 1 ? "account" : "accounts"}
-                    </span>
-                  </dt>
-                  <dd>
-                    {partial ? (
-                      <span className="warning">Partial · </span>
-                    ) : null}
-                    <CurrencyTotals
-                      totals={
-                        positionSummary.totalsByClassification[
-                          group.classification
-                        ]
-                      }
-                    />
-                  </dd>
-                </div>
-              );
-            })}
-          </dl>
-
-          {positionSummary.isComplete ? (
-            <div className="reconciliation-proof" role="status">
-              <strong>Reconciled exactly</strong>
-              {positionSummary.totals.map((netWorth) => (
-                <p key={netWorth.currency}>
-                  {groups.map((group, index) => {
-                    const total = positionSummary.totalsByClassification[
-                      group.classification
-                    ].find((value) => value.currency === netWorth.currency);
-                    return (
-                      <span key={group.classification}>
-                        {index ? " + " : ""}
-                        {group.label}{" "}
-                        {formatDecimalCurrency(
-                          total?.amount ?? "0.00",
-                          netWorth.currency
-                        )}
-                      </span>
-                    );
-                  })}
-                  {positionSummary.totalsByClassification.UNCLASSIFIED.some(
-                    (total) => total.currency === netWorth.currency
-                  ) ? (
-                    <span>
-                      {" + "}Unclassified{" "}
-                      {formatDecimalCurrency(
-                        positionSummary.totalsByClassification.UNCLASSIFIED.find(
-                          (total) => total.currency === netWorth.currency
-                        )!.amount,
-                        netWorth.currency
-                      )}
-                    </span>
-                  ) : null}{" "}
-                  ={" "}
-                  <strong>
-                    {formatDecimalCurrency(netWorth.amount, netWorth.currency)}
-                  </strong>
-                </p>
-              ))}
-            </div>
-          ) : (
-            <div className="warning account-warning" role="status">
-              <strong>Partial net worth</strong>
-              <p>
-                {incompleteAccounts.map((account) => account.name).join(", ")}{" "}
-                {incompleteAccounts.length === 1 ? "has" : "have"} a missing
-                balance or recognized currency. Missing values are not treated
-                as zero.
-              </p>
-            </div>
-          )}
-
-          {positionSummary.totals.length > 1 ? (
-            <p className="muted">
-              Currency totals stay separate. Currents does not apply an implicit
-              exchange rate.
-            </p>
-          ) : null}
-        </section>
-
-        <NetWorthHistory history={netWorthHistory} />
-
-        <div className="account-groups">
           {groups.map((group) => {
             const groupAccounts = accounts.filter(
-              (account) => account.classification === group.classification
+              (account) =>
+                account.classification === group.classification &&
+                !linkedDebtIds.has(account.id)
             );
+            const groupTotals =
+              ledgerSummary.summary.totalsByClassification[
+                group.classification
+              ];
             const partial = groupAccounts.some((account) =>
               incompleteIds.has(account.id)
             );
             return (
               <section
-                className="account-group"
+                className="account-ledger-group"
                 aria-labelledby={`account-group-${group.classification}`}
                 key={group.classification}
               >
-                <div className="account-group-heading">
-                  <div>
-                    <span className="eyebrow">{group.description}</span>
-                    <h2 id={`account-group-${group.classification}`}>
-                      {group.label}
-                    </h2>
-                  </div>
-                  <div className="account-group-total">
-                    <span>
-                      {partial ? "Partial subtotal" : "Reconciled subtotal"}
-                    </span>
-                    <CurrencyTotals
-                      totals={
-                        positionSummary.totalsByClassification[
-                          group.classification
-                        ]
-                      }
-                    />
-                  </div>
+                <div className="account-ledger-group-heading">
+                  <h2 id={`account-group-${group.classification}`}>
+                    {group.label}
+                  </h2>
+                  <CurrencyTotals totals={groupTotals} />
+                  <span>
+                    {groupAccounts.length}{" "}
+                    {groupAccounts.length === 1 ? "account" : "accounts"}
+                    {partial ? " · partial positions" : ""}
+                    {group.classification === "DEBT" && linkedDebtIds.size
+                      ? ` · ${linkedDebtIds.size} linked ${
+                          linkedDebtIds.size === 1 ? "debt is" : "debts are"
+                        } shown with Property`
+                      : ""}
+                    {group.classification === "DEBT" &&
+                    ambiguousLinkedDebtIds.size
+                      ? ` · ${ambiguousLinkedDebtIds.size} ${
+                          ambiguousLinkedDebtIds.size === 1
+                            ? "debt has"
+                            : "debts have"
+                        } conflicting property links`
+                      : ""}
+                    {group.classification === "DEBT" &&
+                    uncombinedLinkedDebtIds.size &&
+                    !ambiguousLinkedDebtIds.size
+                      ? ` · ${uncombinedLinkedDebtIds.size} linked ${
+                          uncombinedLinkedDebtIds.size === 1
+                            ? "debt remains"
+                            : "debts remain"
+                        } separate because equity is unavailable`
+                      : ""}
+                  </span>
                 </div>
-                {groupAccounts.length ? (
-                  <div className="account-list">
-                    {groupAccounts.map((account) => {
-                      const propertyGroup = propertyGroups.find(
-                        (candidate) => candidate.property.id === account.id
-                      );
-                      const relatedProperty = propertyGroups.find((candidate) =>
-                        candidate.debts.some((debt) => debt.id === account.id)
-                      )?.property;
-                      return (
-                        <AccountRow
-                          account={account}
-                          propertyGroup={propertyGroup}
-                          relatedProperty={relatedProperty}
-                          today={today}
-                          key={account.id}
-                        />
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="muted account-group-empty">
-                    No active {group.label.toLowerCase()} accounts.
-                  </p>
-                )}
+                <div className="account-list">
+                  {groupAccounts.length ? (
+                    groupAccounts.map((account) => (
+                      <AccountRow
+                        account={account}
+                        today={today}
+                        key={account.id}
+                      />
+                    ))
+                  ) : (
+                    <p className="account-group-empty muted">
+                      No active {group.label.toLowerCase()} accounts.
+                    </p>
+                  )}
+                </div>
+                <a className="account-group-add" href="#add-account-options">
+                  {group.addLabel}
+                </a>
               </section>
             );
           })}
+
+          <section
+            className="account-ledger-group property-ledger-group"
+            aria-labelledby="account-group-PROPERTY"
+          >
+            <div className="account-ledger-group-heading">
+              <h2 id="account-group-PROPERTY">Property</h2>
+              <CurrencyTotals
+                totals={ledgerSummary.summary.totalsByClassification.PROPERTY}
+                unavailable="Property unavailable"
+              />
+              <span>
+                {hasUncombinedProperties
+                  ? "Property value · equity unavailable due to conflicting or incomplete links"
+                  : "equity · property and linked debt read as one line"}
+              </span>
+            </div>
+            {properties.length ? (
+              properties.map((property) => {
+                const propertyGroup = propertyGroups.find(
+                  (candidate) => candidate.property.id === property.id
+                );
+                const linkedDebts = propertyGroup
+                  ? accounts.filter((account) =>
+                      propertyGroup.debts.some((debt) => debt.id === account.id)
+                    )
+                  : [];
+                return (
+                  <PropertyRow
+                    account={property}
+                    propertyGroup={propertyGroup}
+                    linkedDebts={linkedDebts}
+                    today={today}
+                    key={property.id}
+                  />
+                );
+              })
+            ) : (
+              <p className="account-group-empty muted">
+                No active property accounts.
+              </p>
+            )}
+            <a className="account-group-add" href="#add-account-options">
+              + Add a property
+            </a>
+          </section>
+
+          <section
+            className="accounts-net-worth-equation"
+            aria-labelledby="accounts-net-worth-title"
+          >
+            <div>
+              {equationCurrencies.length ? (
+                equationCurrencies.map((currency) => {
+                  return (
+                    <p key={currency}>
+                      Cash {equationAmount("CASH", currency)} + Invested{" "}
+                      {equationAmount("INVESTED", currency)} +{" "}
+                      {uncombinedPropertyCurrencies.has(currency)
+                        ? "Property value / home equity"
+                        : "Home equity"}{" "}
+                      {equationAmount("PROPERTY", currency)} − Debt{" "}
+                      {equationAmount("DEBT", currency)}
+                      {ledgerEquationHasSource(
+                        accounts,
+                        "UNCLASSIFIED",
+                        currency
+                      )
+                        ? ` + Unclassified ${equationAmount(
+                            "UNCLASSIFIED",
+                            currency
+                          )}`
+                        : ""}
+                    </p>
+                  );
+                })
+              ) : (
+                <p>Net-worth equation unavailable</p>
+              )}
+              {!ledgerSummary.summary.isComplete ? (
+                <div className="warning account-equation-warning" role="status">
+                  <strong>Partial net worth</strong>
+                  <span>
+                    Missing values or currencies are not treated as zero.
+                  </span>
+                </div>
+              ) : null}
+            </div>
+            <div className="accounts-net-worth-total">
+              <span id="accounts-net-worth-title">
+                {ledgerSummary.summary.isComplete
+                  ? "Net worth"
+                  : "Partial net worth"}
+              </span>
+              <CurrencyTotals
+                totals={positionSummary.totals}
+                unavailable="Unavailable"
+              />
+              <small>
+                {ledgerSummary.summary.isComplete
+                  ? "Monthly movement unavailable"
+                  : "Known subtotal · monthly movement unavailable"}
+              </small>
+            </div>
+          </section>
+          {equationCurrencies.length > 1 ? (
+            <p className="accounts-currency-note">
+              Currency totals stay separate. Currents does not apply an implicit
+              exchange rate.
+            </p>
+          ) : null}
         </div>
 
         {unclassified.length ? (
           <section
-            className="account-group account-review-needed"
+            className="account-group account-review-needed accounts-secondary"
             aria-labelledby="unclassified-title"
           >
             <div className="account-group-heading">
@@ -313,37 +489,52 @@ export default async function AccountsPage() {
           </section>
         ) : null}
 
+        <section className="accounts-secondary">
+          <NetWorthHistory history={netWorthHistory} />
+        </section>
+
         <section
-          className="card stack"
-          id="add-manual-account"
-          aria-labelledby="manual-account-title"
+          className="card stack accounts-secondary"
+          id="add-account-options"
+          aria-labelledby="add-account-title"
         >
           <div>
-            <span className="eyebrow">No bank connection required</span>
-            <h2 id="manual-account-title">Add a manual account</h2>
+            <span className="eyebrow">Connected or manual</span>
+            <h2 id="add-account-title">Add an account</h2>
             <p className="muted">
-              Track cash, investments, property, or debt with a dated value.
+              Connect a bank securely, or track a dated value without a bank
+              connection.
             </p>
+          </div>
+          <div className="button-row">
+            <ConnectAccountButton />
           </div>
           <ManualAccountForm
             action={createManualAccountAction}
-            heading="Account details"
+            heading="Add a manual account"
             submitLabel="Add manual account"
             today={today}
           />
         </section>
 
-        <section className="card stack" aria-labelledby="property-link-title">
+        <section
+          className="card stack accounts-secondary"
+          aria-labelledby="property-link-title"
+        >
           <div>
             <span className="eyebrow">Separate source records</span>
             <h2 id="property-link-title">Link property and related debt</h2>
             <p className="muted">
-              Linking derives equity without moving a mortgage out of the Debt
-              group.
+              Linking derives equity while the property and mortgage remain
+              separate source records. Linked debt is shown with Property to
+              avoid double-counting it in the visual equation.
             </p>
           </div>
           {properties.length > 0 && debts.length > 0 ? (
-            <PropertyDebtLinkForm properties={properties} debts={debts} />
+            <PropertyDebtLinkForm
+              properties={properties}
+              debts={unlinkedDebts}
+            />
           ) : (
             <p className="muted">
               Add both a Property account and a Debt account to link them.
@@ -351,7 +542,10 @@ export default async function AccountsPage() {
           )}
         </section>
 
-        <section className="stack" aria-labelledby="connections-title">
+        <section
+          className="stack accounts-secondary"
+          aria-labelledby="connections-title"
+        >
           <div className="section-heading">
             <h2 id="connections-title">
               {connections.length} bank{" "}

@@ -1,11 +1,70 @@
 import { randomUUID } from "node:crypto";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { prisma } from "../../src/server/db";
+
+async function captureEvidence(
+  page: import("@playwright/test").Page,
+  projectName: string,
+  stage: "after" | "after-truth-states"
+) {
+  const directory = process.env.ACCOUNTS_EVIDENCE_DIR;
+  if (!directory || projectName !== "chromium") return;
+  const originalViewport = page.viewportSize();
+  await mkdir(directory, { recursive: true });
+  await page.addStyleTag({
+    content:
+      "nextjs-portal { display: none !important; } .skip-link { visibility: hidden !important; }"
+  });
+  for (const width of [1280, 1920, 512, 390]) {
+    await page.setViewportSize({ width, height: width >= 1280 ? 900 : 844 });
+    const populatedRow = page.locator(".account-ledger-row").first();
+    if (width >= 1280) {
+      const columns = await populatedRow.evaluate(
+        (element) => getComputedStyle(element).gridTemplateColumns
+      );
+      expect(columns.match(/minmax\(/g)).toHaveLength(5);
+    } else {
+      await expect(populatedRow.getByText("Balance today")).toBeVisible();
+    }
+    const pageWidth = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      innerWidth: window.innerWidth
+    }));
+    expect(pageWidth.scrollWidth).toBeLessThanOrEqual(pageWidth.innerWidth);
+    await page.screenshot({
+      path: join(directory, `${stage}-${width}.png`),
+      fullPage: true
+    });
+  }
+  if (originalViewport) await page.setViewportSize(originalViewport);
+}
+
+async function captureRepresentativeEvidence(
+  page: import("@playwright/test").Page,
+  projectName: string,
+  expandedAccount: Locator,
+  property: Locator
+) {
+  const directory = process.env.ACCOUNTS_EVIDENCE_DIR;
+  if (!directory || projectName !== "chromium") return;
+  const originalViewport = page.viewportSize();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expandedAccount.screenshot({
+    path: join(directory, "after-expanded-1280.png")
+  });
+  await property.screenshot({
+    path: join(directory, "after-property-1280.png")
+  });
+  if (originalViewport) await page.setViewportSize(originalViewport);
+}
 
 test("Accounts reconciles grouped positions and exposes honest accessible details", async ({
   page
 }, testInfo) => {
+  test.setTimeout(120_000);
   const fixture = `accounts-view-${testInfo.project.name}-${randomUUID()}`;
   const email = `${fixture}@example.test`;
   const plaidRequests: string[] = [];
@@ -171,15 +230,45 @@ test("Accounts reconciles grouped positions and exposes honest accessible detail
     await expect(
       page.getByRole("heading", { level: 1, name: "Accounts" })
     ).toBeVisible();
+    await expect(
+      page.locator(".accounts-integrated-header").getByText("5 active accounts")
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Refresh all" })
+    ).toBeDisabled();
+    await expect(page.getByText("Global refresh unavailable")).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Add account" })
+    ).toHaveAttribute("href", "#add-account-options");
+    await expect(page.locator(".accounts-ledger-columns")).toContainText(
+      "Balance today"
+    );
+    await expect(page.locator(".accounts-ledger-columns")).toContainText(
+      "Before month end"
+    );
+    await expect(page.locator(".accounts-ledger-columns")).toContainText(
+      "Projected"
+    );
+    expect(
+      await page
+        .locator(".account-ledger-group > .account-ledger-group-heading h2")
+        .allTextContents()
+    ).toEqual(["Cash", "Invested", "Debt", "Property"]);
     for (const group of ["Cash", "Invested", "Property", "Debt"]) {
       await expect(
         page.getByRole("region", { name: group, exact: true })
       ).toBeVisible();
     }
-    const balanceSheet = page.getByRole("region", { name: "Net worth" });
-    await expect(balanceSheet.getByText("$910.20").first()).toBeVisible();
-    await expect(balanceSheet.getByText("Reconciled exactly")).toBeVisible();
-    await expect(balanceSheet.getByText(/Unclassified \$10\.00/)).toBeVisible();
+    const netWorthEquation = page.getByRole("region", { name: "Net worth" });
+    await expect(netWorthEquation.getByText("$910.20").first()).toBeVisible();
+    await expect(
+      netWorthEquation.getByText(/Unclassified \$10\.00/)
+    ).toBeVisible();
+    await expect(
+      netWorthEquation.getByText(
+        /Cash \$100\.10.*Invested \$200\.20.*Home equity \$599\.90.*Debt \$0\.00/
+      )
+    ).toBeVisible();
     await expect(
       page.getByRole("heading", {
         level: 2,
@@ -195,10 +284,12 @@ test("Accounts reconciles grouped positions and exposes honest accessible detail
     const cashAccount = page.getByRole("article", {
       name: "Fixture checking"
     });
-    await expect(
-      cashAccount.getByText("Connected with Plaid").first()
-    ).toBeVisible();
-    const disclosure = cashAccount.getByText("View account details");
+    const disclosure = cashAccount.locator("summary").first();
+    await expect(disclosure).toHaveJSProperty("tagName", "SUMMARY");
+    await expect(disclosure.locator("xpath=..")).toHaveJSProperty(
+      "tagName",
+      "DETAILS"
+    );
     expect((await disclosure.boundingBox())?.height).toBeGreaterThanOrEqual(44);
     await disclosure.focus();
     await expect(disclosure).toBeFocused();
@@ -209,34 +300,100 @@ test("Accounts reconciles grouped positions and exposes honest accessible detail
       .not.toBe("none");
     await page.keyboard.press("Enter");
     await expect(
+      cashAccount.getByRole("heading", {
+        level: 4,
+        name: "Scheduled before month end"
+      })
+    ).toBeVisible();
+    await expect(
+      cashAccount.getByRole("heading", {
+        level: 4,
+        name: "Its role in the budget"
+      })
+    ).toBeVisible();
+    await expect(
+      cashAccount.getByText("Projected by next paycheck")
+    ).toBeVisible();
+    await expect(
+      cashAccount.getByText(/Balance floor unavailable/)
+    ).toBeVisible();
+    const supportDisclosure = cashAccount.getByText(
+      "Source, activity, and account maintenance"
+    );
+    expect(
+      (await supportDisclosure.boundingBox())?.height
+    ).toBeGreaterThanOrEqual(44);
+    await supportDisclosure.focus();
+    await page.keyboard.press("Enter");
+    await expect(
+      cashAccount.getByText("Connected with Plaid").first()
+    ).toBeVisible();
+    await expect(
       cashAccount.getByRole("heading", { level: 4, name: "Source and status" })
     ).toBeVisible();
     await expect(cashAccount.getByText("Available balance:")).toBeVisible();
     await expect(cashAccount.getByText("$90.10")).toBeVisible();
     await expect(cashAccount.getByText("Fixture grocer")).toBeVisible();
     await expect(
-      cashAccount.getByRole("heading", { level: 4, name: "Projection" })
-    ).toBeVisible();
-    await expect(
       cashAccount.getByRole("link", {
         name: "Manage Fixture Bank connection"
       })
     ).toBeVisible();
+    await supportDisclosure.click();
 
     const propertyAccount = page.getByRole("article", {
       name: "Primary home"
     });
-    await propertyAccount.getByText("View account details").click();
+    await expect(
+      propertyAccount.getByText("Estimated value $1,000.30")
+    ).toBeVisible();
+    await expect(propertyAccount.getByText(/owed \$400\.40/)).toBeVisible();
+    await expect(
+      page
+        .getByRole("region", { name: "Debt", exact: true })
+        .getByRole("heading", { name: "Home mortgage" })
+    ).toHaveCount(0);
+    await expect(
+      propertyAccount.getByText("Debt source and maintenance for Home mortgage")
+    ).toBeVisible();
+    await propertyAccount
+      .getByText("Property source and maintenance for Primary home")
+      .click();
     await expect(propertyAccount.getByText("Derived equity:")).toBeVisible();
-    await expect(propertyAccount.getByText("$599.90")).toBeVisible();
+    await expect(
+      propertyAccount.getByText("$599.90", { exact: true }).last()
+    ).toBeVisible();
     await expect(
       propertyAccount.getByText(/source records/, { exact: false })
     ).toBeVisible();
+    await propertyAccount
+      .getByText("Property source and maintenance for Primary home")
+      .click();
+    await captureRepresentativeEvidence(
+      page,
+      testInfo.project.name,
+      cashAccount,
+      propertyAccount
+    );
+    await captureEvidence(page, testInfo.project.name, "after");
+
+    const manualRoth = page.getByRole("article", { name: "Manual Roth" });
+    await manualRoth.locator("summary").first().click();
+    const rename = manualRoth.getByRole("button", {
+      name: "Rename Manual Roth"
+    });
+    await rename.click();
+    const renameInput = manualRoth.getByLabel("Account name");
+    await expect(renameInput).toBeVisible();
+    await expect(renameInput).toBeFocused();
 
     const unknownAccount = page.getByRole("article", {
       name: "Unknown provider account"
     });
-    await unknownAccount.getByText("View account details").click();
+    await unknownAccount.locator("summary").first().click();
+    await unknownAccount
+      .getByText("Source, activity, and account maintenance")
+      .click();
     await unknownAccount
       .getByLabel("Account group for Unknown provider account")
       .selectOption("INVESTED");
@@ -290,15 +447,140 @@ test("Accounts reconciles grouped positions and exposes honest accessible detail
           type: "other",
           currentBalance: null,
           isoCurrencyCode: "USD"
+        },
+        {
+          id: `${fixture}-cad-missing`,
+          householdId,
+          plaidItemId: itemId,
+          plaidAccountId: `${fixture}-plaid-cad-missing`,
+          source: "PLAID",
+          classification: "INVESTED",
+          name: "Canadian investment unavailable",
+          type: "investment",
+          currentBalance: null,
+          isoCurrencyCode: "CAD"
+        },
+        {
+          id: `${fixture}-cad-unclassified-missing`,
+          householdId,
+          plaidItemId: itemId,
+          plaidAccountId: `${fixture}-plaid-cad-unclassified-missing`,
+          source: "PLAID",
+          classification: "UNCLASSIFIED",
+          name: "Canadian account needs classification",
+          type: "other",
+          currentBalance: null,
+          isoCurrencyCode: "CAD"
+        },
+        {
+          id: `${fixture}-mixed-property`,
+          householdId,
+          source: "MANUAL",
+          classification: "PROPERTY",
+          name: "Mixed currency property",
+          currentBalance: "1000.00",
+          isoCurrencyCode: "USD"
+        },
+        {
+          id: `${fixture}-mixed-cad-debt`,
+          householdId,
+          source: "MANUAL",
+          classification: "DEBT",
+          name: "CAD linked mortgage",
+          currentBalance: "-200.00",
+          isoCurrencyCode: "CAD"
+        },
+        {
+          id: `${fixture}-mixed-missing-debt`,
+          householdId,
+          plaidItemId: itemId,
+          plaidAccountId: `${fixture}-plaid-mixed-missing-debt`,
+          source: "PLAID",
+          classification: "DEBT",
+          name: "Missing linked mortgage",
+          type: "loan",
+          currentBalance: null,
+          isoCurrencyCode: "USD"
+        },
+        {
+          id: `${fixture}-underwater-property`,
+          householdId,
+          source: "MANUAL",
+          classification: "PROPERTY",
+          name: "Underwater property",
+          currentBalance: "200.00",
+          isoCurrencyCode: "USD"
+        },
+        {
+          id: `${fixture}-underwater-debt`,
+          householdId,
+          source: "MANUAL",
+          classification: "DEBT",
+          name: "Underwater mortgage",
+          currentBalance: "-300.00",
+          isoCurrencyCode: "USD"
+        }
+      ]
+    });
+    await prisma.propertyDebtLink.createMany({
+      data: [
+        {
+          householdId,
+          propertyAccountId: `${fixture}-underwater-property`,
+          debtAccountId: `${fixture}-underwater-debt`
+        },
+        {
+          householdId,
+          propertyAccountId: `${fixture}-mixed-property`,
+          debtAccountId: `${fixture}-mixed-cad-debt`
+        },
+        {
+          householdId,
+          propertyAccountId: `${fixture}-mixed-property`,
+          debtAccountId: `${fixture}-mixed-missing-debt`
         }
       ]
     });
     await page.reload();
     await expect(
-      page.getByText("Partial net worth", { exact: true })
+      page.locator(".account-equation-warning").getByText("Partial net worth")
     ).toBeVisible();
     await expect(
-      page.getByText(/Missing values are not treated as zero/)
+      page.getByText(/Missing values or currencies are not treated as zero/)
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("region", { name: "Partial net worth" })
+        .getByText(
+          /Property value \/ home equity unavailable.*Debt unavailable/
+        )
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("region", { name: "Partial net worth" })
+        .getByText(
+          /Cash CA\$50\.00.*Invested unavailable.*Debt CA\$200\.00.*Unclassified unavailable/
+        )
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Property value · equity unavailable due to conflicting or incomplete links"
+      )
+    ).toBeVisible();
+    const debtGroup = page.getByRole("region", { name: "Debt", exact: true });
+    await expect(
+      debtGroup.getByRole("heading", { name: "CAD linked mortgage" })
+    ).toBeVisible();
+    await expect(
+      debtGroup.getByRole("heading", { name: "Missing linked mortgage" })
+    ).toBeVisible();
+    const mixedProperty = page.getByRole("article", {
+      name: "Mixed currency property"
+    });
+    await expect(
+      mixedProperty.locator(".account-unavailable").filter({
+        hasText: "Linked balances are missing or use different currencies"
+      })
     ).toBeVisible();
     await expect(
       page.getByText(/does not apply an implicit exchange rate/)
@@ -307,6 +589,43 @@ test("Accounts reconciles grouped positions and exposes honest accessible detail
     await expect(
       page.getByText(/never fills missing months or reconstructs/)
     ).toBeVisible();
+    await expect(
+      page
+        .getByRole("article", { name: "Value unavailable" })
+        .getByText(/Owed\/equity bar unavailable/)
+    ).toBeVisible();
+    const underwaterProperty = page.getByRole("article", {
+      name: "Underwater property"
+    });
+    await expect(
+      underwaterProperty.getByText(/Negative equity −\$100\.00/)
+    ).toBeVisible();
+    await expect(
+      underwaterProperty.getByRole("img", {
+        name: /Negative equity −\$100\.00/
+      })
+    ).toBeVisible();
+    await captureEvidence(page, testInfo.project.name, "after-truth-states");
+
+    const ledgerRow = page
+      .getByRole("article", { name: "Fixture checking" })
+      .locator("summary")
+      .first();
+    if (testInfo.project.name === "mobile") {
+      await expect(ledgerRow.getByText("Balance today")).toBeVisible();
+      const columns = await ledgerRow.evaluate(
+        (element) => getComputedStyle(element).gridTemplateColumns
+      );
+      expect(columns.split(" ").length).toBeLessThanOrEqual(2);
+    } else {
+      await expect(page.locator(".accounts-ledger-columns")).toContainText(
+        "Before month end"
+      );
+      const columns = await ledgerRow.evaluate(
+        (element) => getComputedStyle(element).gridTemplateColumns
+      );
+      expect(columns.match(/minmax\(/g)).toHaveLength(5);
+    }
 
     const viewport = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,

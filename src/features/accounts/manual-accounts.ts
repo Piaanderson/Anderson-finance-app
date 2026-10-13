@@ -19,6 +19,36 @@ export type ManualAccountInput = {
 
 export class ManualAccountError extends Error {}
 
+export async function withManualAccountTransactionRetry<T>(
+  operation: () => Promise<T>
+) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034" &&
+        attempt < 2
+      ) {
+        continue;
+      }
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034"
+      ) {
+        throw new ManualAccountError(
+          "The property links changed in another session. Try again."
+        );
+      }
+      throw error;
+    }
+  }
+  throw new ManualAccountError(
+    "The property links changed in another session. Try again."
+  );
+}
+
 export function normalizeManualPosition(
   classification: ManualAccountInput["classification"],
   entryBalance: Prisma.Decimal.Value
@@ -159,47 +189,57 @@ export async function linkPropertyDebt(
     throw new ManualAccountError("An account cannot be linked to itself.");
   }
 
-  return prisma.$transaction(async (tx) => {
-    const [property, debt] = await Promise.all([
-      tx.financialAccount.findFirst({
-        where: {
-          id: propertyAccountId,
-          householdId,
-          classification: "PROPERTY",
-          isActive: true
-        },
-        select: { id: true }
-      }),
-      tx.financialAccount.findFirst({
-        where: {
-          id: debtAccountId,
-          householdId,
-          classification: "DEBT",
-          isActive: true
-        },
-        select: { id: true }
-      })
-    ]);
-    if (!property || !debt) {
-      throw new ManualAccountError(
-        "Choose an active property and debt from this household."
-      );
-    }
-    return tx.propertyDebtLink.upsert({
-      where: {
-        propertyAccountId_debtAccountId: {
-          propertyAccountId: property.id,
-          debtAccountId: debt.id
+  return withManualAccountTransactionRetry(() =>
+    prisma.$transaction(
+      async (tx) => {
+        const [property, debt] = await Promise.all([
+          tx.financialAccount.findFirst({
+            where: {
+              id: propertyAccountId,
+              householdId,
+              classification: "PROPERTY",
+              isActive: true
+            },
+            select: { id: true }
+          }),
+          tx.financialAccount.findFirst({
+            where: {
+              id: debtAccountId,
+              householdId,
+              classification: "DEBT",
+              isActive: true
+            },
+            select: { id: true }
+          })
+        ]);
+        if (!property || !debt) {
+          throw new ManualAccountError(
+            "Choose an active property and debt from this household."
+          );
         }
+        const existingDebtLink = await tx.propertyDebtLink.findFirst({
+          where: { debtAccountId: debt.id },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }]
+        });
+        if (existingDebtLink?.propertyAccountId !== undefined) {
+          if (existingDebtLink.propertyAccountId !== property.id) {
+            throw new ManualAccountError(
+              "This debt is already linked to another property. Unlink it before linking it again."
+            );
+          }
+          return existingDebtLink;
+        }
+        return tx.propertyDebtLink.create({
+          data: {
+            householdId,
+            propertyAccountId: property.id,
+            debtAccountId: debt.id
+          }
+        });
       },
-      update: {},
-      create: {
-        householdId,
-        propertyAccountId: property.id,
-        debtAccountId: debt.id
-      }
-    });
-  });
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    )
+  );
 }
 
 export async function unlinkPropertyDebt(householdId: string, linkId: string) {

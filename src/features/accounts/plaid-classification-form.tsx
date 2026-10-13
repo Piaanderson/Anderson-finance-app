@@ -32,7 +32,7 @@ export function PlaidClassificationForm({
   useEffect(() => {
     if (!state.success) return;
     statusRef.current?.focus();
-    const refresh = window.setTimeout(() => router.refresh(), 800);
+    const refresh = window.setTimeout(() => router.refresh(), 1500);
     return () => window.clearTimeout(refresh);
   }, [router, state.success]);
 
