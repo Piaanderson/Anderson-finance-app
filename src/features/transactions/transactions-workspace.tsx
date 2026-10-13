@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type {
@@ -450,65 +451,67 @@ export function TransactionsWorkspace({
         revision: string | null;
       };
     };
-    setMovementOverride((currentOverride) =>
-      (currentOverride ?? displayMovements).map((entry) =>
-        entry.kind === "TRANSACTION" &&
-        entry.legs[0].transactionId === transactionId
-          ? {
-              ...entry,
-              category: {
-                id: category.id,
-                name: category.name,
-                section: category.section,
-                archived: false
-              },
-              legs: [
-                {
-                  ...entry.legs[0],
-                  category: {
-                    id: category.id,
-                    name: category.name,
-                    section: category.section,
-                    archived: false
-                  },
-                  revision: payload.transactionRevision
-                }
-              ]
-            }
-          : entry
-      )
-    );
     const ruleKey = merchantRuleKey({
       merchantName: movement.legs[0].merchantName,
       name: movement.legs[0].name
     });
-    setRulesOverride((currentOverride) => {
-      const current = currentOverride ?? displayRules;
-      if (ruleAction === "PRESERVE") return current;
-      const withoutCurrent = current.filter(
-        (rule) => rule.merchantKey !== ruleKey
+    flushSync(() => {
+      setMovementOverride((currentOverride) =>
+        (currentOverride ?? displayMovements).map((entry) =>
+          entry.kind === "TRANSACTION" &&
+          entry.legs[0].transactionId === transactionId
+            ? {
+                ...entry,
+                category: {
+                  id: category.id,
+                  name: category.name,
+                  section: category.section,
+                  archived: false
+                },
+                legs: [
+                  {
+                    ...entry.legs[0],
+                    category: {
+                      id: category.id,
+                      name: category.name,
+                      section: category.section,
+                      archived: false
+                    },
+                    revision: payload.transactionRevision
+                  }
+                ]
+              }
+            : entry
+        )
       );
-      if (ruleAction === "DELETE" || !payload.rule.active) {
-        return withoutCurrent;
-      }
-      return [
-        ...withoutCurrent,
-        {
-          id:
-            current.find((rule) => rule.merchantKey === ruleKey)?.id ??
-            `local:${payload.rule.merchantKey}`,
-          merchantKey: payload.rule.merchantKey ?? merchantKey,
-          revision: payload.rule.revision ?? new Date().toISOString(),
-          category: { id: category.id, name: category.name }
+      setRulesOverride((currentOverride) => {
+        const current = currentOverride ?? displayRules;
+        if (ruleAction === "PRESERVE") return current;
+        const withoutCurrent = current.filter(
+          (rule) => rule.merchantKey !== ruleKey
+        );
+        if (ruleAction === "DELETE" || !payload.rule.active) {
+          return withoutCurrent;
         }
-      ];
+        return [
+          ...withoutCurrent,
+          {
+            id:
+              current.find((rule) => rule.merchantKey === ruleKey)?.id ??
+              `local:${payload.rule.merchantKey}`,
+            merchantKey: payload.rule.merchantKey ?? merchantKey,
+            revision: payload.rule.revision ?? new Date().toISOString(),
+            category: { id: category.id, name: category.name }
+          }
+        ];
+      });
+      setBusy(false);
     });
     announce(
       unresolvedCategoryQueue.length === 1
         ? `Category assigned to ${category.name}. Category review complete.`
         : `Category assigned to ${category.name}.`
     );
-    setBusy(false);
     if (focusAfter) moveFocus(focusAfter);
     return true;
   }

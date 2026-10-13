@@ -1670,8 +1670,12 @@ test("category review supports grouped keyboard assignment and optional merchant
     const drawer = page.getByRole("dialog", { name: "Harris Teeter" });
     const drawerCategory = drawer.getByRole("combobox", { name: "Category" });
     await drawerCategory.fill("din");
+    await expect(drawerCategory).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
+    await expect(drawer).toBeVisible();
+    await expect(drawerCategory).toHaveValue("Dining");
+    await expect(drawer.getByText("Selected: Dining · Flex")).toBeVisible();
     const drawerRuleAction = drawer.getByLabel("Exact merchant rule");
     await expect(drawerRuleAction).toHaveValue("PRESERVE");
     await drawerRuleAction.selectOption("DELETE");

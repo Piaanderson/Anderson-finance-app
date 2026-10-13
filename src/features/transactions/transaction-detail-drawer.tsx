@@ -90,9 +90,6 @@ export function TransactionDetailDrawer({
     existingRule?.merchantKey ?? defaultRuleKey
   );
   const [assignmentError, setAssignmentError] = useState("");
-  const [closeAfterCategoryId, setCloseAfterCategoryId] = useState<
-    string | null
-  >(null);
   if (movementId !== editorMovementId) {
     setEditorMovementId(movementId);
     setSelectedCategoryId(
@@ -101,7 +98,6 @@ export function TransactionDetailDrawer({
     setRuleAction("PRESERVE");
     setRuleKeyInput(existingRule?.merchantKey ?? defaultRuleKey);
     setAssignmentError("");
-    setCloseAfterCategoryId(null);
   }
   const normalizedRuleKey = normalizeMerchantRuleKey(ruleKeyInput);
   const ruleUnavailable = defaultRuleKey.length === 0;
@@ -110,25 +106,15 @@ export function TransactionDetailDrawer({
     const dialog = dialogRef.current;
     if (movement && dialog && !dialog.open) {
       dialog.showModal();
-      const frame = requestAnimationFrame(() => closeRef.current?.focus());
-      return () => cancelAnimationFrame(frame);
+      closeRef.current?.focus();
     }
     if (!movement && dialog?.open) dialog.close();
   }, [movement]);
 
   useEffect(() => {
     if (!movement || movement.kind !== "TRANSACTION" || busy) return;
-    if (assignmentError) {
-      saveRef.current?.focus();
-      return;
-    }
-    if (
-      closeAfterCategoryId &&
-      movement.category?.id === closeAfterCategoryId
-    ) {
-      dialogRef.current?.close();
-    }
-  }, [assignmentError, busy, closeAfterCategoryId, movement]);
+    if (assignmentError) saveRef.current?.focus();
+  }, [assignmentError, busy, movement]);
 
   if (!movement) return null;
   const firstLeg = movement.legs[0];
@@ -415,7 +401,7 @@ export function TransactionDetailDrawer({
                           "Category was not saved. Review the error and try again."
                         );
                       } else {
-                        setCloseAfterCategoryId(selectedCategory.id);
+                        close();
                       }
                     }
                   }}
