@@ -2218,7 +2218,7 @@ Implementation:
 
 Verification:
 
-- Targeted Accounts Vitest passed: 8 files and 39 tests covering arithmetic,
+- Targeted Accounts Vitest passed: 8 files and 44 tests covering arithmetic,
   property equity, equation availability, connection state, manual accounts,
   generalized account models, snapshots, maintenance, and household
   isolation.
@@ -2242,6 +2242,9 @@ Visual evidence:
 
 - `docs/visual-evidence/issue-28/reference-{1280,1920,512,390}.png` preserves
   the read-only integrated Accounts authority.
+- `docs/visual-evidence/issue-28/before-{1280,1920,512,390}.png` records the
+  authenticated `main` implementation reconstructed in an ignored temporary
+  copy.
 - `docs/visual-evidence/issue-28/after-{1280,1920,512,390}.png` contains fresh
   authenticated, database-backed production captures.
 - `docs/visual-evidence/issue-28/after-truth-states-{1280,1920,512,390}.png`
@@ -2250,6 +2253,8 @@ Visual evidence:
 - `docs/visual-evidence/issue-28/after-expanded-1280.png` and
   `after-property-1280.png` isolate the approved account reveal and combined
   property treatment.
+- `docs/visual-evidence/issue-28/README.md` records the fixture, widths, states,
+  and intentional truth-driven adaptations.
 
 Intentional production adaptations and remaining risks:
 
